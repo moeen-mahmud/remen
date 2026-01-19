@@ -5,3 +5,4 @@ android
 .vscode
 package.json
 .eslintignore
+bun.lock

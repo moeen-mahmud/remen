@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Remen",
-    "slug": "Remen",
-    "version": "1.0.0",
+    "slug": "remen",
+    "version": "0.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "remen",
@@ -39,7 +39,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-build-properties"
     ],
     "experiments": {
       "typedRoutes": true,
