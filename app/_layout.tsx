@@ -8,7 +8,7 @@ export default function RootLayout() {
     return (
         <GluestackUIProvider>
             <StatusBar style="auto" />
-            <Stack />
+            <Stack screenOptions={{ headerShown: false }} />
         </GluestackUIProvider>
     )
 }

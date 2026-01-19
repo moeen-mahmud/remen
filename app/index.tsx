@@ -1,12 +1,10 @@
-import { Button, ButtonText } from "@/components/ui/button"
-import { View } from "react-native"
+import { CaptureComponent } from "@/components/capture.component"
+import { Box } from "@/components/ui/box"
 
 export default function Index() {
     return (
-        <View className="flex-1 items-center justify-center bg-white">
-            <Button>
-                <ButtonText>Click me</ButtonText>
-            </Button>
-        </View>
+        <Box className={`flex-1 border border-blue-500`}>
+            <CaptureComponent />
+        </Box>
     )
 }
