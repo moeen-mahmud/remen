@@ -1,4 +1,3 @@
-import { CaptureActions } from "@/components/capture-actions"
 import { LinkModal } from "@/components/rich-editor/link-modal"
 import { Toolbar } from "@/components/rich-editor/toolbar"
 import { ScanCaptureModal } from "@/components/scan-capture-modal"
@@ -9,9 +8,10 @@ import { createNote } from "@/lib/database"
 import { useDebounce } from "@/lib/hooks/use-debounce"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
+import { ArchiveIcon, CameraIcon, CheckIcon, ChevronDownIcon, MicIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useRef, useState } from "react"
-import { Alert, Platform, ScrollView, StyleSheet, ToastAndroid } from "react-native"
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from "react-native"
 import {
     EnrichedTextInput,
     type EnrichedTextInputInstance,
@@ -20,14 +20,12 @@ import {
     type OnChangeSelectionEvent,
     type OnChangeStateEvent,
     type OnChangeTextEvent,
-    type OnKeyPressEvent,
     type OnLinkDetected,
 } from "react-native-enriched"
-import { KeyboardAvoidingView, useKeyboardState } from "react-native-keyboard-controller"
+import { KeyboardAvoidingView, KeyboardController, useKeyboardState } from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 type StylesState = OnChangeStateEvent
-
 type CurrentLinkState = OnLinkDetected
 
 interface Selection {
@@ -72,22 +70,21 @@ const DEFAULT_LINK_STATE = {
 
 const LINK_REGEX = /^(?:enriched:\/\/\S+|(?:https?:\/\/)?(?:www\.)?swmansion\.com(?:\/\S*)?)$/i
 
-// Simple toast function for cross-platform
 const showToast = (message: string) => {
     if (Platform.OS === "android") {
         ToastAndroid.show(message, ToastAndroid.SHORT)
     } else {
-        // On iOS, we'll use a subtle approach - just haptic feedback
-        // A proper toast library could be added later
         console.log(message)
     }
 }
 
 export default function RichEditor() {
-    const { top } = useSafeAreaInsets()
-    const { isVisible } = useKeyboardState()
+    const { top, bottom } = useSafeAreaInsets()
+    const { isVisible: isKeyboardVisible } = useKeyboardState()
     const { colorScheme } = useColorScheme()
     const router = useRouter()
+    const isDark = colorScheme === "dark"
+
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
     const [isCapturing, setIsCapturing] = useState(false)
     const [editorKey, setEditorKey] = useState(0)
@@ -105,8 +102,7 @@ export default function RichEditor() {
     const ref = useRef<EnrichedTextInputInstance>(null)
 
     // Auto-save draft (debounced)
-    const saveDraft = useCallback((text: string, htmlContent: string) => {
-        // For now, just log - we can add draft persistence later
+    const saveDraft = useCallback((text: string) => {
         if (text.trim().length > 0) {
             console.log("Draft saved:", text.substring(0, 50))
         }
@@ -116,37 +112,34 @@ export default function RichEditor() {
 
     // Capture/Done handler - saves note and resets editor instantly
     const handleCapture = useCallback(async () => {
-        if (content.trim().length === 0) return
+        if (content.trim().length === 0) {
+            Alert.alert("Empty Note", "Write something before saving!")
+            return
+        }
 
+        await KeyboardController.dismiss()
         setIsCapturing(true)
 
         try {
-            // 1. Reset UI immediately (0ms perceived latency)
             const capturedContent = content
             const capturedHtml = html
 
-            // Clear the editor right away by incrementing key (forces remount)
+            // Clear the editor
             setContent("")
             setHtml("")
             setEditorKey((k) => k + 1)
 
-            // Haptic feedback for success
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-            showToast("Organizing...")
+            showToast("Saved!")
 
-            // 2. Save to database (background)
+            // Save to database
             const note = await createNote({
                 content: capturedContent,
                 html: capturedHtml,
             })
 
-            // 3. Queue for AI processing
+            // Queue for AI processing
             aiQueue.add({ noteId: note.id, content: capturedContent })
-
-            // 4. Focus back on editor for next capture
-            setTimeout(() => {
-                ref.current?.focus()
-            }, 100)
         } catch (error) {
             console.error("Failed to save note:", error)
             Alert.alert("Error", "Failed to save note. Please try again.")
@@ -156,41 +149,61 @@ export default function RichEditor() {
     }, [content, html])
 
     // Voice capture handler
-    const handleVoice = useCallback(() => {
+    const handleVoice = useCallback(async () => {
+        await KeyboardController.dismiss()
         setIsVoiceModalVisible(true)
     }, [])
 
-    // Handle voice capture result
-    const handleVoiceCapture = useCallback(
-        (text: string) => {
-            // Append voice text to current content
-            const newContent = content.length > 0 ? `${content}\n\n${text}` : text
-            setContent(newContent)
-            // Note: We can't easily insert into the rich editor, so we just update the content state
-            // The user can then edit or save
-        },
-        [content],
-    )
+    // Handle voice capture result - save directly as a new note
+    const handleVoiceCapture = useCallback(async (text: string) => {
+        try {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+            showToast("Voice note saved!")
+
+            const note = await createNote({
+                content: text,
+            })
+
+            aiQueue.add({ noteId: note.id, content: text })
+        } catch (error) {
+            console.error("Failed to save voice note:", error)
+            Alert.alert("Error", "Failed to save voice note.")
+        }
+    }, [])
 
     // Scan handler
-    const handleScan = useCallback(() => {
+    const handleScan = useCallback(async () => {
+        await KeyboardController.dismiss()
         setIsScanModalVisible(true)
     }, [])
 
-    // Handle scan capture result
-    const handleScanCapture = useCallback(
-        (text: string) => {
-            // Append scanned text to current content
-            const newContent = content.length > 0 ? `${content}\n\n${text}` : text
-            setContent(newContent)
-        },
-        [content],
-    )
+    // Handle scan capture result - save directly as a new note
+    const handleScanCapture = useCallback(async (text: string) => {
+        try {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+            showToast("Scanned note saved!")
+
+            const note = await createNote({
+                content: text,
+            })
+
+            aiQueue.add({ noteId: note.id, content: text })
+        } catch (error) {
+            console.error("Failed to save scanned note:", error)
+            Alert.alert("Error", "Failed to save scanned note.")
+        }
+    }, [])
 
     // View notes handler
-    const handleViewNotes = useCallback(() => {
+    const handleViewNotes = useCallback(async () => {
+        await KeyboardController.dismiss()
         router.push("/notes" as any)
     }, [router])
+
+    // Dismiss keyboard
+    const handleDismissKeyboard = useCallback(async () => {
+        await KeyboardController.dismiss()
+    }, [])
 
     const hasContent = content.trim().length > 0
 
@@ -204,7 +217,7 @@ export default function RichEditor() {
 
     const handleChangeText = (e: OnChangeTextEvent) => {
         setContent(e.value)
-        debouncedSaveDraft(e.value, html)
+        debouncedSaveDraft(e.value)
     }
 
     const handleChangeHtml = (e: OnChangeHtmlEvent) => {
@@ -240,20 +253,7 @@ export default function RichEditor() {
         closeLinkModal()
     }
 
-    const handleFocusEvent = () => {
-        console.log("Input focused")
-    }
-
-    const handleBlurEvent = () => {
-        console.log("Input blurred")
-    }
-
-    const handleKeyPress = (e: OnKeyPressEvent) => {
-        console.log("Key pressed:", e.key)
-    }
-
     const handleLinkDetected = (state: CurrentLinkState) => {
-        console.log(state)
         setCurrentLink(state)
     }
 
@@ -262,17 +262,49 @@ export default function RichEditor() {
     }
 
     return (
-        <>
-            <ScrollView className="flex-1 bg-background-0" style={{ paddingTop: top }}>
+        <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff" }]}>
+            {/* Header */}
+            <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: isDark ? "#333" : "#e5e5e5" }]}>
+                <Pressable onPress={handleViewNotes} style={styles.headerButton}>
+                    <ArchiveIcon size={22} color={isDark ? "#fff" : "#000"} />
+                </Pressable>
+
+                <Text style={[styles.headerTitle, { color: isDark ? "#888" : "#666" }]}>
+                    {hasContent ? "Editing..." : "New Note"}
+                </Text>
+
+                <Pressable
+                    onPress={handleCapture}
+                    disabled={!hasContent || isCapturing}
+                    style={[
+                        styles.doneButton,
+                        {
+                            backgroundColor: hasContent ? "#3B82F6" : isDark ? "#333" : "#e5e5e5",
+                        },
+                    ]}
+                >
+                    <CheckIcon size={18} color={hasContent ? "#fff" : isDark ? "#666" : "#999"} />
+                    <Text style={[styles.doneButtonText, { color: hasContent ? "#fff" : isDark ? "#666" : "#999" }]}>
+                        Done
+                    </Text>
+                </Pressable>
+            </View>
+
+            {/* Editor */}
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+            >
                 <Box className="w-full">
                     <EnrichedTextInput
                         key={editorKey}
                         ref={ref}
-                        style={[styles.editorInput, { color: colorScheme === "dark" ? "#fdfcfc" : "#141414" }] as any}
+                        style={[styles.editorInput, { color: isDark ? "#fdfcfc" : "#141414" }] as any}
                         htmlStyle={htmlStyle}
                         placeholder="What's on your mind?"
-                        placeholderTextColor={colorScheme === "dark" ? "#dddddd" : "#666666"}
-                        selectionColor={colorScheme === "dark" ? "#dddddd" : "#666666"}
+                        placeholderTextColor={isDark ? "#666" : "#999"}
+                        selectionColor={isDark ? "#dddddd" : "#666666"}
                         autoCapitalize="sentences"
                         autoFocus={false}
                         linkRegex={LINK_REGEX}
@@ -280,27 +312,48 @@ export default function RichEditor() {
                         onChangeHtml={(e) => handleChangeHtml(e.nativeEvent)}
                         onChangeState={(e) => handleChangeState(e.nativeEvent)}
                         onLinkDetected={handleLinkDetected}
-                        onFocus={handleFocusEvent}
-                        onBlur={handleBlurEvent}
                         onChangeSelection={(e) => handleSelectionChangeEvent(e.nativeEvent)}
-                        onKeyPress={(e) => handleKeyPress(e.nativeEvent)}
                     />
                 </Box>
             </ScrollView>
-            <KeyboardAvoidingView behavior="padding" style={styles.keyboardAvoidingView}>
-                {isVisible ? (
-                    <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
-                ) : (
-                    <CaptureActions
-                        onCapture={handleCapture}
-                        onVoice={handleVoice}
-                        onScan={handleScan}
-                        onViewNotes={handleViewNotes}
-                        isCapturing={isCapturing}
-                        hasContent={hasContent}
-                    />
-                )}
+
+            {/* Bottom Bar */}
+            <KeyboardAvoidingView behavior="padding" style={styles.bottomBarContainer}>
+                <View
+                    style={[
+                        styles.bottomBar,
+                        {
+                            borderTopColor: isDark ? "#333" : "#e5e5e5",
+                            backgroundColor: isDark ? "#000" : "#fff",
+                            paddingBottom: isKeyboardVisible ? 8 : bottom + 8,
+                        },
+                    ]}
+                >
+                    {/* Quick capture buttons */}
+                    <View style={styles.quickActions}>
+                        <Pressable onPress={handleVoice} style={styles.quickButton}>
+                            <MicIcon size={22} color={isDark ? "#fff" : "#000"} />
+                        </Pressable>
+                        <Pressable onPress={handleScan} style={styles.quickButton}>
+                            <CameraIcon size={22} color={isDark ? "#fff" : "#000"} />
+                        </Pressable>
+                        {isKeyboardVisible && (
+                            <Pressable onPress={handleDismissKeyboard} style={styles.quickButton}>
+                                <ChevronDownIcon size={22} color={isDark ? "#fff" : "#000"} />
+                            </Pressable>
+                        )}
+                    </View>
+
+                    {/* Formatting toolbar (only when keyboard is visible) */}
+                    {isKeyboardVisible && (
+                        <View style={styles.toolbarContainer}>
+                            <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
+                        </View>
+                    )}
+                </View>
             </KeyboardAvoidingView>
+
+            {/* Modals */}
             <LinkModal
                 isOpen={isLinkModalOpen}
                 editedText={insideCurrentLink ? currentLink.text : (selection?.text ?? "")}
@@ -318,102 +371,117 @@ export default function RichEditor() {
                 onClose={() => setIsScanModalVisible(false)}
                 onCapture={handleScanCapture}
             />
-        </>
+        </View>
     )
 }
 
 const htmlStyle: HtmlStyle = {
-    h1: {
-        fontSize: 56,
-        bold: true,
-    },
-    h2: {
-        fontSize: 42,
-        bold: true,
-    },
-    h3: {
-        fontSize: 36,
-        bold: true,
-    },
-    h4: {
-        fontSize: 28,
-        bold: true,
-    },
-    h5: {
-        fontSize: 22,
-        bold: true,
-    },
-    h6: {
-        fontSize: 18,
-        bold: true,
-    },
+    h1: { fontSize: 32, bold: true },
+    h2: { fontSize: 26, bold: true },
+    h3: { fontSize: 22, bold: true },
+    h4: { fontSize: 18, bold: true },
+    h5: { fontSize: 16, bold: true },
+    h6: { fontSize: 14, bold: true },
     blockquote: {
-        borderColor: "#0043B6",
-        borderWidth: 4,
-        gapWidth: 16,
-        color: "#0043B6",
+        borderColor: "#3B82F6",
+        borderWidth: 3,
+        gapWidth: 12,
+        color: "#3B82F6",
     },
     codeblock: {
-        color: "#489766",
-        borderRadius: 8,
-        backgroundColor: "aquamarine",
+        color: "#10B981",
+        borderRadius: 6,
+        backgroundColor: "#f0fdf4",
     },
     code: {
-        color: "#8754FF",
-        backgroundColor: "yellow",
+        color: "#8B5CF6",
+        backgroundColor: "#f5f3ff",
     },
     a: {
-        color: "#489766",
+        color: "#3B82F6",
         textDecorationLine: "underline",
     },
     ol: {
-        gapWidth: 16,
-        marginLeft: 24,
-        markerColor: "#0043B6",
+        gapWidth: 12,
+        marginLeft: 20,
+        markerColor: "#3B82F6",
         markerFontWeight: "bold",
     },
     ul: {
-        bulletColor: "#489766",
-        bulletSize: 8,
-        marginLeft: 24,
-        gapWidth: 16,
+        bulletColor: "#10B981",
+        bulletSize: 6,
+        marginLeft: 20,
+        gapWidth: 12,
     },
 }
 
 const styles = StyleSheet.create({
-    keyboardAvoidingView: {
-        position: "absolute",
-        width: "100%",
-        bottom: 0,
-    },
     container: {
         flex: 1,
     },
-    content: {
-        flexGrow: 1,
-        alignItems: "center",
-    },
-    editor: {
-        width: "100%",
-    },
-    buttonStack: {
+    header: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        width: "100%",
+        paddingHorizontal: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
     },
-    button: {
-        width: "45%",
+    headerButton: {
+        padding: 8,
     },
-    valueButton: {
-        width: "100%",
+    headerTitle: {
+        fontSize: 14,
+        fontWeight: "500",
+    },
+    doneButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 8,
+        paddingHorizontal: 14,
+        borderRadius: 20,
+        gap: 4,
+    },
+    doneButtonText: {
+        fontSize: 14,
+        fontWeight: "600",
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
     },
     editorInput: {
         width: "100%",
-        height: "100%",
-        fontSize: 16,
-        fontFamily: "Lora-Regular",
-        paddingVertical: 12,
-        paddingHorizontal: 14,
+        minHeight: 300,
+        fontSize: 17,
+        lineHeight: 26,
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+    },
+    bottomBarContainer: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+    },
+    bottomBar: {
+        borderTopWidth: 1,
+        paddingTop: 8,
+        paddingHorizontal: 12,
+    },
+    quickActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 4,
+    },
+    quickButton: {
+        padding: 10,
+        borderRadius: 8,
+    },
+    toolbarContainer: {
+        marginTop: 4,
     },
 })

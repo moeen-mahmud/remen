@@ -5,6 +5,7 @@ import { Stack } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
 import { useEffect, useState } from "react"
+import "react-native-get-random-values"
 import { KeyboardProvider } from "react-native-keyboard-controller"
 import "../global.css"
 
@@ -17,7 +18,6 @@ export default function RootLayout() {
     useEffect(() => {
         async function initialize() {
             try {
-                // Initialize database
                 await getDatabase()
 
                 // Process any unprocessed notes from previous sessions
