@@ -13,7 +13,6 @@
     "lint": "expo lint"
   },
   "dependencies": {
-    "@10play/tentap-editor": "^1.0.1",
     "@expo/html-elements": "^0.10.1",
     "@expo/vector-icons": "^15.0.3",
     "@gluestack-ui/core": "^3.0.10",

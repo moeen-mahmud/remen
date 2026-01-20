@@ -1,4 +1,4 @@
-# Remen - MVP Development Plan
+# Remen - MVP Development Plan (ONLY FOR iOS)
 
 ## On-Device AI Architecture (ML Kit + Gemini Nano)
 
@@ -16,6 +16,8 @@ A mobile-first note-taking app that prioritizes **zero-friction capture** with i
 4. **Simple Interface, Powerful Features**: Minimal UI with sophisticated AI underneath
 5. **Mobile-Native**: Designed for one-handed use, quick interactions
 6. **Progressive Enhancement**: Works immediately with one note, gets smarter over time
+7. **Offline First**: Works offline, no internet required
+8. **No Cloud Sync**: No cloud sync, all data is stored locally
 
 ---
 
@@ -91,8 +93,8 @@ A mobile-first note-taking app that prioritizes **zero-friction capture** with i
 
 **Technical Requirements:**
 
-- React Native for cross-platform
-- Local SQLite database (react-native-sqlite-storage)
+- React Native for cross-platform (Expo)
+- Local SQLite database (expo-sqlite)
 - Auto-focus on mount
 - Debounced draft saving (every 2 seconds)
 
@@ -235,11 +237,9 @@ Gemini Nano is available via:
 **Installation:**
 
 ```bash
-# Android
-npm install @google/generative-ai-edge
 
-# iOS fallback: Use smaller ExecuTorch model
-npm install react-native-executorch
+# iOS Use smaller ExecuTorch model or react native ml kit
+bun install react-native-executorch || bun install @react-native-ml-kit/text-recognition
 ```
 
 **Model Setup:**
@@ -444,7 +444,7 @@ For semantic "find notes about X" search, we need embeddings.
 **Option A: Lightweight Sentence Transformers (Recommended)**
 
 ```bash
-npm install @xenova/transformers
+bun install @xenova/transformers
 ```
 
 ```javascript

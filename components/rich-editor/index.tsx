@@ -155,7 +155,6 @@ export default function RichEditor() {
                         placeholder="What's on your mind?"
                         placeholderTextColor={colorScheme === "dark" ? "#dddddd" : "#666666"}
                         selectionColor={colorScheme === "dark" ? "#dddddd" : "#666666"}
-                        cursorColor="#489766"
                         autoCapitalize="sentences"
                         linkRegex={LINK_REGEX}
                         onChangeText={(e) => handleChangeText(e.nativeEvent)}
@@ -187,56 +186,56 @@ export default function RichEditor() {
 
 const htmlStyle: HtmlStyle = {
     h1: {
-        fontSize: 72,
+        fontSize: 56,
         bold: true,
     },
     h2: {
-        fontSize: 60,
+        fontSize: 42,
         bold: true,
     },
     h3: {
-        fontSize: 50,
+        fontSize: 36,
         bold: true,
     },
     h4: {
-        fontSize: 40,
+        fontSize: 28,
         bold: true,
     },
     h5: {
-        fontSize: 30,
+        fontSize: 22,
         bold: true,
     },
     h6: {
-        fontSize: 24,
+        fontSize: 18,
         bold: true,
     },
     blockquote: {
-        borderColor: "navy",
+        borderColor: "#0043B6",
         borderWidth: 4,
         gapWidth: 16,
-        color: "navy",
+        color: "#0043B6",
     },
     codeblock: {
-        color: "green",
+        color: "#489766",
         borderRadius: 8,
         backgroundColor: "aquamarine",
     },
     code: {
-        color: "purple",
+        color: "#8754FF",
         backgroundColor: "yellow",
     },
     a: {
-        color: "green",
+        color: "#489766",
         textDecorationLine: "underline",
     },
     ol: {
         gapWidth: 16,
         marginLeft: 24,
-        markerColor: "navy",
+        markerColor: "#0043B6",
         markerFontWeight: "bold",
     },
     ul: {
-        bulletColor: "aquamarine",
+        bulletColor: "#489766",
         bulletSize: 8,
         marginLeft: 24,
         gapWidth: 16,
@@ -274,7 +273,7 @@ const styles = StyleSheet.create({
     editorInput: {
         width: "100%",
         height: "100%",
-        fontSize: 18,
+        fontSize: 16,
         fontFamily: "Lora-Regular",
         paddingVertical: 12,
         paddingHorizontal: 14,
