@@ -8,7 +8,7 @@ import { config } from "./config"
 export type ModeType = "light" | "dark" | "system"
 
 export function GluestackUIProvider({
-    mode = "light",
+    mode = "system",
     ...props
 }: {
     mode?: ModeType

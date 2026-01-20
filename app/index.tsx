@@ -1,10 +1,10 @@
-import { CaptureComponent } from "@/components/capture.component"
-import { Box } from "@/components/ui/box"
+import RichEditor from "@/components/rich-editor"
+import { View } from "react-native"
 
 export default function Index() {
     return (
-        <Box className={`flex-1 border border-blue-500`}>
-            <CaptureComponent />
-        </Box>
+        <View className="flex-1">
+            <RichEditor />
+        </View>
     )
 }
