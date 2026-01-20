@@ -1,79 +1,106 @@
 /**
  * Remen Design System
- * Based on DESIGN.md specifications
+ * Based on DESIGN.md specifications and oklch theme
+ * Uses GluestackUI theme variables for NativeWind compatibility
  */
 
+// Convert oklch to hex for direct use
+// These are the key colors from the oklch theme
+const oklchToHex = {
+    // Light mode
+    light: {
+        "background": "#F8F8F8", // oklch(0.98 0 0)
+        "foreground": "#161616", // oklch(0.2 0 0)
+        "primary": "#00B700", // oklch(0.67 0.25 141.53) - green
+        "primary-foreground": "#FCFCFC", // oklch(0.99 0 0)
+        "secondary": "#E8E8E8", // oklch(0.93 0 0)
+        "secondary-foreground": "#222222", // oklch(0.25 0 0)
+        "muted": "#E4E4E4", // oklch(0.92 0 0)
+        "muted-foreground": "#717171", // oklch(0.55 0 0)
+        "accent": "#C8E0FF", // oklch(0.9 0.05 255)
+        "accent-foreground": "#161616", // oklch(0.2 0 0)
+        "destructive": "#F9423C", // oklch(0.65 0.22 27.3)
+        "destructive-foreground": "#FCFCFC", // oklch(0.99 0 0)
+        "border": "#DEDEDE", // oklch(0.9 0 0)
+        "input": "#DEDEDE", // oklch(0.9 0 0)
+        "ring": "#00B700", // oklch(0.67 0.25 141.53)
+        "card": "#F5F5F5", // oklch(0.97 0 0)
+        "card-foreground": "#161616", // oklch(0.2 0 0)
+    },
+    // Dark mode
+    dark: {
+        "background": "#030303", // oklch(0.1 0 0)
+        "foreground": "#F8F8F8", // oklch(0.98 0 0)
+        "primary": "#39FF14", // oklch(0.8714 0.286 141.53) - bright green
+        "primary-foreground": "#030303", // oklch(0.1 0 0)
+        "secondary": "#121212", // oklch(0.18 0 0)
+        "secondary-foreground": "#F8F8F8", // oklch(0.98 0 0)
+        "muted": "#1B1B1B", // oklch(0.22 0 0)
+        "muted-foreground": "#8F8F8F", // oklch(0.65 0 0)
+        "accent": "#272E38", // oklch(0.3 0.02 255)
+        "accent-foreground": "#E9EBEE", // oklch(0.94 0.005 255)
+        "destructive": "#E7000B", // oklch(0.577 0.245 27.325)
+        "destructive-foreground": "#F8F8F8", // oklch(0.98 0 0)
+        "border": "#1B1B1B", // oklch(0.22 0 0)
+        "input": "#1B1B1B", // oklch(0.22 0 0)
+        "ring": "#272E38", // oklch(0.3 0.02 255)
+        "card": "#0D0D0D", // oklch(0.16 0 0)
+        "card-foreground": "#F8F8F8", // oklch(0.98 0 0)
+    },
+}
+
 export const colors = {
-    // Primary color palette
-    primary: "#6B7280", // Slate/Soft Grey - subtle accent, interactive hints
-    accent: "#D97706", // Warm Neutral - action states, voice/scan buttons
-    accentAlt: "#3B82F6", // Subtle Blue - alternative accent
+    // Use NativeWind/GluestackUI theme variables
+    // These will automatically switch based on dark mode
+    "primary": "rgb(var(--color-primary-500))",
+    "primary-foreground": "rgb(var(--color-primary-0))",
+    "secondary": "rgb(var(--color-secondary-500))",
+    "secondary-foreground": "rgb(var(--color-secondary-0))",
+    "accent": "rgb(var(--color-tertiary-500))", // Using tertiary as accent
+    "accent-foreground": "rgb(var(--color-tertiary-0))",
+    "destructive": "rgb(var(--color-error-500))",
+    "destructive-foreground": "rgb(var(--color-error-0))",
+    "success": "rgb(var(--color-success-500))",
+    "warning": "rgb(var(--color-warning-500))",
+    "info": "rgb(var(--color-info-500))",
+    "muted": "rgb(var(--color-background-muted))",
+    "muted-foreground": "rgb(var(--color-typography-500))",
+    "border": "rgb(var(--color-outline-500))",
+    "input": "rgb(var(--color-outline-500))",
+    "ring": "rgb(var(--color-primary-500))",
+    "background": "rgb(var(--color-background-0))",
+    "foreground": "rgb(var(--color-typography-950))",
+    "card": "rgb(var(--color-background-50))",
+    "card-foreground": "rgb(var(--color-typography-950))",
 
-    // Background colors
-    background: {
-        light: "#FFFFFF",
-        dark: "#1F2937", // near black
-        lightAlt: "#FAFAF9",
+    // Direct hex values for fallback/static use
+    "hex": {
+        light: oklchToHex.light,
+        dark: oklchToHex.dark,
     },
 
-    // Text colors
-    text: {
-        primary: {
-            light: "#1F2937",
-            dark: "#F3F4F6",
-        },
-        secondary: {
-            light: "#374151",
-            dark: "#F3F4F6",
-        },
-        placeholder: {
-            light: "#9CA3AF", // 60% opacity
-            dark: "#6B7280",
-        },
-        timestamp: {
-            light: "#9CA3AF",
-            dark: "#9CA3AF",
-        },
-        ui: {
-            light: "#6B7280",
-            dark: "#9CA3AF",
-        },
-    },
-
-    // Borders
-    border: {
-        subtle: "#E5E7EB",
-        dark: "#374151",
-        hairline: "#E5E7EB",
-    },
-
-    // Status colors
-    success: "#10B981",
-    error: "#EF4444",
-    warning: "#F59E0B",
-
-    // Note type colors
-    noteTypes: {
-        meeting: "#3B82F6", // Blue
-        task: "#F59E0B", // Orange
-        idea: "#8B5CF6", // Purple
-        journal: "#10B981", // Green
-        reference: "#6B7280", // Grey
-        voice: "#EF4444", // Red
-        scan: "#D97706", // Amber
-        note: "#9CA3AF", // Default grey
+    // Note type colors (using theme colors)
+    "noteTypes": {
+        meeting: "rgb(var(--color-info-500))", // Blue
+        task: "rgb(var(--color-warning-500))", // Orange
+        idea: "rgb(var(--color-primary-500))", // Green (primary)
+        journal: "rgb(var(--color-success-500))", // Green
+        reference: "rgb(var(--color-typography-500))", // Grey
+        voice: "rgb(var(--color-error-500))", // Red
+        scan: "rgb(var(--color-tertiary-500))", // Amber/Accent
+        note: "rgb(var(--color-typography-400))", // Default grey
     },
 
     // Note type backgrounds (20% opacity)
-    noteTypeBg: {
-        meeting: "#3B82F620",
-        task: "#F59E0B20",
-        idea: "#8B5CF620",
-        journal: "#10B98120",
-        reference: "#6B728020",
-        voice: "#EF444420",
-        scan: "#D9770620",
-        note: "#9CA3AF20",
+    "noteTypeBg": {
+        meeting: "rgb(var(--color-info-500) / 0.2)",
+        task: "rgb(var(--color-warning-500) / 0.2)",
+        idea: "rgb(var(--color-primary-500) / 0.2)",
+        journal: "rgb(var(--color-success-500) / 0.2)",
+        reference: "rgb(var(--color-typography-500) / 0.2)",
+        voice: "rgb(var(--color-error-500) / 0.2)",
+        scan: "rgb(var(--color-tertiary-500) / 0.2)",
+        note: "rgb(var(--color-typography-400) / 0.2)",
     },
 }
 
@@ -189,13 +216,20 @@ export const shadows = {
 }
 
 // Helper functions
-export const getThemeColors = (isDark: boolean) => ({
-    background: isDark ? colors.background.dark : colors.background.light,
-    text: isDark ? colors.text.primary.dark : colors.text.primary.light,
-    textSecondary: isDark ? colors.text.secondary.dark : colors.text.secondary.light,
-    border: isDark ? colors.border.dark : colors.border.subtle,
-    accent: colors.accent,
-})
+export const getThemeColors = (isDark: boolean) => {
+    const theme = isDark ? colors.hex.dark : colors.hex.light
+    return {
+        "background": theme.background,
+        "foreground": theme.foreground,
+        "text": theme.foreground,
+        "textSecondary": theme["muted-foreground"],
+        "border": theme.border,
+        "accent": theme.accent,
+        "primary": theme.primary,
+        "card": theme.card,
+        "card-foreground": theme["card-foreground"],
+    }
+}
 
 export const getNoteTypeColors = (type: string) => ({
     color: colors.noteTypes[type as keyof typeof colors.noteTypes] || colors.noteTypes.note,

@@ -48,6 +48,7 @@ module.exports = {
                     950: "rgb(var(--color-secondary-950)/<alpha-value>)",
                 },
                 tertiary: {
+                    0: "rgb(var(--color-tertiary-0)/<alpha-value>)",
                     50: "rgb(var(--color-tertiary-50)/<alpha-value>)",
                     100: "rgb(var(--color-tertiary-100)/<alpha-value>)",
                     200: "rgb(var(--color-tertiary-200)/<alpha-value>)",
@@ -173,6 +174,18 @@ module.exports = {
                     info: "rgb(var(--color-indicator-info)/<alpha-value>)",
                     error: "rgb(var(--color-indicator-error)/<alpha-value>)",
                 },
+                // Theme colors from oklch system
+                card: {
+                    DEFAULT: "rgb(var(--color-background-50)/<alpha-value>)",
+                    foreground: "rgb(var(--color-typography-950)/<alpha-value>)",
+                },
+                popover: {
+                    DEFAULT: "rgb(var(--color-background-0)/<alpha-value>)",
+                    foreground: "rgb(var(--color-typography-950)/<alpha-value>)",
+                },
+                // Direct theme mappings
+                brand: "rgb(var(--color-primary-500)/<alpha-value>)",
+                highlight: "rgb(var(--color-primary-400)/<alpha-value>)",
             },
             fontFamily: {
                 "heading": undefined,
