@@ -1,9 +1,17 @@
+import { CaptureActions } from "@/components/capture-actions"
 import { LinkModal } from "@/components/rich-editor/link-modal"
 import { Toolbar } from "@/components/rich-editor/toolbar"
+import { ScanCaptureModal } from "@/components/scan-capture-modal"
 import { Box } from "@/components/ui/box"
+import { VoiceCaptureModal } from "@/components/voice-capture-modal"
+import { aiQueue } from "@/lib/ai/queue"
+import { createNote } from "@/lib/database"
+import { useDebounce } from "@/lib/hooks/use-debounce"
+import * as Haptics from "expo-haptics"
+import { useRouter } from "expo-router"
 import { useColorScheme } from "nativewind"
-import { useRef, useState } from "react"
-import { ScrollView, StyleSheet } from "react-native"
+import { useCallback, useRef, useState } from "react"
+import { Alert, Platform, ScrollView, StyleSheet, ToastAndroid } from "react-native"
 import {
     EnrichedTextInput,
     type EnrichedTextInputInstance,
@@ -64,17 +72,127 @@ const DEFAULT_LINK_STATE = {
 
 const LINK_REGEX = /^(?:enriched:\/\/\S+|(?:https?:\/\/)?(?:www\.)?swmansion\.com(?:\/\S*)?)$/i
 
+// Simple toast function for cross-platform
+const showToast = (message: string) => {
+    if (Platform.OS === "android") {
+        ToastAndroid.show(message, ToastAndroid.SHORT)
+    } else {
+        // On iOS, we'll use a subtle approach - just haptic feedback
+        // A proper toast library could be added later
+        console.log(message)
+    }
+}
+
 export default function RichEditor() {
     const { top } = useSafeAreaInsets()
     const { isVisible } = useKeyboardState()
     const { colorScheme } = useColorScheme()
+    const router = useRouter()
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
+    const [isCapturing, setIsCapturing] = useState(false)
+    const [editorKey, setEditorKey] = useState(0)
+    const [isVoiceModalVisible, setIsVoiceModalVisible] = useState(false)
+    const [isScanModalVisible, setIsScanModalVisible] = useState(false)
+
+    // Content state
+    const [content, setContent] = useState("")
+    const [html, setHtml] = useState("")
 
     const [selection, setSelection] = useState<Selection>()
     const [stylesState, setStylesState] = useState<StylesState>(DEFAULT_STYLES)
     const [currentLink, setCurrentLink] = useState<CurrentLinkState>(DEFAULT_LINK_STATE)
 
     const ref = useRef<EnrichedTextInputInstance>(null)
+
+    // Auto-save draft (debounced)
+    const saveDraft = useCallback((text: string, htmlContent: string) => {
+        // For now, just log - we can add draft persistence later
+        if (text.trim().length > 0) {
+            console.log("Draft saved:", text.substring(0, 50))
+        }
+    }, [])
+
+    const debouncedSaveDraft = useDebounce(saveDraft, 2000)
+
+    // Capture/Done handler - saves note and resets editor instantly
+    const handleCapture = useCallback(async () => {
+        if (content.trim().length === 0) return
+
+        setIsCapturing(true)
+
+        try {
+            // 1. Reset UI immediately (0ms perceived latency)
+            const capturedContent = content
+            const capturedHtml = html
+
+            // Clear the editor right away by incrementing key (forces remount)
+            setContent("")
+            setHtml("")
+            setEditorKey((k) => k + 1)
+
+            // Haptic feedback for success
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+            showToast("Organizing...")
+
+            // 2. Save to database (background)
+            const note = await createNote({
+                content: capturedContent,
+                html: capturedHtml,
+            })
+
+            // 3. Queue for AI processing
+            aiQueue.add({ noteId: note.id, content: capturedContent })
+
+            // 4. Focus back on editor for next capture
+            setTimeout(() => {
+                ref.current?.focus()
+            }, 100)
+        } catch (error) {
+            console.error("Failed to save note:", error)
+            Alert.alert("Error", "Failed to save note. Please try again.")
+        } finally {
+            setIsCapturing(false)
+        }
+    }, [content, html])
+
+    // Voice capture handler
+    const handleVoice = useCallback(() => {
+        setIsVoiceModalVisible(true)
+    }, [])
+
+    // Handle voice capture result
+    const handleVoiceCapture = useCallback(
+        (text: string) => {
+            // Append voice text to current content
+            const newContent = content.length > 0 ? `${content}\n\n${text}` : text
+            setContent(newContent)
+            // Note: We can't easily insert into the rich editor, so we just update the content state
+            // The user can then edit or save
+        },
+        [content],
+    )
+
+    // Scan handler
+    const handleScan = useCallback(() => {
+        setIsScanModalVisible(true)
+    }, [])
+
+    // Handle scan capture result
+    const handleScanCapture = useCallback(
+        (text: string) => {
+            // Append scanned text to current content
+            const newContent = content.length > 0 ? `${content}\n\n${text}` : text
+            setContent(newContent)
+        },
+        [content],
+    )
+
+    // View notes handler
+    const handleViewNotes = useCallback(() => {
+        router.push("/notes" as any)
+    }, [router])
+
+    const hasContent = content.trim().length > 0
 
     const insideCurrentLink =
         stylesState.link.isActive &&
@@ -85,11 +203,12 @@ export default function RichEditor() {
         selection.end <= currentLink.end
 
     const handleChangeText = (e: OnChangeTextEvent) => {
-        console.log("Text changed:", e.value)
+        setContent(e.value)
+        debouncedSaveDraft(e.value, html)
     }
 
     const handleChangeHtml = (e: OnChangeHtmlEvent) => {
-        console.log("HTML changed:", e.value)
+        setHtml(e.value)
     }
 
     const handleChangeState = (state: OnChangeStateEvent) => {
@@ -142,13 +261,12 @@ export default function RichEditor() {
         setSelection(sel)
     }
 
-    console.log("colorScheme", colorScheme)
-
     return (
         <>
             <ScrollView className="flex-1 bg-background-0" style={{ paddingTop: top }}>
                 <Box className="w-full">
                     <EnrichedTextInput
+                        key={editorKey}
                         ref={ref}
                         style={[styles.editorInput, { color: colorScheme === "dark" ? "#fdfcfc" : "#141414" }] as any}
                         htmlStyle={htmlStyle}
@@ -156,6 +274,7 @@ export default function RichEditor() {
                         placeholderTextColor={colorScheme === "dark" ? "#dddddd" : "#666666"}
                         selectionColor={colorScheme === "dark" ? "#dddddd" : "#666666"}
                         autoCapitalize="sentences"
+                        autoFocus={false}
                         linkRegex={LINK_REGEX}
                         onChangeText={(e) => handleChangeText(e.nativeEvent)}
                         onChangeHtml={(e) => handleChangeHtml(e.nativeEvent)}
@@ -171,7 +290,16 @@ export default function RichEditor() {
             <KeyboardAvoidingView behavior="padding" style={styles.keyboardAvoidingView}>
                 {isVisible ? (
                     <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
-                ) : null}
+                ) : (
+                    <CaptureActions
+                        onCapture={handleCapture}
+                        onVoice={handleVoice}
+                        onScan={handleScan}
+                        onViewNotes={handleViewNotes}
+                        isCapturing={isCapturing}
+                        hasContent={hasContent}
+                    />
+                )}
             </KeyboardAvoidingView>
             <LinkModal
                 isOpen={isLinkModalOpen}
@@ -179,6 +307,16 @@ export default function RichEditor() {
                 editedUrl={insideCurrentLink ? currentLink.url : ""}
                 onSubmit={submitLink}
                 onClose={closeLinkModal}
+            />
+            <VoiceCaptureModal
+                isVisible={isVoiceModalVisible}
+                onClose={() => setIsVoiceModalVisible(false)}
+                onCapture={handleVoiceCapture}
+            />
+            <ScanCaptureModal
+                isVisible={isScanModalVisible}
+                onClose={() => setIsScanModalVisible(false)}
+                onCapture={handleScanCapture}
             />
         </>
     )
@@ -277,11 +415,5 @@ const styles = StyleSheet.create({
         fontFamily: "Lora-Regular",
         paddingVertical: 12,
         paddingHorizontal: 14,
-    },
-    scrollPlaceholder: {
-        marginTop: 24,
-        width: "100%",
-        height: 1000,
-        backgroundColor: "rgb(0, 26, 114)",
     },
 })

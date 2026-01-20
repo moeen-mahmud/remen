@@ -10,7 +10,13 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.moeen.mahmud.tulip.Remen"
+      "bundleIdentifier": "com.moeen.mahmud.tulip.Remen",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Remen uses the camera to scan documents and handwritten notes",
+        "NSMicrophoneUsageDescription": "Remen uses the microphone for voice note capture",
+        "NSSpeechRecognitionUsageDescription": "Remen uses speech recognition to transcribe voice notes"
+      },
+      "appleTeamId": "M333T6NJKB"
     },
     "android": {
       "adaptiveIcon": {
@@ -20,7 +26,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "output": "static",
@@ -28,6 +38,29 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-sqlite",
+        {
+          "enableFTS": true,
+          "useSQLCipher": true,
+          "android": {
+            // Override the shared configuration for Android
+            "enableFTS": false,
+            "useSQLCipher": false
+          },
+          "ios": {
+            // You can also override the shared configurations for iOS
+            "customBuildFlags": ["-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"]
+          }
+        }
+      ],
+      "@react-native-voice/voice",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Remen uses the camera to scan documents and handwritten notes"
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -40,7 +73,14 @@
           }
         }
       ],
-      "expo-build-properties"
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "15.5"
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
