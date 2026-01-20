@@ -19,6 +19,12 @@ export const editorStyles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
+    brandContainer: {
+        paddingHorizontal: 4,
+        paddingVertical: 8,
+        minWidth: 44,
+        justifyContent: "center",
+    },
     headerTitle: {
         fontSize: 14,
         fontWeight: "500",

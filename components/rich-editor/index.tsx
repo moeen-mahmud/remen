@@ -1,3 +1,4 @@
+import { RemenLogo } from "@/components/brand/logo"
 import {
     AUTOSAVE_DELAY,
     DEFAULT_LINK_STATE,
@@ -11,15 +12,16 @@ import { editorStyles } from "@/components/rich-editor/editor-styles"
 import { htmlStyle } from "@/components/rich-editor/html-styles"
 import { LinkModal } from "@/components/rich-editor/link-modal"
 import { Toolbar } from "@/components/rich-editor/toolbar"
+import { SaveStatus, type SaveState } from "@/components/save-status"
 import { Box } from "@/components/ui/box"
 import { aiQueue } from "@/lib/ai/queue"
 import { createNote, getNoteById, updateNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import { ArrowLeftIcon, CameraIcon, CheckCircleIcon, ChevronDownIcon, Loader2Icon, MicIcon } from "lucide-react-native"
+import { ArrowLeftIcon, CameraIcon, ChevronDownIcon, MicIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ActivityIndicator, AppState, Pressable, ScrollView, Text, View } from "react-native"
+import { ActivityIndicator, AppState, Pressable, ScrollView, View } from "react-native"
 import {
     EnrichedTextInput,
     type EnrichedTextInputInstance,
@@ -274,19 +276,6 @@ export default function RichEditor({
         await KeyboardController.dismiss()
     }, [])
 
-    // Start new note (clear current)
-    const handleNewNote = useCallback(async () => {
-        await immediateSave()
-        setCurrentNoteId(null)
-        setContent("")
-        setHtml("")
-        setInitialContent("")
-        lastSavedContentRef.current = ""
-        setSaveStatus("idle")
-        ref.current?.focus()
-    }, [immediateSave])
-
-    const hasContent = content.trim().length > 0
     const isEditMode = !!currentNoteId
 
     const insideCurrentLink =
@@ -332,29 +321,8 @@ export default function RichEditor({
 
     // Render save status indicator
     const renderSaveStatus = () => {
-        if (saveStatus === "saving") {
-            return (
-                <View style={editorStyles.saveStatus}>
-                    <Loader2Icon size={14} color={isDark ? "#888" : "#666"} />
-                    <Text style={[editorStyles.saveStatusText, { color: isDark ? "#888" : "#666" }]}>Saving...</Text>
-                </View>
-            )
-        }
-
-        if (saveStatus === "saved") {
-            return (
-                <View style={editorStyles.saveStatus}>
-                    <CheckCircleIcon size={14} color="#10B981" />
-                    <Text style={[editorStyles.saveStatusText, { color: "#10B981" }]}>Saved</Text>
-                </View>
-            )
-        }
-
-        return (
-            <Text style={[editorStyles.headerTitle, { color: isDark ? "#888" : "#666" }]}>
-                {isEditMode ? "Editing" : hasContent ? "New Note" : placeholder}
-            </Text>
-        )
+        // Use the new animated SaveStatus component
+        return <SaveStatus state={saveStatus as SaveState} />
     }
 
     if (isLoading) {
@@ -378,18 +346,15 @@ export default function RichEditor({
                         <ArrowLeftIcon size={22} color={isDark ? "#fff" : "#000"} />
                     </Pressable>
                 ) : (
-                    <View style={editorStyles.headerButton} />
+                    <View style={editorStyles.brandContainer}>
+                        <RemenLogo size="sm" showIcon={true} animated={false} />
+                    </View>
                 )}
 
                 {renderSaveStatus()}
 
-                {/* New note button - only show in create mode with content */}
-                {/* {!isEditMode && hasContent && (
-                    <Pressable onPress={handleNewNote} style={editorStyles.newNoteButton}>
-                        <Text style={[editorStyles.newNoteText, { color: "#3B82F6" }]}>New</Text>
-                    </Pressable>
-                )} */}
-                {(!hasContent || isEditMode) && <View style={editorStyles.headerButton} />}
+                {/* Spacer for header alignment */}
+                <View style={editorStyles.headerButton} />
             </View>
 
             {/* Editor */}
@@ -408,7 +373,7 @@ export default function RichEditor({
                         placeholderTextColor={isDark ? "#555" : "#aaa"}
                         selectionColor={isDark ? "#dddddd" : "#666666"}
                         autoCapitalize="sentences"
-                        autoFocus={!isEditMode}
+                        autoFocus={false}
                         linkRegex={LINK_REGEX}
                         onChangeText={(e) => handleChangeText(e.nativeEvent)}
                         onChangeHtml={(e) => handleChangeHtml(e.nativeEvent)}

@@ -3,15 +3,23 @@ import { Text } from "@/components/ui/text"
 import { getNoteTypeBadge } from "@/lib/ai/classify"
 
 import type { Note, Tag } from "@/lib/database"
-import { MicIcon, ScanIcon } from "lucide-react-native"
+import * as Haptics from "expo-haptics"
+import { CheckCircleIcon, CircleIcon, MicIcon, ScanIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import type { FC } from "react"
 import { Pressable, StyleSheet, View } from "react-native"
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated"
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 export interface NoteCardProps {
     note: Note
     tags?: Tag[]
     onPress: (note: Note) => void
+    onLongPress?: (note: Note) => void
+    isSelectionMode?: boolean
+    isSelected?: boolean
+    onToggleSelect?: (note: Note) => void
 }
 
 // Format relative time
@@ -56,7 +64,15 @@ function getNoteTypeIcon(type: Note["type"], color: string) {
     }
 }
 
-export const NoteCard: FC<NoteCardProps> = ({ note, tags = [], onPress }) => {
+export const NoteCard: FC<NoteCardProps> = ({
+    note,
+    tags = [],
+    onPress,
+    onLongPress,
+    isSelectionMode = false,
+    isSelected = false,
+    onToggleSelect,
+}) => {
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
 
@@ -69,19 +85,77 @@ export const NoteCard: FC<NoteCardProps> = ({ note, tags = [], onPress }) => {
     const displayTags = tags.slice(0, 3)
     const hasMoreTags = tags.length > 3
 
+    // Animation values
+    const scale = useSharedValue(1)
+    const shadowOpacity = useSharedValue(0.1)
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+        shadowOpacity: shadowOpacity.value,
+    }))
+
+    const handlePressIn = () => {
+        scale.value = withSpring(0.98, { damping: 20, stiffness: 300 })
+        shadowOpacity.value = withTiming(0.2, { duration: 100 })
+    }
+
+    const handlePressOut = () => {
+        scale.value = withSpring(1, { damping: 15, stiffness: 200 })
+        shadowOpacity.value = withTiming(0.1, { duration: 150 })
+    }
+
+    const handlePress = async () => {
+        if (isSelectionMode && onToggleSelect) {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            onToggleSelect(note)
+        } else {
+            onPress(note)
+        }
+    }
+
+    const handleLongPress = async () => {
+        scale.value = withSpring(0.95, { damping: 15 })
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        setTimeout(() => {
+            scale.value = withSpring(1, { damping: 15 })
+        }, 100)
+        onLongPress?.(note)
+    }
+
+    const selectedBorderColor = isDark ? "#39FF14" : "#00B700"
+
     return (
-        <Pressable
-            onPress={() => onPress(note)}
-            style={({ pressed }) => [
+        <AnimatedPressable
+            onPress={handlePress}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            onLongPress={handleLongPress}
+            delayLongPress={400}
+            style={[
+                animatedStyle,
                 styles.container,
                 {
-                    backgroundColor: isDark ? (pressed ? "#2a2a2a" : "#1a1a1a") : pressed ? "#f5f5f5" : "#ffffff",
-                    borderColor: isDark ? "#333" : "#e5e5e5",
+                    backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
+                    borderColor: isSelected ? selectedBorderColor : isDark ? "#333" : "#e5e5e5",
+                    borderWidth: isSelected ? 2 : StyleSheet.hairlineWidth,
+                    shadowColor: isDark ? "#39FF14" : "#000",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowRadius: 8,
+                    elevation: 3,
                 },
             ]}
         >
-            {/* Header with timestamp */}
+            {/* Header with selection indicator and timestamp */}
             <View style={styles.header}>
+                {isSelectionMode && (
+                    <View style={styles.selectionIndicator}>
+                        {isSelected ? (
+                            <CheckCircleIcon size={22} color={isDark ? "#39FF14" : "#00B700"} />
+                        ) : (
+                            <CircleIcon size={22} color={isDark ? "#666" : "#ccc"} />
+                        )}
+                    </View>
+                )}
                 <Text style={[styles.timestamp, { color: isDark ? "#888" : "#666" }]}>
                     {formatRelativeTime(note.created_at)}
                 </Text>
@@ -119,7 +193,7 @@ export const NoteCard: FC<NoteCardProps> = ({ note, tags = [], onPress }) => {
                     <Text style={[styles.moreTagsText, { color: isDark ? "#666" : "#999" }]}>+{tags.length - 3}</Text>
                 )}
             </View>
-        </Pressable>
+        </AnimatedPressable>
     )
 }
 
@@ -133,9 +207,12 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: "row",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
         alignItems: "center",
         marginBottom: 8,
+    },
+    selectionIndicator: {
+        marginRight: 8,
     },
     timestamp: {
         fontSize: 12,

@@ -1,27 +1,74 @@
 import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings"
 import { getAllNotes, searchNotes as keywordSearch, updateNote, type Note } from "@/lib/database"
+import { parseTemporalQuery, type TemporalFilter } from "@/lib/search/temporal-parser"
 
 export interface SearchResult extends Note {
     relevanceScore: number
     matchType: "semantic" | "keyword" | "both"
 }
 
+export interface EnhancedSearchResult {
+    results: SearchResult[]
+    temporalFilter: TemporalFilter | null
+}
+
 /**
  * Search notes using a hybrid approach combining semantic and keyword search
+ * Now with natural language temporal parsing support
  */
 export async function searchNotes(query: string): Promise<SearchResult[]> {
+    const enhanced = await searchNotesEnhanced(query)
+    return enhanced.results
+}
+
+/**
+ * Enhanced search that returns both results and any detected temporal filter
+ */
+export async function searchNotesEnhanced(query: string): Promise<EnhancedSearchResult> {
     if (query.trim().length === 0) {
-        return []
+        return { results: [], temporalFilter: null }
+    }
+
+    // Parse any temporal expressions from the query
+    const temporalFilter = parseTemporalQuery(query)
+
+    // Use the cleaned query (with temporal terms removed) or original
+    const searchQuery = temporalFilter?.query || query
+
+    // If we have a temporal filter but no remaining query, just filter by time
+    if (temporalFilter && (!searchQuery || searchQuery.trim().length === 0)) {
+        const allNotes = await getAllNotes()
+        const filteredNotes = allNotes.filter(
+            (note) => note.created_at >= temporalFilter.startTime && note.created_at <= temporalFilter.endTime,
+        )
+
+        return {
+            results: filteredNotes.map((note) => ({
+                ...note,
+                relevanceScore: 1,
+                matchType: "keyword" as const,
+            })),
+            temporalFilter,
+        }
     }
 
     // Run both search methods in parallel
     const [semanticResults, keywordResults] = await Promise.all([
-        semanticSearch(query),
-        keywordSearchWithScoring(query),
+        semanticSearch(searchQuery),
+        keywordSearchWithScoring(searchQuery),
     ])
 
     // Merge and deduplicate results
-    return mergeSearchResults(semanticResults, keywordResults)
+    let mergedResults = mergeSearchResults(semanticResults, keywordResults)
+
+    // If we have a temporal filter, apply it to the results
+    if (temporalFilter) {
+        mergedResults = mergedResults.filter(
+            (result) => result.created_at >= temporalFilter.startTime && result.created_at <= temporalFilter.endTime,
+        )
+    }
+
+    return { results: mergedResults, temporalFilter }
 }
 
 /**

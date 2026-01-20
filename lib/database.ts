@@ -14,6 +14,9 @@ export interface Note {
     embedding: string | null
     original_image: string | null
     audio_file: string | null
+    is_archived: boolean
+    is_deleted: boolean
+    deleted_at: number | null
 }
 
 export type NoteType = "note" | "meeting" | "task" | "idea" | "journal" | "reference" | "voice" | "scan"
@@ -81,7 +84,10 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
             is_processed INTEGER DEFAULT 0,
             embedding TEXT,
             original_image TEXT,
-            audio_file TEXT
+            audio_file TEXT,
+            is_archived INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            deleted_at INTEGER
         );
 
         CREATE TABLE IF NOT EXISTS tags (
@@ -105,7 +111,26 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
 
         CREATE INDEX IF NOT EXISTS idx_notes_created ON notes(created_at DESC);
         CREATE INDEX IF NOT EXISTS idx_notes_processed ON notes(is_processed);
+        CREATE INDEX IF NOT EXISTS idx_notes_archived ON notes(is_archived);
+        CREATE INDEX IF NOT EXISTS idx_notes_deleted ON notes(is_deleted);
     `)
+
+    // Migration: Add new columns if they don't exist (for existing databases)
+    try {
+        await database.execAsync(`ALTER TABLE notes ADD COLUMN is_archived INTEGER DEFAULT 0`)
+    } catch {
+        // Column already exists
+    }
+    try {
+        await database.execAsync(`ALTER TABLE notes ADD COLUMN is_deleted INTEGER DEFAULT 0`)
+    } catch {
+        // Column already exists
+    }
+    try {
+        await database.execAsync(`ALTER TABLE notes ADD COLUMN deleted_at INTEGER`)
+    } catch {
+        // Column already exists
+    }
 }
 
 // Note CRUD Operations
@@ -124,11 +149,14 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
         embedding: null,
         original_image: input.original_image ?? null,
         audio_file: input.audio_file ?? null,
+        is_archived: false,
+        is_deleted: false,
+        deleted_at: null,
     }
 
     await database.runAsync(
-        `INSERT INTO notes (id, content, html, title, type, created_at, updated_at, is_processed, embedding, original_image, audio_file)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO notes (id, content, html, title, type, created_at, updated_at, is_processed, embedding, original_image, audio_file, is_archived, is_deleted, deleted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             note.id,
             note.content,
@@ -141,81 +169,94 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
             note.embedding,
             note.original_image,
             note.audio_file,
+            note.is_archived ? 1 : 0,
+            note.is_deleted ? 1 : 0,
+            note.deleted_at,
         ],
     )
 
     return note
 }
 
+// Database row type for notes
+interface NoteRow {
+    id: string
+    content: string
+    html: string | null
+    title: string | null
+    type: string
+    created_at: number
+    updated_at: number
+    is_processed: number
+    embedding: string | null
+    original_image: string | null
+    audio_file: string | null
+    is_archived: number
+    is_deleted: number
+    deleted_at: number | null
+}
+
+// Helper to convert row to Note
+function rowToNote(row: NoteRow): Note {
+    return {
+        ...row,
+        type: row.type as NoteType,
+        is_processed: row.is_processed === 1,
+        is_archived: row.is_archived === 1,
+        is_deleted: row.is_deleted === 1,
+    }
+}
+
 export async function getNoteById(id: string): Promise<Note | null> {
     const database = await getDatabase()
-    const result = await database.getFirstAsync<{
-        id: string
-        content: string
-        html: string | null
-        title: string | null
-        type: string
-        created_at: number
-        updated_at: number
-        is_processed: number
-        embedding: string | null
-        original_image: string | null
-        audio_file: string | null
-    }>("SELECT * FROM notes WHERE id = ?", [id])
+    const result = await database.getFirstAsync<NoteRow>("SELECT * FROM notes WHERE id = ?", [id])
 
     if (!result) return null
 
-    return {
-        ...result,
-        type: result.type as NoteType,
-        is_processed: result.is_processed === 1,
-    }
+    return rowToNote(result)
 }
 
 export async function getAllNotes(): Promise<Note[]> {
     const database = await getDatabase()
-    const results = await database.getAllAsync<{
-        id: string
-        content: string
-        html: string | null
-        title: string | null
-        type: string
-        created_at: number
-        updated_at: number
-        is_processed: number
-        embedding: string | null
-        original_image: string | null
-        audio_file: string | null
-    }>("SELECT * FROM notes ORDER BY created_at DESC")
+    const results = await database.getAllAsync<NoteRow>(
+        "SELECT * FROM notes WHERE is_archived = 0 AND is_deleted = 0 ORDER BY created_at DESC",
+    )
 
-    return results.map((row) => ({
-        ...row,
-        type: row.type as NoteType,
-        is_processed: row.is_processed === 1,
-    }))
+    return results.map(rowToNote)
+}
+
+// Get active notes (not archived, not deleted)
+export async function getActiveNotes(): Promise<Note[]> {
+    return getAllNotes()
+}
+
+// Get archived notes
+export async function getArchivedNotes(): Promise<Note[]> {
+    const database = await getDatabase()
+    const results = await database.getAllAsync<NoteRow>(
+        "SELECT * FROM notes WHERE is_archived = 1 AND is_deleted = 0 ORDER BY updated_at DESC",
+    )
+
+    return results.map(rowToNote)
+}
+
+// Get deleted notes (trash)
+export async function getTrashedNotes(): Promise<Note[]> {
+    const database = await getDatabase()
+    const results = await database.getAllAsync<NoteRow>(
+        "SELECT * FROM notes WHERE is_deleted = 1 ORDER BY deleted_at DESC",
+    )
+
+    return results.map(rowToNote)
 }
 
 export async function getUnprocessedNotes(): Promise<Note[]> {
     const database = await getDatabase()
-    const results = await database.getAllAsync<{
-        id: string
-        content: string
-        html: string | null
-        title: string | null
-        type: string
-        created_at: number
-        updated_at: number
-        is_processed: number
-        embedding: string | null
-        original_image: string | null
-        audio_file: string | null
-    }>("SELECT * FROM notes WHERE is_processed = 0 ORDER BY created_at ASC")
+    const results = await database.getAllAsync<NoteRow>(
+        "SELECT * FROM notes WHERE is_processed = 0 AND is_deleted = 0 ORDER BY created_at ASC",
+    )
 
-    return results.map((row) => ({
-        ...row,
-        type: row.type as NoteType,
-        is_processed: row.is_processed === 1,
-    }))
+    return results.map(rowToNote)
 }
 
 export async function updateNote(id: string, input: UpdateNoteInput): Promise<Note | null> {
@@ -255,6 +296,79 @@ export async function deleteNote(id: string): Promise<boolean> {
     const database = await getDatabase()
     const result = await database.runAsync("DELETE FROM notes WHERE id = ?", [id])
     return result.changes > 0
+}
+
+// Archive Operations
+export async function archiveNote(id: string): Promise<Note | null> {
+    const database = await getDatabase()
+    const existing = await getNoteById(id)
+    if (!existing) return null
+
+    await database.runAsync("UPDATE notes SET is_archived = 1, updated_at = ? WHERE id = ?", [Date.now(), id])
+
+    return { ...existing, is_archived: true, updated_at: Date.now() }
+}
+
+export async function unarchiveNote(id: string): Promise<Note | null> {
+    const database = await getDatabase()
+    const existing = await getNoteById(id)
+    if (!existing) return null
+
+    await database.runAsync("UPDATE notes SET is_archived = 0, updated_at = ? WHERE id = ?", [Date.now(), id])
+
+    return { ...existing, is_archived: false, updated_at: Date.now() }
+}
+
+// Trash Operations (Soft Delete)
+export async function moveToTrash(id: string): Promise<Note | null> {
+    const database = await getDatabase()
+    const existing = await getNoteById(id)
+    if (!existing) return null
+
+    const now = Date.now()
+    await database.runAsync("UPDATE notes SET is_deleted = 1, deleted_at = ?, updated_at = ? WHERE id = ?", [
+        now,
+        now,
+        id,
+    ])
+
+    return { ...existing, is_deleted: true, deleted_at: now, updated_at: now }
+}
+
+export async function restoreFromTrash(id: string): Promise<Note | null> {
+    const database = await getDatabase()
+    const existing = await getNoteById(id)
+    if (!existing) return null
+
+    await database.runAsync("UPDATE notes SET is_deleted = 0, deleted_at = NULL, updated_at = ? WHERE id = ?", [
+        Date.now(),
+        id,
+    ])
+
+    return { ...existing, is_deleted: false, deleted_at: null, updated_at: Date.now() }
+}
+
+export async function emptyTrash(): Promise<number> {
+    const database = await getDatabase()
+    const result = await database.runAsync("DELETE FROM notes WHERE is_deleted = 1")
+    return result.changes
+}
+
+// Get counts for archives and trash
+export async function getArchivedNotesCount(): Promise<number> {
+    const database = await getDatabase()
+    const result = await database.getFirstAsync<{ count: number }>(
+        "SELECT COUNT(*) as count FROM notes WHERE is_archived = 1 AND is_deleted = 0",
+    )
+    return result?.count ?? 0
+}
+
+export async function getTrashedNotesCount(): Promise<number> {
+    const database = await getDatabase()
+    const result = await database.getFirstAsync<{ count: number }>(
+        "SELECT COUNT(*) as count FROM notes WHERE is_deleted = 1",
+    )
+    return result?.count ?? 0
 }
 
 // Tag Operations
@@ -408,30 +522,15 @@ export async function searchNotes(query: string): Promise<Note[]> {
     const database = await getDatabase()
     const searchTerm = `%${query}%`
 
-    const results = await database.getAllAsync<{
-        id: string
-        content: string
-        html: string | null
-        title: string | null
-        type: string
-        created_at: number
-        updated_at: number
-        is_processed: number
-        embedding: string | null
-        original_image: string | null
-        audio_file: string | null
-    }>(
+    const results = await database.getAllAsync<NoteRow>(
         `SELECT * FROM notes 
-         WHERE content LIKE ? OR title LIKE ?
+         WHERE (content LIKE ? OR title LIKE ?)
+         AND is_archived = 0 AND is_deleted = 0
          ORDER BY created_at DESC`,
         [searchTerm, searchTerm],
     )
 
-    return results.map((row) => ({
-        ...row,
-        type: row.type as NoteType,
-        is_processed: row.is_processed === 1,
-    }))
+    return results.map(rowToNote)
 }
 
 // Get notes count

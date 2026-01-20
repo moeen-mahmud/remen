@@ -1,5 +1,8 @@
+import { Button } from "@/components/ui/button"
+import { Icon } from "@/components/ui/icon"
 import {
     BoldIcon,
+    ChevronDown,
     CodeIcon,
     CodeSquareIcon,
     Heading1Icon,
@@ -19,6 +22,7 @@ import {
 import type { FC } from "react"
 import { FlatList, type ListRenderItemInfo, StyleSheet } from "react-native"
 import type { EnrichedTextInputInstance, OnChangeStateEvent } from "react-native-enriched"
+import { KeyboardController } from "react-native-keyboard-controller"
 import { ToolbarButton } from "./toolbar-button"
 
 const STYLE_ITEMS = [
@@ -232,15 +236,28 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
         }
     }
 
+    const handleHideKeyboard = async () => {
+        await KeyboardController.dismiss()
+    }
+
     const renderItem = ({ item }: ListRenderItemInfo<Item>) => {
         return (
-            <ToolbarButton
-                text={item.name}
-                icon={item.icon as any}
-                isActive={isActive(item)}
-                isDisabled={isDisabled(item)}
-                onPress={() => handlePress(item)}
-            />
+            <>
+                <Button
+                    className="bg-transparent data-[active=true]:bg-transparent px-3"
+                    size="md"
+                    onPress={handleHideKeyboard}
+                >
+                    <Icon as={ChevronDown} className={"text-typography-0 dark:text-typography-0"} />
+                </Button>
+                <ToolbarButton
+                    text={item.name}
+                    icon={item.icon as any}
+                    isActive={isActive(item)}
+                    isDisabled={isDisabled(item)}
+                    onPress={() => handlePress(item)}
+                />
+            </>
         )
     }
 

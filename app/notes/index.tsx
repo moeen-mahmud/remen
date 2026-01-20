@@ -1,13 +1,27 @@
-import { NoteCard } from "@/components/note-card"
-import { Heading } from "@/components/ui/heading"
+import { RemenLogo } from "@/components/brand/logo"
+import { EmptyState } from "@/components/empty-state"
+import { SpeedDial, type FabAction } from "@/components/fab"
+import { SwipeableNoteCard } from "@/components/swipeable-note-card"
 import { Text } from "@/components/ui/text"
-import { getAllNotes, getTagsForNote, type Note, type Tag } from "@/lib/database"
-import { searchNotes as hybridSearch } from "@/lib/search"
+import { useSelectionMode } from "@/hooks/use-selection-mode"
+import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database"
+import { searchNotesEnhanced } from "@/lib/search"
+import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import { PlusIcon, SearchIcon } from "lucide-react-native"
+import { ArchiveIcon, PlusIcon, SearchIcon, SettingsIcon, Share2Icon, Trash2Icon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from "react-native"
+import {
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Pressable,
+    RefreshControl,
+    Share,
+    StyleSheet,
+    TextInput,
+    View,
+} from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 interface NoteWithTags extends Note {
@@ -25,6 +39,18 @@ export default function NotesListScreen() {
     const [isLoading, setIsLoading] = useState(true)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
+    const [temporalFilterDescription, setTemporalFilterDescription] = useState<string | null>(null)
+
+    // Selection mode
+    const {
+        isSelectionMode,
+        selectedIds,
+        selectedCount,
+        enterSelectionMode,
+        exitSelectionMode,
+        toggleSelection,
+        isSelected,
+    } = useSelectionMode()
 
     // Load notes with tags
     const loadNotes = useCallback(async () => {
@@ -54,15 +80,20 @@ export default function NotesListScreen() {
         loadNotes()
     }, [loadNotes])
 
-    // Filter notes based on search query (using hybrid search)
+    // Filter notes based on search query (using enhanced hybrid search with temporal parsing)
     useEffect(() => {
         const performSearch = async () => {
             if (searchQuery.trim() === "") {
                 setFilteredNotes(notes)
+                setTemporalFilterDescription(null)
             } else {
                 try {
-                    // Use hybrid semantic + keyword search
-                    const results = await hybridSearch(searchQuery)
+                    // Use enhanced hybrid search with temporal parsing
+                    const { results, temporalFilter } = await searchNotesEnhanced(searchQuery)
+
+                    // Update temporal filter description for UI
+                    setTemporalFilterDescription(temporalFilter?.description || null)
+
                     // Match results with notes to get tags
                     const resultIds = new Set(results.map((r) => r.id))
                     const filtered = notes.filter((note) => resultIds.has(note.id))
@@ -75,6 +106,7 @@ export default function NotesListScreen() {
                     setFilteredNotes(filtered)
                 } catch (error) {
                     console.error("Search failed:", error)
+                    setTemporalFilterDescription(null)
                     // Fallback to simple filtering
                     const query = searchQuery.toLowerCase()
                     const filtered = notes.filter(
@@ -104,15 +136,154 @@ export default function NotesListScreen() {
         [router],
     )
 
+    // Handle archive note
+    const handleArchiveNote = useCallback(async (noteId: string) => {
+        await archiveNote(noteId)
+        // Remove from local state
+        setNotes((prev) => prev.filter((n) => n.id !== noteId))
+        setFilteredNotes((prev) => prev.filter((n) => n.id !== noteId))
+    }, [])
+
+    // Handle trash note
+    const handleTrashNote = useCallback(async (noteId: string) => {
+        await moveToTrash(noteId)
+        // Remove from local state
+        setNotes((prev) => prev.filter((n) => n.id !== noteId))
+        setFilteredNotes((prev) => prev.filter((n) => n.id !== noteId))
+    }, [])
+
     // Handle new note
     const handleNewNote = useCallback(() => {
         router.push("/")
     }, [router])
 
+    // Handle settings
+    const handleSettings = useCallback(() => {
+        router.push("/settings" as any)
+    }, [router])
+
+    // Handle archives
+    const handleArchives = useCallback(() => {
+        router.push("/settings/archives" as any)
+    }, [router])
+
+    // Handle trash
+    const handleTrash = useCallback(() => {
+        router.push("/settings/trash" as any)
+    }, [router])
+
+    // Handle long press to enter selection mode
+    const handleLongPress = useCallback(
+        (note: Note) => {
+            enterSelectionMode(note.id)
+        },
+        [enterSelectionMode],
+    )
+
+    // Handle toggle selection
+    const handleToggleSelect = useCallback(
+        (note: Note) => {
+            toggleSelection(note.id)
+        },
+        [toggleSelection],
+    )
+
+    // Handle bulk delete selected notes
+    const handleBulkDelete = useCallback(async () => {
+        if (selectedCount === 0) return
+
+        Alert.alert(
+            "Move to Recycle Bin",
+            `Move ${selectedCount} note${selectedCount !== 1 ? "s" : ""} to recycle bin?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Move",
+                    style: "destructive",
+                    onPress: async () => {
+                        for (const id of selectedIds) {
+                            await moveToTrash(id)
+                        }
+                        setNotes((prev) => prev.filter((n) => !selectedIds.has(n.id)))
+                        setFilteredNotes((prev) => prev.filter((n) => !selectedIds.has(n.id)))
+                        exitSelectionMode()
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                    },
+                },
+            ],
+        )
+    }, [selectedCount, selectedIds, exitSelectionMode])
+
+    // Handle share selected notes
+    const handleShareSelected = useCallback(async () => {
+        if (selectedCount === 0) return
+
+        const selectedNotes = filteredNotes.filter((n) => selectedIds.has(n.id))
+        const content = selectedNotes.map((n) => `${n.title || "Untitled"}\n${n.content}`).join("\n\n---\n\n")
+
+        try {
+            await Share.share({
+                message: content,
+                title: `${selectedCount} Note${selectedCount !== 1 ? "s" : ""} from Remen`,
+            })
+            exitSelectionMode()
+        } catch (error) {
+            console.error("Share failed:", error)
+        }
+    }, [selectedCount, selectedIds, filteredNotes, exitSelectionMode])
+
+    // FAB actions for list screen
+    const fabActions: FabAction[] = [
+        {
+            id: "settings",
+            label: "Settings",
+            icon: SettingsIcon,
+            onPress: handleSettings,
+            backgroundColor: isDark ? "#272E38" : "#E8E8E8",
+            color: isDark ? "#F8F8F8" : "#161616",
+        },
+        {
+            id: "archives",
+            label: "Archives",
+            icon: ArchiveIcon,
+            onPress: handleArchives,
+            backgroundColor: isDark ? "#272E38" : "#E8E8E8",
+            color: isDark ? "#F8F8F8" : "#161616",
+        },
+        {
+            id: "trash",
+            label: "Recycle Bin",
+            icon: Trash2Icon,
+            onPress: handleTrash,
+            backgroundColor: isDark ? "#E7000B" : "#F9423C",
+            color: "#fff",
+        },
+    ]
+
     // Render note item
     const renderNote = useCallback(
-        ({ item }: { item: NoteWithTags }) => <NoteCard note={item} tags={item.tags} onPress={handleNotePress} />,
-        [handleNotePress],
+        ({ item }: { item: NoteWithTags }) => (
+            <SwipeableNoteCard
+                note={item}
+                tags={item.tags}
+                onPress={handleNotePress}
+                onArchive={() => handleArchiveNote(item.id)}
+                onTrash={() => handleTrashNote(item.id)}
+                onLongPress={handleLongPress}
+                isSelectionMode={isSelectionMode}
+                isSelected={isSelected(item.id)}
+                onToggleSelect={handleToggleSelect}
+            />
+        ),
+        [
+            handleNotePress,
+            handleArchiveNote,
+            handleTrashNote,
+            handleLongPress,
+            isSelectionMode,
+            isSelected,
+            handleToggleSelect,
+        ],
     )
 
     // Key extractor
@@ -120,15 +291,15 @@ export default function NotesListScreen() {
 
     // Empty state
     const renderEmptyState = () => (
-        <View style={styles.emptyState}>
-            <Text style={[styles.emptyStateEmoji]}>📝</Text>
-            <Heading size="md" style={[styles.emptyStateTitle, { color: isDark ? "#fff" : "#000" }]}>
-                {searchQuery ? "No notes found" : "No notes yet"}
-            </Heading>
-            <Text style={[styles.emptyStateText, { color: isDark ? "#888" : "#666" }]}>
-                {searchQuery ? "Try a different search term" : "Tap the + button to capture your first thought"}
-            </Text>
-        </View>
+        <EmptyState
+            icon={searchQuery ? "🔍" : "📝"}
+            title={searchQuery ? "No notes found" : "No notes yet"}
+            description={
+                searchQuery
+                    ? "Try a different search term or time expression"
+                    : "Tap the + button to capture your first thought"
+            }
+        />
     )
 
     if (isLoading) {
@@ -141,15 +312,32 @@ export default function NotesListScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff", paddingTop: top }]}>
-            {/* Header */}
-            <View style={styles.header}>
-                <Heading size="2xl" style={{ color: isDark ? "#fff" : "#000" }}>
-                    Notes
-                </Heading>
-                <Pressable onPress={handleNewNote} style={styles.newNoteButton}>
-                    <PlusIcon size={24} color={isDark ? "#fff" : "#000"} />
-                </Pressable>
-            </View>
+            {/* Header - Normal or Selection Mode */}
+            {isSelectionMode ? (
+                <View style={[styles.header, styles.selectionHeader]}>
+                    <Pressable onPress={exitSelectionMode} style={styles.newNoteButton}>
+                        <XIcon size={24} color={isDark ? "#fff" : "#000"} />
+                    </Pressable>
+                    <Text style={[styles.selectionCount, { color: isDark ? "#fff" : "#000" }]}>
+                        {selectedCount} selected
+                    </Text>
+                    <View style={styles.selectionActions}>
+                        <Pressable onPress={handleShareSelected} style={styles.selectionAction}>
+                            <Share2Icon size={22} color={isDark ? "#fff" : "#000"} />
+                        </Pressable>
+                        <Pressable onPress={handleBulkDelete} style={styles.selectionAction}>
+                            <Trash2Icon size={22} color={isDark ? "#E7000B" : "#F9423C"} />
+                        </Pressable>
+                    </View>
+                </View>
+            ) : (
+                <View style={styles.header}>
+                    <RemenLogo size="md" showIcon={true} animated={false} />
+                    <Pressable onPress={handleNewNote} style={styles.newNoteButton}>
+                        <PlusIcon size={24} color={isDark ? "#fff" : "#000"} />
+                    </Pressable>
+                </View>
+            )}
 
             {/* Search Bar */}
             <View
@@ -164,7 +352,7 @@ export default function NotesListScreen() {
                 <SearchIcon size={18} color={isDark ? "#888" : "#666"} style={styles.searchIcon} />
                 <TextInput
                     style={[styles.searchInput, { color: isDark ? "#fff" : "#000" }]}
-                    placeholder="What are you looking for?"
+                    placeholder='Try "last Saturday" or "2 hours ago"'
                     placeholderTextColor={isDark ? "#888" : "#999"}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
@@ -172,6 +360,15 @@ export default function NotesListScreen() {
                     autoCorrect={false}
                 />
             </View>
+
+            {/* Temporal Filter Indicator */}
+            {temporalFilterDescription && (
+                <View style={[styles.temporalFilter, { backgroundColor: isDark ? "#1a2a1a" : "#e8f5e9" }]}>
+                    <Text style={[styles.temporalFilterText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                        Showing notes from: {temporalFilterDescription}
+                    </Text>
+                </View>
+            )}
 
             {/* Notes count */}
             <View style={styles.countContainer}>
@@ -205,6 +402,9 @@ export default function NotesListScreen() {
                     />
                 }
             />
+
+            {/* Speed Dial FAB */}
+            <SpeedDial actions={fabActions} position="bottom-right" />
         </View>
     )
 }
@@ -225,6 +425,25 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingTop: 8,
         paddingBottom: 16,
+    },
+    selectionHeader: {
+        backgroundColor: "transparent",
+    },
+    selectionCount: {
+        fontSize: 17,
+        fontWeight: "600",
+    },
+    selectionActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    selectionAction: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: "center",
+        justifyContent: "center",
     },
     newNoteButton: {
         width: 44,
@@ -251,6 +470,17 @@ const styles = StyleSheet.create({
         fontSize: 17,
         padding: 0,
     },
+    temporalFilter: {
+        marginHorizontal: 16,
+        marginBottom: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    temporalFilterText: {
+        fontSize: 13,
+        fontWeight: "600",
+    },
     countContainer: {
         paddingHorizontal: 16,
         paddingVertical: 8,
@@ -264,27 +494,6 @@ const styles = StyleSheet.create({
     listContent: {
         flexGrow: 1,
         paddingHorizontal: 16,
-    },
-    emptyState: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingTop: 80,
-        paddingHorizontal: 40,
-    },
-    emptyStateEmoji: {
-        fontSize: 56,
-        marginBottom: 20,
-    },
-    emptyStateTitle: {
-        marginBottom: 8,
-        textAlign: "center",
-    },
-    emptyStateText: {
-        textAlign: "center",
-        fontSize: 16,
-        lineHeight: 24,
-        opacity: 0.7,
     },
     listFooter: {
         paddingHorizontal: 16,
