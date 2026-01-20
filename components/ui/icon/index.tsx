@@ -361,13 +361,13 @@ ChevronsRightIcon.displayName = "ChevronsRightIcon"
 ChevronsUpDownIcon.displayName = "ChevronsUpDownIcon"
 
 export {
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
-  ChevronsUpDownIcon,
-  ChevronUpIcon
+    ChevronDownIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+    ChevronsLeftIcon,
+    ChevronsRightIcon,
+    ChevronsUpDownIcon,
+    ChevronUpIcon,
 }
 
 const CircleIcon = createIcon({

@@ -1,7 +1,7 @@
 import { NoteCard } from "@/components/note-card"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
-import { getAllNotes, type Note } from "@/lib/database"
+import { getAllNotes, getTagsForNote, type Note, type Tag } from "@/lib/database"
 import { searchNotes as hybridSearch } from "@/lib/search"
 import { useRouter } from "expo-router"
 import { PlusIcon, SearchIcon } from "lucide-react-native"
@@ -10,24 +10,37 @@ import { useCallback, useEffect, useState } from "react"
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, TextInput, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+interface NoteWithTags extends Note {
+    tags: Tag[]
+}
+
 export default function NotesListScreen() {
-    const { top } = useSafeAreaInsets()
+    const { top, bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
     const router = useRouter()
     const isDark = colorScheme === "dark"
 
-    const [notes, setNotes] = useState<Note[]>([])
-    const [filteredNotes, setFilteredNotes] = useState<Note[]>([])
+    const [notes, setNotes] = useState<NoteWithTags[]>([])
+    const [filteredNotes, setFilteredNotes] = useState<NoteWithTags[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
 
-    // Load notes
+    // Load notes with tags
     const loadNotes = useCallback(async () => {
         try {
             const allNotes = await getAllNotes()
-            setNotes(allNotes)
-            setFilteredNotes(allNotes)
+
+            // Fetch tags for each note in parallel
+            const notesWithTags = await Promise.all(
+                allNotes.map(async (note) => {
+                    const tags = await getTagsForNote(note.id)
+                    return { ...note, tags }
+                }),
+            )
+
+            setNotes(notesWithTags)
+            setFilteredNotes(notesWithTags)
         } catch (error) {
             console.error("Failed to load notes:", error)
         } finally {
@@ -50,7 +63,16 @@ export default function NotesListScreen() {
                 try {
                     // Use hybrid semantic + keyword search
                     const results = await hybridSearch(searchQuery)
-                    setFilteredNotes(results)
+                    // Match results with notes to get tags
+                    const resultIds = new Set(results.map((r) => r.id))
+                    const filtered = notes.filter((note) => resultIds.has(note.id))
+                    // Sort by the search results order
+                    filtered.sort((a, b) => {
+                        const aIndex = results.findIndex((r) => r.id === a.id)
+                        const bIndex = results.findIndex((r) => r.id === b.id)
+                        return aIndex - bIndex
+                    })
+                    setFilteredNotes(filtered)
                 } catch (error) {
                     console.error("Search failed:", error)
                     // Fallback to simple filtering
@@ -58,7 +80,8 @@ export default function NotesListScreen() {
                     const filtered = notes.filter(
                         (note) =>
                             note.content.toLowerCase().includes(query) ||
-                            (note.title && note.title.toLowerCase().includes(query)),
+                            (note.title && note.title.toLowerCase().includes(query)) ||
+                            note.tags.some((tag) => tag.name.toLowerCase().includes(query)),
                     )
                     setFilteredNotes(filtered)
                 }
@@ -88,7 +111,7 @@ export default function NotesListScreen() {
 
     // Render note item
     const renderNote = useCallback(
-        ({ item }: { item: Note }) => <NoteCard note={item} onPress={handleNotePress} />,
+        ({ item }: { item: NoteWithTags }) => <NoteCard note={item} tags={item.tags} onPress={handleNotePress} />,
         [handleNotePress],
     )
 
@@ -162,7 +185,7 @@ export default function NotesListScreen() {
                 data={filteredNotes}
                 renderItem={renderNote}
                 keyExtractor={keyExtractor}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={[styles.listContent, { paddingBottom: bottom + 100 }]}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={renderEmptyState}
                 refreshControl={
@@ -191,27 +214,32 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingTop: 8,
+        paddingBottom: 16,
     },
     newNoteButton: {
-        padding: 8,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: "center",
+        justifyContent: "center",
     },
     searchContainer: {
         flexDirection: "row",
         alignItems: "center",
         marginHorizontal: 16,
-        marginBottom: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 10,
-        borderWidth: 1,
+        marginBottom: 12,
+        paddingHorizontal: 14,
+        height: 44,
+        borderRadius: 12,
+        borderWidth: StyleSheet.hairlineWidth,
     },
     searchIcon: {
-        marginRight: 8,
+        marginRight: 10,
     },
     searchInput: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 17,
         padding: 0,
     },
     countContainer: {
@@ -219,21 +247,24 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
     },
     countText: {
-        fontSize: 13,
+        fontSize: 12,
+        fontWeight: "500",
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
     },
     listContent: {
-        paddingBottom: 100,
+        flexGrow: 1,
     },
     emptyState: {
         flex: 1,
         alignItems: "center",
         justifyContent: "center",
-        paddingTop: 100,
-        paddingHorizontal: 32,
+        paddingTop: 80,
+        paddingHorizontal: 40,
     },
     emptyStateEmoji: {
-        fontSize: 48,
-        marginBottom: 16,
+        fontSize: 56,
+        marginBottom: 20,
     },
     emptyStateTitle: {
         marginBottom: 8,
@@ -241,7 +272,8 @@ const styles = StyleSheet.create({
     },
     emptyStateText: {
         textAlign: "center",
-        fontSize: 15,
-        lineHeight: 22,
+        fontSize: 16,
+        lineHeight: 24,
+        opacity: 0.7,
     },
 })

@@ -1,12 +1,16 @@
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
-import type { Note } from "@/lib/database"
+import { getNoteTypeBadge } from "@/lib/ai/classify"
+
+import type { Note, Tag } from "@/lib/database"
+import { MicIcon, ScanIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import type { FC } from "react"
 import { Pressable, StyleSheet, View } from "react-native"
 
 export interface NoteCardProps {
     note: Note
+    tags?: Tag[]
     onPress: (note: Note) => void
 }
 
@@ -34,37 +38,36 @@ function formatRelativeTime(timestamp: number): string {
     })
 }
 
-// Get note type icon/badge
-function getNoteTypeBadge(type: Note["type"]): { label: string; color: string } {
-    switch (type) {
-        case "meeting":
-            return { label: "Meeting", color: "#3B82F6" }
-        case "task":
-            return { label: "Task", color: "#EF4444" }
-        case "idea":
-            return { label: "Idea", color: "#F59E0B" }
-        case "journal":
-            return { label: "Journal", color: "#8B5CF6" }
-        case "reference":
-            return { label: "Reference", color: "#10B981" }
-        default:
-            return { label: "Note", color: "#6B7280" }
-    }
-}
-
 // Truncate text to a certain length
 function truncateText(text: string, maxLength: number): string {
     if (text.length <= maxLength) return text
     return text.substring(0, maxLength).trim() + "..."
 }
 
-export const NoteCard: FC<NoteCardProps> = ({ note, onPress }) => {
+// Get icon for special note types
+function getNoteTypeIcon(type: Note["type"], color: string) {
+    switch (type) {
+        case "voice":
+            return <MicIcon size={12} color={color} />
+        case "scan":
+            return <ScanIcon size={12} color={color} />
+        default:
+            return null
+    }
+}
+
+export const NoteCard: FC<NoteCardProps> = ({ note, tags = [], onPress }) => {
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
 
     const typeBadge = getNoteTypeBadge(note.type)
     const displayTitle = note.title || truncateText(note.content, 50)
     const preview = note.title ? truncateText(note.content, 100) : truncateText(note.content.substring(50), 100)
+    const typeIcon = getNoteTypeIcon(note.type, typeBadge.color)
+
+    // Show first 3 tags max
+    const displayTags = tags.slice(0, 3)
+    const hasMoreTags = tags.length > 3
 
     return (
         <Pressable
@@ -77,31 +80,45 @@ export const NoteCard: FC<NoteCardProps> = ({ note, onPress }) => {
                 },
             ]}
         >
+            {/* Header with timestamp */}
             <View style={styles.header}>
-                <View style={[styles.typeBadge, { backgroundColor: typeBadge.color + "20" }]}>
-                    <Text style={[styles.typeBadgeText, { color: typeBadge.color }]}>{typeBadge.label}</Text>
-                </View>
                 <Text style={[styles.timestamp, { color: isDark ? "#888" : "#666" }]}>
                     {formatRelativeTime(note.created_at)}
                 </Text>
             </View>
 
+            {/* Title */}
             <Heading size="sm" style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
                 {displayTitle}
             </Heading>
 
+            {/* Preview */}
             {preview && preview.length > 0 && (
                 <Text style={[styles.preview, { color: isDark ? "#aaa" : "#666" }]} numberOfLines={2}>
                     {preview}
                 </Text>
             )}
 
-            {note.is_processed && (
-                <View style={styles.processedIndicator}>
-                    <View style={[styles.processedDot, { backgroundColor: "#10B981" }]} />
-                    <Text style={[styles.processedText, { color: isDark ? "#888" : "#666" }]}>Organized</Text>
+            {/* Type + Tags Row */}
+            <View style={styles.badgesContainer}>
+                {/* Type badge */}
+                <View style={[styles.typeBadge, { backgroundColor: typeBadge.bgColor }]}>
+                    {typeIcon && <View style={styles.typeIcon}>{typeIcon}</View>}
+                    <Text style={[styles.typeBadgeText, { color: typeBadge.color }]}>{typeBadge.label}</Text>
                 </View>
-            )}
+
+                {/* Tags */}
+                {displayTags.map((tag) => (
+                    <View key={tag.id} style={[styles.tagBadge, { backgroundColor: isDark ? "#333" : "#f0f0f0" }]}>
+                        <Text style={[styles.tagText, { color: isDark ? "#ccc" : "#555" }]}>#{tag.name}</Text>
+                    </View>
+                ))}
+
+                {/* More tags indicator */}
+                {hasMoreTags && (
+                    <Text style={[styles.moreTagsText, { color: isDark ? "#666" : "#999" }]}>+{tags.length - 3}</Text>
+                )}
+            </View>
         </Pressable>
     )
 }
@@ -111,47 +128,66 @@ const styles = StyleSheet.create({
         padding: 16,
         marginHorizontal: 16,
         marginVertical: 6,
-        borderRadius: 12,
-        borderWidth: 1,
+        borderRadius: 16,
+        borderWidth: StyleSheet.hairlineWidth,
     },
     header: {
         flexDirection: "row",
-        justifyContent: "space-between",
+        justifyContent: "flex-end",
         alignItems: "center",
         marginBottom: 8,
     },
+    timestamp: {
+        fontSize: 12,
+        fontWeight: "500",
+        letterSpacing: 0.2,
+    },
+    title: {
+        marginBottom: 6,
+        lineHeight: 24,
+    },
+    preview: {
+        fontSize: 15,
+        lineHeight: 22,
+        marginBottom: 14,
+        opacity: 0.8,
+    },
+    badgesContainer: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: 8,
+        marginTop: 6,
+    },
     typeBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
-        borderRadius: 4,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        gap: 4,
+    },
+    typeIcon: {
+        marginRight: 2,
     },
     typeBadgeText: {
         fontSize: 11,
-        fontWeight: "600",
+        fontWeight: "700",
         textTransform: "uppercase",
+        letterSpacing: 0.5,
     },
-    timestamp: {
+    tagBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+    },
+    tagText: {
+        fontSize: 13,
+        fontWeight: "500",
+    },
+    moreTagsText: {
         fontSize: 12,
-    },
-    title: {
-        marginBottom: 4,
-    },
-    preview: {
-        fontSize: 14,
-        lineHeight: 20,
-    },
-    processedIndicator: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginTop: 8,
-    },
-    processedDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginRight: 6,
-    },
-    processedText: {
-        fontSize: 11,
+        fontWeight: "600",
+        opacity: 0.6,
     },
 })

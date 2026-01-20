@@ -16,7 +16,7 @@ export interface Note {
     audio_file: string | null
 }
 
-export type NoteType = "note" | "meeting" | "task" | "idea" | "journal" | "reference"
+export type NoteType = "note" | "meeting" | "task" | "idea" | "journal" | "reference" | "voice" | "scan"
 
 export interface Tag {
     id: string

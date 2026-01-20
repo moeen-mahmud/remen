@@ -1,9 +1,58 @@
 import TextRecognition, { type TextRecognitionResult } from "@react-native-ml-kit/text-recognition"
+import { Directory, File, Paths } from "expo-file-system/next"
 
 export interface ScanResult {
     text: string
     blocks: TextBlock[]
     confidence: number
+    savedImagePath?: string
+}
+
+// Directory for storing scanned images
+const SCANS_DIR_NAME = "scans"
+
+/**
+ * Get or create the scans directory
+ */
+function getScansDirectory(): Directory {
+    const scansDir = new Directory(Paths.document, SCANS_DIR_NAME)
+    if (!scansDir.exists) {
+        scansDir.create()
+    }
+    return scansDir
+}
+
+/**
+ * Save scanned image to local filesystem
+ */
+export async function saveScannedImage(tempPath: string): Promise<string> {
+    const scansDir = getScansDirectory()
+    const fileName = `scan_${Date.now()}.jpg`
+
+    // Create source file reference
+    const sourcePath = tempPath.startsWith("file://") ? tempPath.replace("file://", "") : tempPath
+    const sourceFile = new File(sourcePath)
+
+    // Create destination file and copy
+    const destFile = new File(scansDir, fileName)
+    sourceFile.copy(destFile)
+
+    return destFile.uri
+}
+
+/**
+ * Delete a scanned image
+ */
+export async function deleteScannedImage(imagePath: string): Promise<void> {
+    try {
+        const filePath = imagePath.startsWith("file://") ? imagePath.replace("file://", "") : imagePath
+        const file = new File(filePath)
+        if (file.exists) {
+            file.delete()
+        }
+    } catch (error) {
+        console.error("Failed to delete scanned image:", error)
+    }
 }
 
 export interface TextBlock {

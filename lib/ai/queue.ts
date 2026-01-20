@@ -1,5 +1,6 @@
-import { updateNote } from "@/lib/database"
+import { addTagToNote, getNoteById, updateNote } from "@/lib/database"
 import { classifyNoteType } from "./classify"
+import { generateEmbedding } from "./embeddings"
 import { extractTags } from "./tags"
 import { generateTitle } from "./title"
 
@@ -16,8 +17,11 @@ class AIProcessingQueue {
      * Add a note to the processing queue
      */
     add(job: NoteJob) {
-        this.queue.push(job)
-        this.processNext()
+        // Check if job already exists to avoid duplicates
+        if (!this.queue.some((j) => j.noteId === job.noteId)) {
+            this.queue.push(job)
+            this.processNext()
+        }
     }
 
     /**
@@ -45,6 +49,13 @@ class AIProcessingQueue {
     private async processNote(job: NoteJob) {
         const { noteId, content } = job
 
+        // Verify note still exists
+        const note = await getNoteById(noteId)
+        if (!note) {
+            console.log("Note no longer exists, skipping:", noteId)
+            return
+        }
+
         // Skip empty or very short content
         if (content.trim().length < 10) {
             await updateNote(noteId, { is_processed: true })
@@ -53,21 +64,27 @@ class AIProcessingQueue {
 
         try {
             // Run AI tasks in parallel
-            const [title, type, tags] = await Promise.all([
+            const [title, type, tags, embedding] = await Promise.all([
                 generateTitle(content),
-                classifyNoteType(content),
+                note.type === "voice" || note.type === "scan" ? Promise.resolve(note.type) : classifyNoteType(content),
                 extractTags(content),
+                generateEmbedding(content),
             ])
 
-            // Update note with AI-generated metadata
+            // Update note with AI-generated metadata and embedding
             await updateNote(noteId, {
                 title,
                 type,
                 is_processed: true,
+                embedding: JSON.stringify(embedding),
             })
 
-            // TODO: Add tags to the note using the tag system
-            console.log("AI processing complete:", { noteId, title, type, tags })
+            // Add tags to the note
+            for (const tag of tags) {
+                await addTagToNote(noteId, tag)
+            }
+
+            console.log("AI processing complete:", { noteId, title, type, tagsAdded: tags.length })
         } catch (error) {
             console.error("AI processing error:", error)
             // Mark as processed even on error to avoid infinite retries

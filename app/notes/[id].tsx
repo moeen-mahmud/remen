@@ -1,13 +1,15 @@
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
-import { deleteNote, getNoteById, getTagsForNote, updateNote, type Note, type Tag } from "@/lib/database"
+import { getNoteTypeBadge } from "@/lib/ai/classify"
+import { deleteNote, getNoteById, getTagsForNote, type Note, type Tag } from "@/lib/database"
 import { findRelatedNotes, type SearchResult } from "@/lib/search"
 import * as Haptics from "expo-haptics"
-import { useLocalSearchParams, useRouter } from "expo-router"
-import { ArrowLeftIcon, TrashIcon } from "lucide-react-native"
+import { Image } from "expo-image"
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
+import { ArrowLeftIcon, EditIcon, MicIcon, ScanIcon, TrashIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
-import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native"
+import { useCallback, useState } from "react"
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 // Format full date
@@ -23,27 +25,21 @@ function formatFullDate(timestamp: number): string {
     })
 }
 
-// Get note type badge
-function getNoteTypeBadge(type: Note["type"]): { label: string; color: string } {
+// Get icon for special note types
+function getNoteTypeIcon(type: Note["type"], color: string, size: number = 14) {
     switch (type) {
-        case "meeting":
-            return { label: "Meeting", color: "#3B82F6" }
-        case "task":
-            return { label: "Task", color: "#EF4444" }
-        case "idea":
-            return { label: "Idea", color: "#F59E0B" }
-        case "journal":
-            return { label: "Journal", color: "#8B5CF6" }
-        case "reference":
-            return { label: "Reference", color: "#10B981" }
+        case "voice":
+            return <MicIcon size={size} color={color} />
+        case "scan":
+            return <ScanIcon size={size} color={color} />
         default:
-            return { label: "Note", color: "#6B7280" }
+            return null
     }
 }
 
 export default function NoteDetailScreen() {
     const { id } = useLocalSearchParams<{ id: string }>()
-    const { top } = useSafeAreaInsets()
+    const { top, bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
     const router = useRouter()
     const isDark = colorScheme === "dark"
@@ -52,18 +48,16 @@ export default function NoteDetailScreen() {
     const [tags, setTags] = useState<Tag[]>([])
     const [relatedNotes, setRelatedNotes] = useState<SearchResult[]>([])
     const [isLoading, setIsLoading] = useState(true)
-    const [isEditing, setIsEditing] = useState(false)
-    const [editedContent, setEditedContent] = useState("")
 
     // Load note
     const loadNote = useCallback(async () => {
         if (!id) return
 
+        setIsLoading(true)
         try {
             const fetchedNote = await getNoteById(id)
             if (fetchedNote) {
                 setNote(fetchedNote)
-                setEditedContent(fetchedNote.content)
 
                 const fetchedTags = await getTagsForNote(id)
                 setTags(fetchedTags)
@@ -78,9 +72,12 @@ export default function NoteDetailScreen() {
         }
     }, [id])
 
-    useEffect(() => {
-        loadNote()
-    }, [loadNote])
+    // Reload note when screen comes into focus (after editing)
+    useFocusEffect(
+        useCallback(() => {
+            loadNote()
+        }, [loadNote]),
+    )
 
     // Handle related note press
     const handleRelatedNotePress = useCallback(
@@ -95,23 +92,11 @@ export default function NoteDetailScreen() {
         router.back()
     }, [router])
 
-    // Handle save
-    const handleSave = useCallback(async () => {
-        if (!note || editedContent.trim() === note.content) {
-            setIsEditing(false)
-            return
-        }
-
-        try {
-            await updateNote(note.id, { content: editedContent.trim() })
-            setNote({ ...note, content: editedContent.trim() })
-            setIsEditing(false)
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-        } catch (error) {
-            console.error("Failed to save note:", error)
-            Alert.alert("Error", "Failed to save changes")
-        }
-    }, [note, editedContent])
+    // Handle edit - navigate to edit screen
+    const handleEdit = useCallback(() => {
+        if (!id) return
+        router.push(`/edit/${id}` as any)
+    }, [id, router])
 
     // Handle delete
     const handleDelete = useCallback(() => {
@@ -156,34 +141,38 @@ export default function NoteDetailScreen() {
     }
 
     const typeBadge = getNoteTypeBadge(note.type)
+    const typeIcon = getNoteTypeIcon(note.type, typeBadge.color)
 
     return (
         <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff", paddingTop: top }]}>
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { borderBottomColor: isDark ? "#333" : "#e5e5e5" }]}>
                 <Pressable onPress={handleBack} style={styles.headerButton}>
                     <ArrowLeftIcon size={24} color={isDark ? "#fff" : "#000"} />
                 </Pressable>
 
                 <View style={styles.headerActions}>
-                    {isEditing ? (
-                        <Pressable onPress={handleSave} style={styles.headerButton}>
-                            <Text style={{ color: "#3B82F6", fontWeight: "600" }}>Save</Text>
-                        </Pressable>
-                    ) : (
-                        <>
-                            <Pressable onPress={() => setIsEditing(true)} style={styles.headerButton}>
-                                <Text style={{ color: "#3B82F6", fontWeight: "600" }}>Edit</Text>
-                            </Pressable>
-                            <Pressable onPress={handleDelete} style={styles.headerButton}>
-                                <TrashIcon size={20} color="#EF4444" />
-                            </Pressable>
-                        </>
-                    )}
+                    <Pressable onPress={handleEdit} style={styles.headerButton}>
+                        <EditIcon size={20} color="#3B82F6" />
+                    </Pressable>
+                    <Pressable onPress={handleDelete} style={styles.headerButton}>
+                        <TrashIcon size={20} color="#EF4444" />
+                    </Pressable>
                 </View>
             </View>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={styles.content}
+                contentContainerStyle={{ paddingBottom: bottom + 24 }}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Original image for scan notes */}
+                {note.type === "scan" && note.original_image && (
+                    <View style={styles.imageContainer}>
+                        <Image source={{ uri: note.original_image }} style={styles.scanImage} />
+                    </View>
+                )}
+
                 {/* Title */}
                 {note.title && (
                     <Heading size="xl" style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
@@ -191,41 +180,31 @@ export default function NoteDetailScreen() {
                     </Heading>
                 )}
 
-                {/* Metadata */}
-                <View style={styles.metadata}>
-                    <View style={[styles.typeBadge, { backgroundColor: typeBadge.color + "20" }]}>
+                {/* Unified Type + Tags Row */}
+                <View style={styles.badgesContainer}>
+                    {/* Type badge */}
+                    <View style={[styles.typeBadge, { backgroundColor: typeBadge.bgColor }]}>
+                        {typeIcon && <View style={styles.typeIcon}>{typeIcon}</View>}
                         <Text style={[styles.typeBadgeText, { color: typeBadge.color }]}>{typeBadge.label}</Text>
                     </View>
-                    <Text style={[styles.timestamp, { color: isDark ? "#888" : "#666" }]}>
-                        {formatFullDate(note.created_at)}
-                    </Text>
+
+                    {/* Tags */}
+                    {tags.map((tag) => (
+                        <View key={tag.id} style={[styles.tagBadge, { backgroundColor: isDark ? "#333" : "#f0f0f0" }]}>
+                            <Text style={[styles.tagText, { color: isDark ? "#ccc" : "#555" }]}>#{tag.name}</Text>
+                        </View>
+                    ))}
                 </View>
 
-                {/* Tags */}
-                {tags.length > 0 && (
-                    <View style={styles.tagsContainer}>
-                        {tags.map((tag) => (
-                            <View key={tag.id} style={[styles.tag, { backgroundColor: isDark ? "#333" : "#f0f0f0" }]}>
-                                <Text style={[styles.tagText, { color: isDark ? "#fff" : "#333" }]}>#{tag.name}</Text>
-                            </View>
-                        ))}
-                    </View>
-                )}
+                {/* Timestamp */}
+                <Text style={[styles.timestamp, { color: isDark ? "#888" : "#666" }]}>
+                    {formatFullDate(note.created_at)}
+                </Text>
 
                 {/* Content */}
-                {isEditing ? (
-                    <TextInput
-                        style={[styles.contentInput, { color: isDark ? "#fff" : "#000" }]}
-                        value={editedContent}
-                        onChangeText={setEditedContent}
-                        multiline
-                        autoFocus
-                        textAlignVertical="top"
-                        placeholderTextColor={isDark ? "#888" : "#999"}
-                    />
-                ) : (
+                <Pressable onPress={handleEdit}>
                     <Text style={[styles.contentText, { color: isDark ? "#ddd" : "#333" }]}>{note.content}</Text>
-                )}
+                </Pressable>
 
                 {/* Processing status */}
                 {note.is_processed && (
@@ -237,7 +216,7 @@ export default function NoteDetailScreen() {
 
                 {/* Related Notes */}
                 {relatedNotes.length > 0 && (
-                    <View style={styles.relatedSection}>
+                    <View style={[styles.relatedSection, { borderTopColor: isDark ? "#333" : "#e5e5e5" }]}>
                         <Heading size="sm" style={[styles.relatedTitle, { color: isDark ? "#fff" : "#000" }]}>
                             Related Notes
                         </Heading>
@@ -289,16 +268,18 @@ const styles = StyleSheet.create({
         alignItems: "center",
         paddingHorizontal: 8,
         paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: "rgba(0,0,0,0.1)",
+        borderBottomWidth: StyleSheet.hairlineWidth,
     },
     headerButton: {
-        padding: 8,
+        width: 44,
+        height: 44,
+        alignItems: "center",
+        justifyContent: "center",
     },
     headerActions: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 8,
+        gap: 4,
     },
     backButton: {
         marginTop: 16,
@@ -308,91 +289,109 @@ const styles = StyleSheet.create({
         flex: 1,
         padding: 16,
     },
-    title: {
-        marginBottom: 12,
+    imageContainer: {
+        marginBottom: 20,
+        borderRadius: 16,
+        overflow: "hidden",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 4,
     },
-    metadata: {
-        flexDirection: "row",
-        alignItems: "center",
+    scanImage: {
+        width: "100%",
+        height: "auto",
+        objectFit: "contain",
+        aspectRatio: 16 / 9,
+        borderRadius: 16,
+    },
+    title: {
         marginBottom: 16,
+        lineHeight: 40,
+    },
+    badgesContainer: {
+        flexDirection: "row",
         flexWrap: "wrap",
-        gap: 12,
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 16,
     },
     typeBadge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 6,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        gap: 5,
+    },
+    typeIcon: {
+        marginRight: 2,
     },
     typeBadgeText: {
         fontSize: 12,
-        fontWeight: "600",
+        fontWeight: "700",
         textTransform: "uppercase",
+        letterSpacing: 0.5,
+    },
+    tagBadge: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    tagText: {
+        fontSize: 14,
+        fontWeight: "500",
     },
     timestamp: {
         fontSize: 13,
-    },
-    tagsContainer: {
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: 8,
-        marginBottom: 20,
-    },
-    tag: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 16,
-    },
-    tagText: {
-        fontSize: 13,
+        marginBottom: 24,
+        opacity: 0.7,
     },
     contentText: {
-        fontSize: 16,
-        lineHeight: 26,
-    },
-    contentInput: {
-        fontSize: 16,
-        lineHeight: 26,
-        minHeight: 200,
+        fontSize: 17,
+        lineHeight: 30,
     },
     processedContainer: {
         flexDirection: "row",
         alignItems: "center",
-        marginTop: 24,
-        paddingTop: 16,
-        borderTopWidth: 1,
+        marginTop: 32,
+        paddingTop: 20,
+        borderTopWidth: StyleSheet.hairlineWidth,
         borderTopColor: "rgba(0,0,0,0.1)",
     },
     processedDot: {
         width: 8,
         height: 8,
         borderRadius: 4,
-        marginRight: 8,
+        marginRight: 10,
     },
     processedText: {
         fontSize: 13,
+        fontWeight: "500",
     },
     relatedSection: {
-        marginTop: 32,
-        paddingTop: 24,
-        borderTopWidth: 1,
-        borderTopColor: "rgba(0,0,0,0.1)",
+        marginTop: 40,
+        paddingTop: 28,
+        borderTopWidth: StyleSheet.hairlineWidth,
     },
     relatedTitle: {
-        marginBottom: 16,
+        marginBottom: 20,
     },
     relatedCard: {
-        padding: 12,
-        marginBottom: 8,
-        borderRadius: 8,
-        borderWidth: 1,
+        padding: 14,
+        marginBottom: 10,
+        borderRadius: 12,
+        borderWidth: StyleSheet.hairlineWidth,
     },
     relatedCardTitle: {
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: "600",
-        marginBottom: 4,
+        marginBottom: 6,
     },
     relatedCardPreview: {
-        fontSize: 13,
-        lineHeight: 18,
+        fontSize: 14,
+        lineHeight: 20,
+        opacity: 0.7,
     },
 })

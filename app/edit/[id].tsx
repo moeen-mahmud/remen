@@ -2,13 +2,13 @@ import { LinkModal } from "@/components/rich-editor/link-modal"
 import { Toolbar } from "@/components/rich-editor/toolbar"
 import { Box } from "@/components/ui/box"
 import { aiQueue } from "@/lib/ai/queue"
-import { createNote, updateNote } from "@/lib/database"
+import { getNoteById, updateNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
-import { useRouter } from "expo-router"
-import { ArchiveIcon, CameraIcon, CheckCircleIcon, ChevronDownIcon, Loader2Icon, MicIcon } from "lucide-react-native"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { ArrowLeftIcon, CheckCircleIcon, Loader2Icon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
+import { ActivityIndicator, AppState, Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import {
     EnrichedTextInput,
     type EnrichedTextInputInstance,
@@ -66,21 +66,18 @@ const DEFAULT_LINK_STATE = {
 }
 
 const LINK_REGEX = /^(?:enriched:\/\/\S+|(?:https?:\/\/)?(?:www\.)?swmansion\.com(?:\/\S*)?)$/i
+const AUTOSAVE_DELAY = 2000
 
-// Autosave delay in ms
-const AUTOSAVE_DELAY = 3000
-
-export default function RichEditor() {
+export default function EditNoteScreen() {
+    const { id } = useLocalSearchParams<{ id: string }>()
     const { top, bottom } = useSafeAreaInsets()
     const { isVisible: isKeyboardVisible } = useKeyboardState()
     const { colorScheme } = useColorScheme()
     const router = useRouter()
     const isDark = colorScheme === "dark"
 
+    const [isLoading, setIsLoading] = useState(true)
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
-
-    // Autosave state
-    const [currentNoteId, setCurrentNoteId] = useState<string | null>(null)
     const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const lastSavedContentRef = useRef<string>("")
@@ -88,6 +85,7 @@ export default function RichEditor() {
     // Content state
     const [content, setContent] = useState("")
     const [html, setHtml] = useState("")
+    const [initialContent, setInitialContent] = useState("")
 
     const [selection, setSelection] = useState<Selection>()
     const [stylesState, setStylesState] = useState<StylesState>(DEFAULT_STYLES)
@@ -95,34 +93,49 @@ export default function RichEditor() {
 
     const ref = useRef<EnrichedTextInputInstance>(null)
 
-    // Save note to database
-    const saveNote = useCallback(async (noteContent: string, noteHtml: string, noteId: string | null) => {
-        if (noteContent.trim().length === 0) return null
+    // Load existing note
+    useEffect(() => {
+        async function loadNote() {
+            if (!id) {
+                router.back()
+                return
+            }
 
-        // Skip if content hasn't changed
-        if (noteContent === lastSavedContentRef.current && noteId) {
-            return noteId
+            try {
+                const note = await getNoteById(id)
+                if (note) {
+                    setContent(note.content)
+                    setHtml(note.html || "")
+                    setInitialContent(note.content)
+                    lastSavedContentRef.current = note.content
+                } else {
+                    router.back()
+                }
+            } catch (error) {
+                console.error("Failed to load note:", error)
+                router.back()
+            } finally {
+                setIsLoading(false)
+            }
         }
 
-        setSaveStatus("saving")
+        loadNote()
+    }, [id, router])
 
-        try {
-            if (noteId) {
-                // Update existing note
-                await updateNote(noteId, {
-                    content: noteContent,
-                    html: noteHtml,
-                })
-                lastSavedContentRef.current = noteContent
-                setSaveStatus("saved")
+    // Save note to database
+    const saveNote = useCallback(
+        async (noteContent: string, noteHtml: string) => {
+            if (!id || noteContent.trim().length === 0) return
 
-                // Queue for AI processing (re-process on update)
-                aiQueue.add({ noteId, content: noteContent })
+            // Skip if content hasn't changed
+            if (noteContent === lastSavedContentRef.current) {
+                return
+            }
 
-                return noteId
-            } else {
-                // Create new note
-                const note = await createNote({
+            setSaveStatus("saving")
+
+            try {
+                await updateNote(id, {
                     content: noteContent,
                     html: noteHtml,
                 })
@@ -130,56 +143,43 @@ export default function RichEditor() {
                 setSaveStatus("saved")
 
                 // Queue for AI processing
-                aiQueue.add({ noteId: note.id, content: noteContent })
-
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                return note.id
+                aiQueue.add({ noteId: id, content: noteContent })
+            } catch (error) {
+                console.error("Failed to save note:", error)
+                setSaveStatus("idle")
             }
-        } catch (error) {
-            console.error("Failed to save note:", error)
-            setSaveStatus("idle")
-            return noteId
-        }
-    }, [])
+        },
+        [id],
+    )
 
     // Debounced autosave
     const scheduleAutosave = useCallback(
         (noteContent: string, noteHtml: string) => {
-            // Clear existing timeout
             if (saveTimeoutRef.current) {
                 clearTimeout(saveTimeoutRef.current)
             }
 
-            // Don't save empty content
             if (noteContent.trim().length === 0) {
                 setSaveStatus("idle")
                 return
             }
 
-            // Schedule new save
-            saveTimeoutRef.current = setTimeout(async () => {
-                const savedId = await saveNote(noteContent, noteHtml, currentNoteId)
-                if (savedId && !currentNoteId) {
-                    setCurrentNoteId(savedId)
-                }
+            saveTimeoutRef.current = setTimeout(() => {
+                saveNote(noteContent, noteHtml)
             }, AUTOSAVE_DELAY)
         },
-        [currentNoteId, saveNote],
+        [saveNote],
     )
 
-    // Immediate save (for blur/navigate)
+    // Immediate save
     const immediateSave = useCallback(async () => {
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current)
         }
 
         if (content.trim().length === 0) return
-
-        const savedId = await saveNote(content, html, currentNoteId)
-        if (savedId && !currentNoteId) {
-            setCurrentNoteId(savedId)
-        }
-    }, [content, html, currentNoteId, saveNote])
+        await saveNote(content, html)
+    }, [content, html, saveNote])
 
     // Save on app background
     useEffect(() => {
@@ -201,7 +201,6 @@ export default function RichEditor() {
         }
     }, [])
 
-    // Handle text changes - trigger autosave
     const handleChangeText = (e: OnChangeTextEvent) => {
         const newContent = e.value
         setContent(newContent)
@@ -216,44 +215,13 @@ export default function RichEditor() {
         setStylesState(state)
     }
 
-    // Navigate to notes list
-    const handleViewNotes = useCallback(async () => {
+    // Go back and save
+    const handleBack = useCallback(async () => {
         await immediateSave()
         await KeyboardController.dismiss()
-        router.push("/notes" as any)
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        router.back()
     }, [immediateSave, router])
-
-    // Navigate to voice capture
-    const handleVoice = useCallback(async () => {
-        await immediateSave()
-        await KeyboardController.dismiss()
-        router.push("/voice" as any)
-    }, [immediateSave, router])
-
-    // Navigate to scan capture
-    const handleScan = useCallback(async () => {
-        await immediateSave()
-        await KeyboardController.dismiss()
-        router.push("/scan" as any)
-    }, [immediateSave, router])
-
-    // Dismiss keyboard
-    const handleDismissKeyboard = useCallback(async () => {
-        await KeyboardController.dismiss()
-    }, [])
-
-    // Start new note (clear current)
-    const handleNewNote = useCallback(async () => {
-        await immediateSave()
-        setCurrentNoteId(null)
-        setContent("")
-        setHtml("")
-        lastSavedContentRef.current = ""
-        setSaveStatus("idle")
-        ref.current?.focus()
-    }, [immediateSave])
-
-    const hasContent = content.trim().length > 0
 
     const insideCurrentLink =
         stylesState.link.isActive &&
@@ -296,7 +264,7 @@ export default function RichEditor() {
         setSelection(sel)
     }
 
-    // Render save status indicator
+    // Render save status
     const renderSaveStatus = () => {
         if (saveStatus === "saving") {
             return (
@@ -316,10 +284,14 @@ export default function RichEditor() {
             )
         }
 
+        return <Text style={[styles.headerTitle, { color: isDark ? "#888" : "#666" }]}>Editing</Text>
+    }
+
+    if (isLoading) {
         return (
-            <Text style={[styles.headerTitle, { color: isDark ? "#888" : "#666" }]}>
-                {hasContent ? "New Note" : "What's on your mind?"}
-            </Text>
+            <View style={[styles.loadingContainer, { backgroundColor: isDark ? "#000" : "#fff" }]}>
+                <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
+            </View>
         )
     }
 
@@ -327,19 +299,15 @@ export default function RichEditor() {
         <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff" }]}>
             {/* Header */}
             <View style={[styles.header, { paddingTop: top + 8, borderBottomColor: isDark ? "#333" : "#e5e5e5" }]}>
-                <Pressable onPress={handleViewNotes} style={styles.headerButton}>
-                    <ArchiveIcon size={22} color={isDark ? "#fff" : "#000"} />
+                <Pressable onPress={handleBack} style={styles.headerButton}>
+                    <ArrowLeftIcon size={22} color={isDark ? "#fff" : "#000"} />
                 </Pressable>
 
                 {renderSaveStatus()}
 
-                {/* New note button - only show if there's content */}
-                {hasContent && (
-                    <Pressable onPress={handleNewNote} style={styles.newNoteButton}>
-                        <Text style={[styles.newNoteText, { color: "#3B82F6" }]}>New</Text>
-                    </Pressable>
-                )}
-                {!hasContent && <View style={styles.headerButton} />}
+                <Pressable onPress={handleBack} style={styles.doneButton}>
+                    <Text style={[styles.doneText, { color: "#3B82F6" }]}>Done</Text>
+                </Pressable>
             </View>
 
             {/* Editor */}
@@ -353,11 +321,12 @@ export default function RichEditor() {
                         ref={ref}
                         style={[styles.editorInput, { color: isDark ? "#fdfcfc" : "#141414" }] as any}
                         htmlStyle={htmlStyle}
+                        defaultValue={initialContent}
                         placeholder="Start typing..."
                         placeholderTextColor={isDark ? "#555" : "#aaa"}
                         selectionColor={isDark ? "#dddddd" : "#666666"}
                         autoCapitalize="sentences"
-                        autoFocus={false}
+                        autoFocus={true}
                         linkRegex={LINK_REGEX}
                         onChangeText={(e) => handleChangeText(e.nativeEvent)}
                         onChangeHtml={(e) => handleChangeHtml(e.nativeEvent)}
@@ -380,22 +349,6 @@ export default function RichEditor() {
                         },
                     ]}
                 >
-                    {/* Quick capture buttons */}
-                    <View style={styles.quickActions}>
-                        <Pressable onPress={handleVoice} style={styles.quickButton}>
-                            <MicIcon size={22} color={isDark ? "#fff" : "#000"} />
-                        </Pressable>
-                        <Pressable onPress={handleScan} style={styles.quickButton}>
-                            <CameraIcon size={22} color={isDark ? "#fff" : "#000"} />
-                        </Pressable>
-                        {isKeyboardVisible && (
-                            <Pressable onPress={handleDismissKeyboard} style={styles.quickButton}>
-                                <ChevronDownIcon size={22} color={isDark ? "#fff" : "#000"} />
-                            </Pressable>
-                        )}
-                    </View>
-
-                    {/* Formatting toolbar (only when keyboard is visible) */}
                     {isKeyboardVisible && (
                         <View style={styles.toolbarContainer}>
                             <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
@@ -460,6 +413,11 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+    },
     header: {
         flexDirection: "row",
         alignItems: "center",
@@ -490,15 +448,15 @@ const styles = StyleSheet.create({
         fontWeight: "500",
         letterSpacing: 0.2,
     },
-    newNoteButton: {
+    doneButton: {
         padding: 8,
         minWidth: 44,
         minHeight: 44,
         alignItems: "center",
         justifyContent: "center",
     },
-    newNoteText: {
-        fontSize: 15,
+    doneText: {
+        fontSize: 16,
         fontWeight: "600",
     },
     scrollView: {
@@ -526,19 +484,6 @@ const styles = StyleSheet.create({
         borderTopWidth: StyleSheet.hairlineWidth,
         paddingTop: 12,
         paddingHorizontal: 16,
-    },
-    quickActions: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-        marginBottom: 8,
-    },
-    quickButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: "center",
-        justifyContent: "center",
     },
     toolbarContainer: {
         marginTop: 8,
