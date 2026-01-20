@@ -9,7 +9,6 @@ import "react-native-get-random-values"
 import { KeyboardProvider } from "react-native-keyboard-controller"
 import "../global.css"
 
-// Keep splash screen visible while we initialize
 SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
