@@ -248,6 +248,7 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
 
     return (
         <FlatList
+            bounces={false}
             showsHorizontalScrollIndicator={false}
             horizontal
             data={STYLE_ITEMS}

@@ -23,11 +23,22 @@ export type ToolbarButtonProps = ToolbarButtonIconProps | ToolbarButtonTextProps
 
 export const ToolbarButton: FC<ToolbarButtonProps> = ({ icon, text, isDisabled, isActive, onPress }) => {
     return (
-        <Button className="rounded-none" isPressed={isActive} disabled={isDisabled} onPress={onPress} size="lg">
+        <Button
+            className="bg-transparent data-[active=true]:bg-transparent px-3"
+            isPressed={isActive}
+            disabled={isDisabled}
+            onPress={onPress}
+            size="md"
+        >
             {icon ? (
-                <Icon as={icon as any} size="md" className="text-white dark:text-black" />
+                <Icon
+                    as={icon as any}
+                    className={`"text-typography-0 dark:text-typography-0" ${isActive ? "text-primary-50" : ""}`}
+                />
             ) : (
-                <Text className="text-white dark:text-black">{text}</Text>
+                <Text className={`"text-typography-0 dark:text-typography-0" ${isActive ? "text-primary-50" : ""}`}>
+                    {text}
+                </Text>
             )}
         </Button>
     )

@@ -164,7 +164,7 @@ export default function NotesListScreen() {
                 <SearchIcon size={18} color={isDark ? "#888" : "#666"} style={styles.searchIcon} />
                 <TextInput
                     style={[styles.searchInput, { color: isDark ? "#fff" : "#000" }]}
-                    placeholder="Search notes..."
+                    placeholder="What are you looking for?"
                     placeholderTextColor={isDark ? "#888" : "#999"}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
@@ -188,6 +188,15 @@ export default function NotesListScreen() {
                 contentContainerStyle={[styles.listContent, { paddingBottom: bottom + 100 }]}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={renderEmptyState}
+                ListFooterComponent={
+                    filteredNotes.length > 0 ? (
+                        <View style={styles.listFooter}>
+                            <Text style={[styles.listFooterText, { color: isDark ? "#888" : "#666" }]}>
+                                You&apos;re all caught up!
+                            </Text>
+                        </View>
+                    ) : undefined
+                }
                 refreshControl={
                     <RefreshControl
                         refreshing={isRefreshing}
@@ -254,6 +263,7 @@ const styles = StyleSheet.create({
     },
     listContent: {
         flexGrow: 1,
+        paddingHorizontal: 16,
     },
     emptyState: {
         flex: 1,
@@ -275,5 +285,13 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 24,
         opacity: 0.7,
+    },
+    listFooter: {
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+    },
+    listFooterText: {
+        textAlign: "center",
+        fontSize: 14,
     },
 })

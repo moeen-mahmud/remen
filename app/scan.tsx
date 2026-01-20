@@ -7,7 +7,8 @@ import { useRouter } from "expo-router"
 import { CameraIcon, CheckIcon, RefreshCwIcon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native"
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native"
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera"
 
@@ -184,7 +185,7 @@ export default function ScanCaptureScreen() {
 
     // Render review view
     const renderReview = () => (
-        <ScrollView
+        <KeyboardAwareScrollView
             style={[styles.reviewContainer, { backgroundColor: isDark ? "#000" : "#fff" }]}
             contentContainerStyle={styles.reviewContent}
         >
@@ -247,7 +248,7 @@ export default function ScanCaptureScreen() {
                     )}
                 </Pressable>
             </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
     )
 
     return (

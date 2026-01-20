@@ -384,11 +384,11 @@ export default function RichEditor({
                 {renderSaveStatus()}
 
                 {/* New note button - only show in create mode with content */}
-                {!isEditMode && hasContent && (
+                {/* {!isEditMode && hasContent && (
                     <Pressable onPress={handleNewNote} style={editorStyles.newNoteButton}>
                         <Text style={[editorStyles.newNoteText, { color: "#3B82F6" }]}>New</Text>
                     </Pressable>
-                )}
+                )} */}
                 {(!hasContent || isEditMode) && <View style={editorStyles.headerButton} />}
             </View>
 
