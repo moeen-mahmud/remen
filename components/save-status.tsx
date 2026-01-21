@@ -31,7 +31,7 @@ export const SaveStatus: FC<SaveStatusProps> = ({ state }) => {
             opacity.value = withTiming(0, timingConfigs.fast)
         } else if (state === "saving") {
             opacity.value = withTiming(1, timingConfigs.fast)
-            scale.value = withSpring(1, springConfigs.snappy)
+            scale.value = withSpring(1, springConfigs.stiff)
             // Pulse animation for saving
             iconRotation.value = withSequence(
                 withTiming(10, timingConfigs.normal),
@@ -40,7 +40,7 @@ export const SaveStatus: FC<SaveStatusProps> = ({ state }) => {
             )
         } else if (state === "saved") {
             opacity.value = withTiming(1, timingConfigs.fast)
-            scale.value = withSequence(withSpring(1.2, springConfigs.bouncy), withSpring(1, springConfigs.bouncy))
+            scale.value = withSequence(withSpring(1.2, springConfigs.stiff), withSpring(1, springConfigs.stiff))
             // Fade out after 2 seconds
             opacity.value = withDelay(2000, withTiming(0, timingConfigs.slow))
         }

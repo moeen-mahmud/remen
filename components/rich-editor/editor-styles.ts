@@ -14,14 +14,14 @@ export const editorStyles = StyleSheet.create({
     },
     headerButton: {
         padding: 8,
-        width: 44,
-        height: 44,
+        gap: 4,
+        flexDirection: "row",
         alignItems: "center",
         justifyContent: "center",
     },
     brandContainer: {
-        paddingHorizontal: 4,
-        paddingVertical: 8,
+        // paddingHorizontal: 4,
+        // paddingVertical: 8,
         minWidth: 44,
         justifyContent: "center",
     },
@@ -55,8 +55,8 @@ export const editorStyles = StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        flexGrow: 1,
-        paddingBottom: 120,
+        // flexGrow: 1,
+        // paddingBottom: 120,
     },
     editorInput: {
         width: "100%",

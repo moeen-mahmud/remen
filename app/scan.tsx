@@ -1,3 +1,4 @@
+import { Text } from "@/components/ui/text"
 import { aiQueue } from "@/lib/ai/queue"
 import { formatOCRText, processImageOCR, saveScannedImage } from "@/lib/capture/scan"
 import { createNote } from "@/lib/database"
@@ -7,7 +8,7 @@ import { useRouter } from "expo-router"
 import { CameraIcon, CheckIcon, RefreshCwIcon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native"
+import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from "react-native"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera"
@@ -118,7 +119,7 @@ export default function ScanCaptureScreen() {
         if (!hasPermission) {
             return (
                 <View style={styles.centeredContainer}>
-                    <Text style={[styles.permissionText, { color: isDark ? "#fff" : "#000" }]}>
+                    <Text className="text-typography-600" style={styles.permissionText}>
                         Camera permission is required to scan documents
                     </Text>
                     <Pressable onPress={requestPermission} style={styles.permissionButton}>
@@ -131,7 +132,7 @@ export default function ScanCaptureScreen() {
         if (!device) {
             return (
                 <View style={styles.centeredContainer}>
-                    <Text style={[styles.permissionText, { color: isDark ? "#fff" : "#000" }]}>
+                    <Text className="text-typography-600" style={styles.permissionText}>
                         No camera device found
                     </Text>
                 </View>

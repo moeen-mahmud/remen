@@ -1,4 +1,5 @@
 import { SwipeableNoteCard } from "@/components/swipeable-note-card"
+import { Box } from "@/components/ui/box"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
 import {
@@ -127,14 +128,14 @@ export default function TrashScreen() {
 
     if (isLoading) {
         return (
-            <View style={[styles.loadingContainer, { backgroundColor: isDark ? "#000" : "#fff" }]}>
+            <Box className="flex-1 bg-background-50">
                 <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
-            </View>
+            </Box>
         )
     }
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff", paddingTop: top }]}>
+        <Box className="flex-1 bg-background-50" style={{ paddingTop: top }}>
             {/* Header */}
             <View style={styles.header}>
                 <Pressable onPress={handleBack} style={styles.backButton}>
@@ -173,7 +174,7 @@ export default function TrashScreen() {
                     />
                 }
             />
-        </View>
+        </Box>
     )
 }
 
@@ -215,7 +216,6 @@ const styles = StyleSheet.create({
     },
     listContent: {
         flexGrow: 1,
-        paddingHorizontal: 16,
     },
     emptyState: {
         flex: 1,

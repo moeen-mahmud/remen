@@ -1,12 +1,13 @@
 import { Heading } from "@/components/ui/heading"
+import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
 import { getNoteTypeBadge } from "@/lib/ai/classify"
-import { deleteNote, getNoteById, getTagsForNote, type Note, type Tag } from "@/lib/database"
+import { getNoteById, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database"
 import { findRelatedNotes, type SearchResult } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
-import { ArrowLeftIcon, EditIcon, MicIcon, ScanIcon, TrashIcon } from "lucide-react-native"
+import { ArrowLeftIcon, EditIcon, MicIcon, RecycleIcon, ScanIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useState } from "react"
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native"
@@ -102,23 +103,31 @@ export default function NoteDetailScreen() {
     const handleDelete = useCallback(() => {
         if (!note) return
 
-        Alert.alert("Delete Note", "Are you sure you want to delete this note? This action cannot be undone.", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete",
-                style: "destructive",
-                onPress: async () => {
-                    try {
-                        await deleteNote(note.id)
-                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                        router.back()
-                    } catch (error) {
-                        console.error("Failed to delete note:", error)
-                        Alert.alert("Error", "Failed to delete note")
-                    }
+        Alert.alert(
+            "Move to Recycle Bin",
+            "This note will be moved to the recycle bin. You can restore it from there.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Move",
+                    style: "default",
+                    onPress: async () => {
+                        try {
+                            await moveToTrash(note.id)
+                            // Remove from local state
+                            setNote(null)
+                            setTags([])
+                            setRelatedNotes([])
+                            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                            router.back()
+                        } catch (error) {
+                            console.error("Failed to delete note:", error)
+                            Alert.alert("Error", "Failed to delete note")
+                        }
+                    },
                 },
-            },
-        ])
+            ],
+        )
     }, [note, router])
 
     if (isLoading) {
@@ -147,16 +156,17 @@ export default function NoteDetailScreen() {
         <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff", paddingTop: top }]}>
             {/* Header */}
             <View style={[styles.header, { borderBottomColor: isDark ? "#333" : "#e5e5e5" }]}>
-                <Pressable onPress={handleBack} style={styles.headerButton}>
-                    <ArrowLeftIcon size={24} color={isDark ? "#fff" : "#000"} />
+                <Pressable onPress={handleBack} style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                    <Icon as={ArrowLeftIcon} size="md" color={isDark ? "#fff" : "#000"} />
+                    <Text className="text-lg font-bold">View Note</Text>
                 </Pressable>
 
                 <View style={styles.headerActions}>
                     <Pressable onPress={handleEdit} style={styles.headerButton}>
-                        <EditIcon size={20} color="#3B82F6" />
+                        <Icon as={EditIcon} size="md" />
                     </Pressable>
                     <Pressable onPress={handleDelete} style={styles.headerButton}>
-                        <TrashIcon size={20} color="#EF4444" />
+                        <Icon as={RecycleIcon} size="md" color={isDark ? "#f7d512" : "#f7d512"} />
                     </Pressable>
                 </View>
             </View>
@@ -266,7 +276,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
-        paddingHorizontal: 8,
+        paddingHorizontal: 16,
         paddingVertical: 8,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
@@ -279,7 +289,7 @@ const styles = StyleSheet.create({
     headerActions: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 4,
+        // gap: 4,
     },
     backButton: {
         marginTop: 16,

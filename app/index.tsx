@@ -1,7 +1,7 @@
 import { SpeedDial, type FabAction } from "@/components/fab"
 import RichEditor from "@/components/rich-editor"
 import { useRouter } from "expo-router"
-import { CameraIcon, ListIcon, MicIcon } from "lucide-react-native"
+import { CameraIcon, MicIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback } from "react"
 import { View } from "react-native"
@@ -10,10 +10,6 @@ export default function Index() {
     const router = useRouter()
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
-
-    const handleViewNotes = useCallback(() => {
-        router.push("/notes" as any)
-    }, [router])
 
     const handleVoiceCapture = useCallback(() => {
         router.push("/voice" as any)
@@ -24,14 +20,14 @@ export default function Index() {
     }, [router])
 
     const fabActions: FabAction[] = [
-        {
-            id: "notes",
-            label: "All Notes",
-            icon: ListIcon,
-            onPress: handleViewNotes,
-            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-            color: isDark ? "#F8F8F8" : "#1a1b1c",
-        },
+        // {
+        //     id: "notes",
+        //     label: "All Notes",
+        //     icon: ListIcon,
+        //     onPress: handleViewNotes,
+        //     backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
+        //     color: isDark ? "#F8F8F8" : "#1a1b1c",
+        // },
         {
             id: "scan",
             label: "Scan",

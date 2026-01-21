@@ -12,16 +12,16 @@ import { editorStyles } from "@/components/rich-editor/editor-styles"
 import { htmlStyle } from "@/components/rich-editor/html-styles"
 import { LinkModal } from "@/components/rich-editor/link-modal"
 import { Toolbar } from "@/components/rich-editor/toolbar"
-import { SaveStatus, type SaveState } from "@/components/save-status"
 import { Box } from "@/components/ui/box"
+import { Text } from "@/components/ui/text"
 import { aiQueue } from "@/lib/ai/queue"
 import { createNote, getNoteById, updateNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import { ArrowLeftIcon, CameraIcon, ChevronDownIcon, MicIcon } from "lucide-react-native"
+import { ArrowLeftIcon, CameraIcon, ChevronDownIcon, ListIcon, MicIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ActivityIndicator, AppState, Pressable, ScrollView, View } from "react-native"
+import { ActivityIndicator, AppState, Pressable, View } from "react-native"
 import {
     EnrichedTextInput,
     type EnrichedTextInputInstance,
@@ -31,7 +31,12 @@ import {
     type OnChangeTextEvent,
     type OnLinkDetected,
 } from "react-native-enriched"
-import { KeyboardAvoidingView, KeyboardController, useKeyboardState } from "react-native-keyboard-controller"
+import {
+    KeyboardAvoidingView,
+    KeyboardAwareScrollView,
+    KeyboardController,
+    useKeyboardState,
+} from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 interface RichEditorProps {
@@ -319,11 +324,15 @@ export default function RichEditor({
         setSelection(sel)
     }
 
+    const handleViewNotes = useCallback(() => {
+        router.push("/notes" as any)
+    }, [router])
+
     // Render save status indicator
-    const renderSaveStatus = () => {
-        // Use the new animated SaveStatus component
-        return <SaveStatus state={saveStatus as SaveState} />
-    }
+    // const renderSaveStatus = () => {
+    //     // Use the new animated SaveStatus component
+    //     return <SaveStatus state={saveStatus as SaveState} />
+    // }
 
     if (isLoading) {
         return (
@@ -344,23 +353,27 @@ export default function RichEditor({
                 {showBackButton ? (
                     <Pressable onPress={handleBack} style={editorStyles.headerButton}>
                         <ArrowLeftIcon size={22} color={isDark ? "#fff" : "#000"} />
+                        <Text className="text-lg font-bold">Edit Note</Text>
                     </Pressable>
                 ) : (
                     <View style={editorStyles.brandContainer}>
-                        <RemenLogo size="sm" showIcon={true} animated={false} />
+                        <RemenLogo size="md" showIcon={true} />
                     </View>
                 )}
 
-                {renderSaveStatus()}
+                {/* {renderSaveStatus()} */}
 
                 {/* Spacer for header alignment */}
-                <View style={editorStyles.headerButton} />
+                <Pressable onPress={handleViewNotes} hitSlop={10}>
+                    <ListIcon size={24} color={isDark ? "#fff" : "#000"} />
+                </Pressable>
             </View>
 
             {/* Editor */}
-            <ScrollView
+            <KeyboardAwareScrollView
                 style={editorStyles.scrollView}
-                contentContainerStyle={editorStyles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: bottom + 120 }}
                 keyboardShouldPersistTaps="handled"
             >
                 <Box className="w-full">
@@ -373,7 +386,7 @@ export default function RichEditor({
                         placeholderTextColor={isDark ? "#555" : "#aaa"}
                         selectionColor={isDark ? "#dddddd" : "#666666"}
                         autoCapitalize="sentences"
-                        autoFocus={false}
+                        autoFocus={!isEditMode}
                         linkRegex={LINK_REGEX}
                         onChangeText={(e) => handleChangeText(e.nativeEvent)}
                         onChangeHtml={(e) => handleChangeHtml(e.nativeEvent)}
@@ -382,7 +395,7 @@ export default function RichEditor({
                         onChangeSelection={(e) => handleSelectionChangeEvent(e.nativeEvent)}
                     />
                 </Box>
-            </ScrollView>
+            </KeyboardAwareScrollView>
 
             {/* Bottom Bar */}
             <KeyboardAvoidingView behavior="padding" style={editorStyles.bottomBarContainer}>

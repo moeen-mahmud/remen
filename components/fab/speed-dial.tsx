@@ -1,5 +1,5 @@
 import * as Haptics from "expo-haptics"
-import { PlusIcon, XIcon } from "lucide-react-native"
+import { XIcon, Zap } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { type FC, useState } from "react"
 import { Pressable, StyleSheet, View } from "react-native"
@@ -31,7 +31,7 @@ export const SpeedDial: FC<SpeedDialProps> = ({
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
         setIsOpen((prev) => {
             const newState = !prev
-            rotation.value = withSpring(newState ? 45 : 0, { ...springConfigs.stiff })
+            rotation.value = withSpring(newState ? 90 : 0, { ...springConfigs.stiff })
             scale.value = withSpring(newState ? 1.1 : 1, { ...springConfigs.gentle })
             return newState
         })
@@ -94,7 +94,7 @@ export const SpeedDial: FC<SpeedDialProps> = ({
                     {isOpen ? (
                         <XIcon size={26} color={iconColor} strokeWidth={2.5} />
                     ) : (
-                        <PlusIcon size={26} color={iconColor} strokeWidth={2.5} />
+                        <Zap size={26} color={iconColor} strokeWidth={2.5} />
                     )}
                 </AnimatedPressable>
             </View>

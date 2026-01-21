@@ -1,4 +1,5 @@
 import { RemenLogo } from "@/components/brand/logo"
+import { Box } from "@/components/ui/box"
 import { Text } from "@/components/ui/text"
 import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database"
 import { getPreferences, savePreferences, type Preferences } from "@/lib/preferences"
@@ -17,7 +18,7 @@ import {
 } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useState } from "react"
-import { Alert, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native"
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 export default function SettingsScreen() {
@@ -27,6 +28,7 @@ export default function SettingsScreen() {
     const isDark = colorScheme === "dark"
 
     const [preferences, setPreferences] = useState<Preferences | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
     const [archivedCount, setArchivedCount] = useState(0)
     const [trashedCount, setTrashedCount] = useState(0)
 
@@ -40,6 +42,7 @@ export default function SettingsScreen() {
             const trashed = await getTrashedNotesCount()
             setArchivedCount(archived)
             setTrashedCount(trashed)
+            setIsLoading(false)
         }
         load()
     }, [])
@@ -100,11 +103,18 @@ export default function SettingsScreen() {
     }, [])
 
     if (!preferences) {
-        return null
+        return <Box className="flex-1 bg-background-50" />
     }
 
+    if (isLoading) {
+        return (
+            <Box className="flex-1 bg-background-50">
+                <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
+            </Box>
+        )
+    }
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff", paddingTop: top }]}>
+        <Box className="flex-1 bg-background-50" style={{ paddingTop: top }}>
             {/* Header */}
             <View style={styles.header}>
                 <Pressable onPress={handleBack} style={styles.backButton}>
@@ -311,7 +321,7 @@ export default function SettingsScreen() {
                     </View>
                 </View>
             </ScrollView>
-        </View>
+        </Box>
     )
 }
 

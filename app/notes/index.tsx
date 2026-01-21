@@ -8,17 +8,7 @@ import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type 
 import { searchNotesEnhanced } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import {
-    ArchiveIcon,
-    ListIcon,
-    PlusIcon,
-    Recycle,
-    SearchIcon,
-    SettingsIcon,
-    Share2Icon,
-    Trash2Icon,
-    XIcon,
-} from "lucide-react-native"
+import { Archive, Bolt, ListIcon, PlusIcon, Recycle, SearchIcon, Share2Icon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useState } from "react"
 import {
@@ -169,17 +159,17 @@ export default function NotesListScreen() {
 
     // Handle settings
     const handleSettings = useCallback(() => {
-        router.push("/settings" as any)
+        router.push("/settings")
     }, [router])
 
     // Handle archives
     const handleArchives = useCallback(() => {
-        router.push("/settings/archives" as any)
+        router.push("/settings/archives")
     }, [router])
 
     // Handle trash
     const handleTrash = useCallback(() => {
-        router.push("/settings/trash" as any)
+        router.push("/settings/trash")
     }, [router])
 
     // Handle long press to enter selection mode
@@ -209,7 +199,7 @@ export default function NotesListScreen() {
                 { text: "Cancel", style: "cancel" },
                 {
                     text: "Move",
-                    style: "destructive",
+                    style: "default",
                     onPress: async () => {
                         for (const id of selectedIds) {
                             await moveToTrash(id)
@@ -244,22 +234,14 @@ export default function NotesListScreen() {
 
     // FAB actions for list screen
     const fabActions: FabAction[] = [
-        {
-            id: "settings",
-            label: "Settings",
-            icon: SettingsIcon,
-            onPress: handleSettings,
-            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-            color: isDark ? "#F8F8F8" : "#1a1b1c",
-        },
-        {
-            id: "archives",
-            label: "Archives",
-            icon: ArchiveIcon,
-            onPress: handleArchives,
-            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-            color: isDark ? "#F8F8F8" : "#1a1b1c",
-        },
+        // {
+        //     id: "settings",
+        //     label: "Settings",
+        //     icon: SettingsIcon,
+        //     onPress: handleSettings,
+        //     backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
+        //     color: isDark ? "#F8F8F8" : "#1a1b1c",
+        // },
         {
             id: "trash",
             label: "Recycle Bin",
@@ -267,6 +249,22 @@ export default function NotesListScreen() {
             onPress: handleTrash,
             backgroundColor: isDark ? "#f7d512" : "#f7d512",
             color: "#1a1b1c",
+        },
+        {
+            id: "archives",
+            label: "Archives",
+            icon: Archive,
+            onPress: handleArchives,
+            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
+            color: isDark ? "#F8F8F8" : "#1a1b1c",
+        },
+        {
+            id: "new-note",
+            label: "New Note",
+            icon: PlusIcon,
+            onPress: handleNewNote,
+            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
+            color: isDark ? "#F8F8F8" : "#1a1b1c",
         },
     ]
 
@@ -342,15 +340,15 @@ export default function NotesListScreen() {
                             <Share2Icon size={22} color={isDark ? "#fff" : "#000"} />
                         </Pressable>
                         <Pressable onPress={handleBulkDelete} style={styles.selectionAction}>
-                            <Trash2Icon size={22} color={isDark ? "#E7000B" : "#F9423C"} />
+                            <Recycle size={22} color={isDark ? "#f7d512" : "#f7d512"} />
                         </Pressable>
                     </View>
                 </View>
             ) : (
                 <View style={styles.header}>
                     <RemenLogo size="md" showIcon={true} animated={false} />
-                    <Pressable onPress={handleNewNote} style={styles.newNoteButton}>
-                        <PlusIcon size={24} color={isDark ? "#fff" : "#000"} />
+                    <Pressable onPress={handleSettings} style={styles.newNoteButton}>
+                        <Bolt size={24} color={isDark ? "#fff" : "#000"} />
                     </Pressable>
                 </View>
             )}
@@ -368,14 +366,27 @@ export default function NotesListScreen() {
                 <SearchIcon size={18} color={isDark ? "#888" : "#666"} style={styles.searchIcon} />
                 <TextInput
                     style={[styles.searchInput, { color: isDark ? "#fff" : "#000" }]}
-                    placeholder='Try "last Saturday" or "2 hours ago"'
+                    placeholder="Enter your query..."
                     placeholderTextColor={isDark ? "#888" : "#999"}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     autoCapitalize="none"
                     autoCorrect={false}
                 />
+                {searchQuery ? (
+                    <Pressable onPress={() => setSearchQuery("")}>
+                        <XIcon size={22} color={isDark ? "#888" : "#666"} />
+                    </Pressable>
+                ) : null}
             </View>
+            {/* helper text */}
+            {!temporalFilterDescription ? (
+                <View style={[styles.temporalFilter, { backgroundColor: isDark ? "#1a2a1a" : "#e8f5e9" }]}>
+                    <Text style={[styles.temporalFilterText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                        {`Instead of searching, ask a question. Try "What I wrote on [date]" or "What I was thinking about [topic]".`}
+                    </Text>
+                </View>
+            ) : null}
 
             {/* Temporal Filter Indicator */}
             {temporalFilterDescription && (
@@ -483,7 +494,7 @@ const styles = StyleSheet.create({
     },
     searchInput: {
         flex: 1,
-        fontSize: 17,
+        fontSize: 14,
         padding: 0,
     },
     temporalFilter: {
