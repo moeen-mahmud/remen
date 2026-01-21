@@ -4,13 +4,14 @@ import { SpeedDial, type FabAction } from "@/components/fab"
 import { SwipeableNoteCard } from "@/components/swipeable-note-card"
 import { Text } from "@/components/ui/text"
 import { useSelectionMode } from "@/hooks/use-selection-mode"
+import { useAI } from "@/lib/ai/provider"
 import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database"
 import { searchNotesEnhanced } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
 import { Archive, Bolt, ListIcon, PlusIcon, Recycle, SearchIcon, Share2Icon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
     ActivityIndicator,
     Alert,
@@ -34,12 +35,18 @@ export default function NotesListScreen() {
     const router = useRouter()
     const isDark = colorScheme === "dark"
 
+    // Get AI embeddings model for search - use ref to avoid dependency issues
+    const { embeddings } = useAI()
+    const embeddingsRef = useRef(embeddings)
+    embeddingsRef.current = embeddings
+
     const [notes, setNotes] = useState<NoteWithTags[]>([])
     const [filteredNotes, setFilteredNotes] = useState<NoteWithTags[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
     const [temporalFilterDescription, setTemporalFilterDescription] = useState<string | null>(null)
+    const [isSearching, setIsSearching] = useState(false)
 
     // Selection mode
     const {
@@ -81,46 +88,57 @@ export default function NotesListScreen() {
     }, [loadNotes])
 
     // Filter notes based on search query (using enhanced hybrid search with temporal parsing)
+    // Use debounced search to prevent rapid re-renders
     useEffect(() => {
-        const performSearch = async () => {
-            if (searchQuery.trim() === "") {
-                setFilteredNotes(notes)
-                setTemporalFilterDescription(null)
-            } else {
-                try {
-                    // Use enhanced hybrid search with temporal parsing
-                    const { results, temporalFilter } = await searchNotesEnhanced(searchQuery)
-
-                    // Update temporal filter description for UI
-                    setTemporalFilterDescription(temporalFilter?.description || null)
-
-                    // Match results with notes to get tags
-                    const resultIds = new Set(results.map((r) => r.id))
-                    const filtered = notes.filter((note) => resultIds.has(note.id))
-                    // Sort by the search results order
-                    filtered.sort((a, b) => {
-                        const aIndex = results.findIndex((r) => r.id === a.id)
-                        const bIndex = results.findIndex((r) => r.id === b.id)
-                        return aIndex - bIndex
-                    })
-                    setFilteredNotes(filtered)
-                } catch (error) {
-                    console.error("Search failed:", error)
-                    setTemporalFilterDescription(null)
-                    // Fallback to simple filtering
-                    const query = searchQuery.toLowerCase()
-                    const filtered = notes.filter(
-                        (note) =>
-                            note.content.toLowerCase().includes(query) ||
-                            (note.title && note.title.toLowerCase().includes(query)) ||
-                            note.tags.some((tag) => tag.name.toLowerCase().includes(query)),
-                    )
-                    setFilteredNotes(filtered)
-                }
-            }
+        if (searchQuery.trim() === "") {
+            setFilteredNotes(notes)
+            setTemporalFilterDescription(null)
+            setIsSearching(false)
+            return
         }
-        performSearch()
-    }, [searchQuery, notes])
+
+        setIsSearching(true)
+
+        // Debounce search
+        const timeoutId = setTimeout(async () => {
+            try {
+                console.log("🔍 [Search] Searching for:", searchQuery)
+                // Use enhanced hybrid search with temporal parsing (with AI embeddings via ref)
+                const { results, temporalFilter } = await searchNotesEnhanced(searchQuery, embeddingsRef.current)
+                console.log(`🔍 [Search] Found ${results.length} results`)
+
+                // Update temporal filter description for UI
+                setTemporalFilterDescription(temporalFilter?.description || null)
+
+                // Match results with notes to get tags
+                const resultIds = new Set(results.map((r) => r.id))
+                const filtered = notes.filter((note) => resultIds.has(note.id))
+                // Sort by the search results order
+                filtered.sort((a, b) => {
+                    const aIndex = results.findIndex((r) => r.id === a.id)
+                    const bIndex = results.findIndex((r) => r.id === b.id)
+                    return aIndex - bIndex
+                })
+                setFilteredNotes(filtered)
+            } catch (error) {
+                console.error("❌ [Search] Search failed:", error)
+                setTemporalFilterDescription(null)
+                // Fallback to simple filtering
+                const query = searchQuery.toLowerCase()
+                const filtered = notes.filter(
+                    (note) =>
+                        note.content.toLowerCase().includes(query) ||
+                        (note.title && note.title.toLowerCase().includes(query)) ||
+                        note.tags.some((tag) => tag.name.toLowerCase().includes(query)),
+                )
+                setFilteredNotes(filtered)
+            } finally {
+                setIsSearching(false)
+            }
+        }, 300) // 300ms debounce
+
+        return () => clearTimeout(timeoutId)
+    }, [searchQuery, notes]) // Remove embeddings from dependency array
 
     // Handle refresh
     const handleRefresh = useCallback(() => {
@@ -373,7 +391,9 @@ export default function NotesListScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                 />
-                {searchQuery ? (
+                {isSearching ? (
+                    <ActivityIndicator size="small" color={isDark ? "#888" : "#666"} />
+                ) : searchQuery ? (
                     <Pressable onPress={() => setSearchQuery("")}>
                         <XIcon size={22} color={isDark ? "#888" : "#666"} />
                     </Pressable>

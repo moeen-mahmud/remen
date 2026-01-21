@@ -1,30 +1,39 @@
 /**
  * Generate a title for a note
  *
- * Uses a simple rule-based approach initially with fallback to AI.
- * The AI model (ExecuTorch Llama) can be enabled once properly configured.
+ * Uses Llama 3.2 1B via ExecutorTorch for intelligent title generation.
+ * Falls back to rule-based extraction when the model isn't ready.
  */
+
+import type { LLMModel, Message } from "./provider"
 
 const MAX_TITLE_LENGTH = 50
 
 /**
- * Generate a title for the given note content
+ * Generate a title for the given note content using AI
  */
-export async function generateTitle(content: string): Promise<string> {
-    // Try rule-based title extraction first (faster, no AI needed)
+export async function generateTitle(content: string, llm: LLMModel | null): Promise<string> {
+    // Skip AI for very short content
+    if (content.trim().length < 20) {
+        return getFallbackTitle(content)
+    }
+
+    // Try AI generation if model is ready and not busy
+    if (llm?.isReady && !llm.isGenerating) {
+        try {
+            const aiTitle = await generateTitleWithAI(content, llm)
+            if (aiTitle && aiTitle.length > 3) {
+                return aiTitle
+            }
+        } catch (error) {
+            console.warn("AI title generation failed, using fallback:", error)
+        }
+    }
+
+    // Try rule-based title extraction (faster, no AI needed)
     const ruleBasedTitle = extractTitleFromContent(content)
     if (ruleBasedTitle) {
         return ruleBasedTitle
-    }
-
-    // Fallback to AI generation if available
-    try {
-        const aiTitle = await generateTitleWithAI(content)
-        if (aiTitle) {
-            return aiTitle
-        }
-    } catch (error) {
-        console.warn("AI title generation failed, using fallback:", error)
     }
 
     // Final fallback: first line truncated
@@ -32,7 +41,54 @@ export async function generateTitle(content: string): Promise<string> {
 }
 
 /**
- * Extract a title using rule-based heuristics
+ * Generate title using LLM (Llama 3.2 1B via ExecutorTorch)
+ */
+async function generateTitleWithAI(content: string, llm: LLMModel): Promise<string | null> {
+    const messages: Message[] = [
+        {
+            role: "system",
+            content:
+                "You are a title generator. Generate a concise, descriptive title (maximum 50 characters) for the given note. Return ONLY the title text, nothing else. No quotes, no explanation, just the title.",
+        },
+        {
+            role: "user",
+            content: content.substring(0, 500),
+        },
+    ]
+
+    try {
+        // generate() now returns the response directly
+        const response = await llm.generate(messages)
+
+        // Clean up the response
+        let title = response
+            .trim()
+            .replace(/^["']|["']$/g, "") // Remove surrounding quotes
+            .replace(/^Title:\s*/i, "") // Remove "Title:" prefix
+            .replace(/\n.*/g, "") // Take only first line
+            .trim()
+
+        // Ensure it's within length limits
+        if (title.length > MAX_TITLE_LENGTH) {
+            // Try to break at a word boundary
+            const truncated = title.substring(0, MAX_TITLE_LENGTH - 3)
+            const lastSpace = truncated.lastIndexOf(" ")
+            if (lastSpace > MAX_TITLE_LENGTH * 0.5) {
+                title = truncated.substring(0, lastSpace) + "..."
+            } else {
+                title = truncated + "..."
+            }
+        }
+
+        return title || null
+    } catch (error) {
+        console.error("LLM title generation error:", error)
+        return null
+    }
+}
+
+/**
+ * Extract a title using rule-based heuristics (fallback)
  */
 function extractTitleFromContent(content: string): string | null {
     const lines = content.split("\n").filter((line) => line.trim().length > 0)
@@ -66,39 +122,6 @@ function extractTitleFromContent(content: string): string | null {
             }
         }
     }
-
-    return null
-}
-
-/**
- * Generate title using AI (ExecuTorch)
- */
-async function generateTitleWithAI(content: string): Promise<string | null> {
-    // TODO: Implement ExecuTorch integration once properly set up
-    // For now, return null to use fallback
-
-    /*
-    try {
-        const { LLAMA } = await import('react-native-executorch');
-        
-        const prompt = `Generate a concise, descriptive title (max 50 characters) for this note. Return ONLY the title, no quotes or extra text.
-
-Note:
-${content.substring(0, 500)}
-
-Title:`;
-
-        const result = await LLAMA.generate(prompt, {
-            maxTokens: 20,
-            temperature: 0.3,
-        });
-        
-        return result.trim().substring(0, MAX_TITLE_LENGTH);
-    } catch (error) {
-        console.error('ExecuTorch title generation failed:', error);
-        return null;
-    }
-    */
 
     return null
 }

@@ -1,18 +1,92 @@
 /**
  * Extract relevant tags from note content
  *
- * Uses a combination of:
- * - Explicit hashtags in the content
- * - Named entity recognition patterns
- * - Keyword extraction
+ * Uses Llama 3.2 1B via ExecutorTorch for intelligent tag extraction.
+ * Falls back to rule-based extraction when the model isn't ready.
  */
+
+import type { LLMModel, Message } from "./provider"
 
 const MAX_TAGS = 5
 
 /**
- * Extract tags from note content
+ * Extract tags from note content using AI
  */
-export async function extractTags(content: string): Promise<string[]> {
+export async function extractTags(content: string, llm: LLMModel | null): Promise<string[]> {
+    // Skip AI for very short content
+    if (content.trim().length < 20) {
+        return extractTagsFallback(content)
+    }
+
+    // Try AI extraction if model is ready and not busy
+    if (llm?.isReady && !llm.isGenerating) {
+        try {
+            const aiTags = await extractTagsWithAI(content, llm)
+            if (aiTags && aiTags.length > 0) {
+                // Combine AI tags with entity-based tags for comprehensive tagging
+                const entityTags = extractEntities(content)
+                const combined = [...new Set([...aiTags, ...entityTags])]
+                return combined.slice(0, MAX_TAGS)
+            }
+        } catch (error) {
+            console.warn("AI tag extraction failed, using fallback:", error)
+        }
+    }
+
+    // Fallback to rule-based extraction
+    return extractTagsFallback(content)
+}
+
+/**
+ * AI-based tag extraction using LLM
+ */
+async function extractTagsWithAI(content: string, llm: LLMModel): Promise<string[]> {
+    const messages: Message[] = [
+        {
+            role: "system",
+            content: `You are a tag extractor. Extract 2-5 relevant tags for organizing this note.
+Return ONLY comma-separated lowercase words, no hashtags, no explanations.
+Examples of good tags: work, personal, urgent, health, finance, learning, creative, travel
+Keep tags simple and broad - they should help categorize and find the note later.`,
+        },
+        {
+            role: "user",
+            content: content.substring(0, 400),
+        },
+    ]
+
+    try {
+        // generate() now returns the response directly
+        const response = await llm.generate(messages)
+
+        // Parse the response
+        const tags = response
+            .trim()
+            .toLowerCase()
+            .replace(/^tags?:?\s*/i, "") // Remove "Tags:" prefix
+            .replace(/[\[\]"']/g, "") // Remove brackets and quotes
+            .split(/[,\n]+/) // Split by comma or newline
+            .map(
+                (tag) =>
+                    tag
+                        .trim()
+                        .replace(/^#/, "") // Remove hashtags
+                        .replace(/[^a-z0-9-]/g, ""), // Keep only alphanumeric and hyphens
+            )
+            .filter((tag) => tag.length >= 2 && tag.length <= 20) // Valid length
+            .slice(0, MAX_TAGS)
+
+        return tags
+    } catch (error) {
+        console.error("LLM tag extraction error:", error)
+        return []
+    }
+}
+
+/**
+ * Fallback: Combine hashtags, entities, and keywords
+ */
+function extractTagsFallback(content: string): string[] {
     const tags = new Set<string>()
 
     // 1. Extract explicit hashtags
@@ -132,32 +206,4 @@ function extractKeywords(content: string): string[] {
     }
 
     return tags
-}
-
-/**
- * AI-based tag suggestion (to be implemented)
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function suggestTagsWithAI(content: string): Promise<string[]> {
-    // TODO: Implement ExecuTorch tag suggestion
-    /*
-    const prompt = `Suggest 2-4 relevant tags for organizing this note. Return as comma-separated words (lowercase, no hashtags).
-
-Examples: work, personal, urgent, project-x, health, finance
-
-Note:
-${content.substring(0, 300)}
-
-Tags:`;
-
-    const result = await LLAMA.generate(prompt, { maxTokens: 30, temperature: 0.3 });
-    
-    return result
-        .split(',')
-        .map(tag => tag.trim().toLowerCase())
-        .filter(tag => tag.length > 0 && tag.length < 20)
-        .slice(0, 4);
-    */
-
-    return []
 }

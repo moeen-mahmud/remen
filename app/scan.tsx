@@ -1,4 +1,5 @@
 import { Text } from "@/components/ui/text"
+import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
 import { formatOCRText, processImageOCR, saveScannedImage } from "@/lib/capture/scan"
 import { createNote } from "@/lib/database"
@@ -13,13 +14,16 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera"
 
-type ScanState = "camera" | "processing" | "review"
+type ScanState = "camera" | "processing" | "review" | "model-loading"
 
 export default function ScanCaptureScreen() {
     const { top, bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
     const router = useRouter()
     const isDark = colorScheme === "dark"
+
+    // Get OCR model from AI provider
+    const { ocr, llm, embeddings } = useAI()
 
     const { hasPermission, requestPermission } = useCameraPermission()
     const device = useCameraDevice("back")
@@ -43,6 +47,12 @@ export default function ScanCaptureScreen() {
     const handleCapture = useCallback(async () => {
         if (!cameraRef.current) return
 
+        // Check if OCR model is ready
+        if (!ocr?.isReady) {
+            setState("model-loading")
+            return
+        }
+
         try {
             setError(null)
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
@@ -55,8 +65,8 @@ export default function ScanCaptureScreen() {
             const savedPath = await saveScannedImage(photo.path)
             setCapturedImagePath(savedPath)
 
-            // Process OCR
-            const result = await processImageOCR(photo.path)
+            // Process OCR using ExecutorTorch
+            const result = await processImageOCR(photo.path, ocr)
             setExtractedText(formatOCRText(result))
             setConfidence(result.confidence)
 
@@ -68,7 +78,7 @@ export default function ScanCaptureScreen() {
             setState("camera")
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
         }
-    }, [])
+    }, [ocr])
 
     // Retake photo
     const handleRetake = useCallback(() => {
@@ -97,7 +107,8 @@ export default function ScanCaptureScreen() {
                 original_image: capturedImagePath,
             })
 
-            // Queue for AI processing
+            // Queue for AI processing (pass models)
+            aiQueue.setModels({ llm, embeddings })
             aiQueue.add({ noteId: note.id, content: extractedText })
 
             // Navigate to note detail
@@ -107,12 +118,29 @@ export default function ScanCaptureScreen() {
             Alert.alert("Error", "Failed to save note. Please try again.")
             setIsSaving(false)
         }
-    }, [extractedText, capturedImagePath, router])
+    }, [extractedText, capturedImagePath, router, llm, embeddings])
 
     // Close without saving
     const handleClose = useCallback(() => {
         router.back()
     }, [router])
+
+    // Render model loading view
+    const renderModelLoading = () => (
+        <View style={[styles.centeredContainer, { backgroundColor: isDark ? "#000" : "#fff" }]}>
+            <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
+            <Text style={[styles.processingText, { color: isDark ? "#fff" : "#000" }]}>Loading OCR model...</Text>
+            <Text style={[styles.subText, { color: isDark ? "#888" : "#666" }]}>
+                {Math.round((ocr?.downloadProgress || 0) * 100)}% downloaded
+            </Text>
+            <Pressable
+                onPress={() => setState("camera")}
+                style={[styles.cancelButton, { borderColor: isDark ? "#333" : "#ddd" }]}
+            >
+                <Text style={[styles.cancelButtonText, { color: isDark ? "#fff" : "#000" }]}>Cancel</Text>
+            </Pressable>
+        </View>
+    )
 
     // Render camera view
     const renderCamera = () => {
@@ -160,9 +188,21 @@ export default function ScanCaptureScreen() {
                     <Text style={styles.guideText}>Position document within frame</Text>
                 </View>
 
+                {/* OCR Model Status */}
+                {!ocr?.isReady && (
+                    <View style={styles.modelStatusBanner}>
+                        <Text style={styles.modelStatusText}>
+                            OCR model loading: {Math.round((ocr?.downloadProgress || 0) * 100)}%
+                        </Text>
+                    </View>
+                )}
+
                 {/* Capture button */}
                 <View style={[styles.captureButtonContainer, { paddingBottom: bottom + 20 }]}>
-                    <Pressable onPress={handleCapture} style={styles.captureButton}>
+                    <Pressable
+                        onPress={handleCapture}
+                        style={[styles.captureButton, !ocr?.isReady && styles.captureButtonDisabled]}
+                    >
                         <CameraIcon size={32} color="#fff" />
                     </Pressable>
                 </View>
@@ -277,6 +317,7 @@ export default function ScanCaptureScreen() {
             {state === "camera" && renderCamera()}
             {state === "processing" && renderProcessing()}
             {state === "review" && renderReview()}
+            {state === "model-loading" && renderModelLoading()}
         </View>
     )
 }
@@ -391,6 +432,22 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 1, height: 1 },
         textShadowRadius: 3,
     },
+    modelStatusBanner: {
+        position: "absolute",
+        top: 120,
+        left: 20,
+        right: 20,
+        backgroundColor: "rgba(59, 130, 246, 0.95)",
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+    },
+    modelStatusText: {
+        color: "#fff",
+        textAlign: "center",
+        fontSize: 14,
+        fontWeight: "500",
+    },
     captureButtonContainer: {
         position: "absolute",
         bottom: 0,
@@ -411,6 +468,9 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 12,
     },
+    captureButtonDisabled: {
+        opacity: 0.5,
+    },
     errorBanner: {
         position: "absolute",
         bottom: 160,
@@ -430,6 +490,21 @@ const styles = StyleSheet.create({
     processingText: {
         marginTop: 20,
         fontSize: 17,
+        fontWeight: "500",
+    },
+    subText: {
+        marginTop: 8,
+        fontSize: 14,
+    },
+    cancelButton: {
+        marginTop: 24,
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    cancelButtonText: {
+        fontSize: 15,
         fontWeight: "500",
     },
     reviewContainer: {

@@ -14,6 +14,7 @@ import { LinkModal } from "@/components/rich-editor/link-modal"
 import { Toolbar } from "@/components/rich-editor/toolbar"
 import { Box } from "@/components/ui/box"
 import { Text } from "@/components/ui/text"
+import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
 import { createNote, getNoteById, updateNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
@@ -77,6 +78,9 @@ export default function RichEditor({
     const router = useRouter()
     const isDark = colorScheme === "dark"
 
+    // Get AI models for processing queue
+    const { llm, embeddings } = useAI()
+
     const [isLoading, setIsLoading] = useState(!!initialNoteId)
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
 
@@ -129,51 +133,56 @@ export default function RichEditor({
     }, [initialNoteId])
 
     // Save note to database
-    const saveNote = useCallback(async (noteContent: string, noteHtml: string, noteId: string | null) => {
-        if (noteContent.trim().length === 0) return null
+    const saveNote = useCallback(
+        async (noteContent: string, noteHtml: string, noteId: string | null) => {
+            if (noteContent.trim().length === 0) return null
 
-        // Skip if content hasn't changed
-        if (noteContent === lastSavedContentRef.current && noteId) {
-            return noteId
-        }
-
-        setSaveStatus("saving")
-
-        try {
-            if (noteId) {
-                // Update existing note
-                await updateNote(noteId, {
-                    content: noteContent,
-                    html: noteHtml,
-                })
-                lastSavedContentRef.current = noteContent
-                setSaveStatus("saved")
-
-                // Queue for AI processing (re-process on update)
-                aiQueue.add({ noteId, content: noteContent })
-
+            // Skip if content hasn't changed
+            if (noteContent === lastSavedContentRef.current && noteId) {
                 return noteId
-            } else {
-                // Create new note
-                const note = await createNote({
-                    content: noteContent,
-                    html: noteHtml,
-                })
-                lastSavedContentRef.current = noteContent
-                setSaveStatus("saved")
-
-                // Queue for AI processing
-                aiQueue.add({ noteId: note.id, content: noteContent })
-
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                return note.id
             }
-        } catch (error) {
-            console.error("Failed to save note:", error)
-            setSaveStatus("idle")
-            return noteId
-        }
-    }, [])
+
+            setSaveStatus("saving")
+
+            try {
+                if (noteId) {
+                    // Update existing note
+                    await updateNote(noteId, {
+                        content: noteContent,
+                        html: noteHtml,
+                    })
+                    lastSavedContentRef.current = noteContent
+                    setSaveStatus("saved")
+
+                    // Queue for AI processing (re-process on update)
+                    aiQueue.setModels({ llm, embeddings })
+                    aiQueue.add({ noteId, content: noteContent })
+
+                    return noteId
+                } else {
+                    // Create new note
+                    const note = await createNote({
+                        content: noteContent,
+                        html: noteHtml,
+                    })
+                    lastSavedContentRef.current = noteContent
+                    setSaveStatus("saved")
+
+                    // Queue for AI processing
+                    aiQueue.setModels({ llm, embeddings })
+                    aiQueue.add({ noteId: note.id, content: noteContent })
+
+                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                    return note.id
+                }
+            } catch (error) {
+                console.error("Failed to save note:", error)
+                setSaveStatus("idle")
+                return noteId
+            }
+        },
+        [llm, embeddings],
+    )
 
     // Debounced autosave
     const scheduleAutosave = useCallback(
@@ -386,7 +395,7 @@ export default function RichEditor({
                         placeholderTextColor={isDark ? "#555" : "#aaa"}
                         selectionColor={isDark ? "#dddddd" : "#666666"}
                         autoCapitalize="sentences"
-                        autoFocus={!isEditMode}
+                        autoFocus={false}
                         linkRegex={LINK_REGEX}
                         onChangeText={(e) => handleChangeText(e.nativeEvent)}
                         onChangeHtml={(e) => handleChangeHtml(e.nativeEvent)}

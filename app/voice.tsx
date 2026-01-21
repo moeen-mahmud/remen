@@ -1,4 +1,5 @@
 import { Waveform } from "@/components/waveform"
+import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
 import { voiceCapture, type VoiceState } from "@/lib/capture/voice"
 import { createNote } from "@/lib/database"
@@ -16,6 +17,9 @@ export default function VoiceCaptureScreen() {
     const { colorScheme } = useColorScheme()
     const router = useRouter()
     const isDark = colorScheme === "dark"
+
+    // Get AI models for processing queue
+    const { llm, embeddings } = useAI()
 
     const [, setVoiceState] = useState<VoiceState>({
         isListening: false,
@@ -136,7 +140,8 @@ export default function VoiceCaptureScreen() {
                 type: "voice",
             })
 
-            // Queue for AI processing
+            // Queue for AI processing (with AI models)
+            aiQueue.setModels({ llm, embeddings })
             aiQueue.add({ noteId: note.id, content: transcript })
 
             // Navigate to note detail

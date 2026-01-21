@@ -1,16 +1,21 @@
-import type { NoteType } from "@/lib/database"
-
 /**
  * Classify the type of a note based on its content
  *
- * Uses rule-based classification with weighted scoring and structural analysis.
+ * Uses Llama 3.2 1B via ExecutorTorch for intelligent classification.
+ * Falls back to rule-based classification when the model isn't ready.
  * Voice and scan types are set explicitly when creating notes.
  */
+
+import type { NoteType } from "@/lib/database"
+import type { LLMModel, Message } from "./provider"
 
 interface ClassificationResult {
     type: NoteType
     confidence: number
 }
+
+// Valid note types for classification (voice and scan are set explicitly)
+const VALID_TYPES: Exclude<NoteType, "voice" | "scan">[] = ["meeting", "task", "idea", "journal", "reference", "note"]
 
 /**
  * Get badge info for note types
@@ -37,22 +42,76 @@ export function getNoteTypeBadge(type: NoteType): { label: string; color: string
 }
 
 /**
- * Classify a note into one of the predefined types
+ * Classify a note into one of the predefined types using AI
  */
-export async function classifyNoteType(content: string): Promise<NoteType> {
-    // Try rule-based classification first
-    const ruleBasedResult = classifyWithRules(content)
-    if (ruleBasedResult.confidence > 0.7) {
-        return ruleBasedResult.type
+export async function classifyNoteType(content: string, llm: LLMModel | null): Promise<NoteType> {
+    // Skip AI for very short content
+    if (content.trim().length < 20) {
+        return classifyWithRules(content).type
     }
 
-    // TODO: Use AI classification for ambiguous cases
-    // For now, return the rule-based result even with lower confidence
-    return ruleBasedResult.type
+    // Try AI classification if model is ready and not busy
+    if (llm?.isReady && !llm.isGenerating) {
+        try {
+            const aiType = await classifyWithAI(content, llm)
+            if (aiType && VALID_TYPES.includes(aiType as any)) {
+                return aiType
+            }
+        } catch (error) {
+            console.warn("AI classification failed, using fallback:", error)
+        }
+    }
+
+    // Fallback to rule-based classification
+    return classifyWithRules(content).type
 }
 
 /**
- * Rule-based classification using keyword patterns and structural analysis
+ * AI-based classification using LLM
+ */
+async function classifyWithAI(content: string, llm: LLMModel): Promise<NoteType | null> {
+    const messages: Message[] = [
+        {
+            role: "system",
+            content: `You are a note classifier. Classify the given note into exactly ONE category from this list:
+- meeting (discussions, calls, meetings with people)
+- task (todos, action items, things to do)
+- idea (brainstorms, thoughts, concepts)
+- journal (personal reflections, daily logs, feelings)
+- reference (facts, information to remember, links, documentation)
+- note (general notes that don't fit above)
+
+Return ONLY the category name in lowercase, nothing else.`,
+        },
+        {
+            role: "user",
+            content: content.substring(0, 400),
+        },
+    ]
+
+    try {
+        // generate() now returns the response directly
+        const response = await llm.generate(messages)
+
+        // Parse the response
+        const cleanResponse = response.trim().toLowerCase()
+
+        // Extract the type from response (handle cases like "Category: meeting" or just "meeting")
+        for (const validType of VALID_TYPES) {
+            if (cleanResponse.includes(validType)) {
+                return validType
+            }
+        }
+
+        return null
+    } catch (error) {
+        console.error("LLM classification error:", error)
+        return null
+    }
+}
+
+/**
+ * Rule-based classification using keyword patterns and structural analysis (fallback)
  */
 function classifyWithRules(content: string): ClassificationResult {
     const lowerContent = content.toLowerCase()
@@ -80,11 +139,11 @@ function classifyWithRules(content: string): ClassificationResult {
     }
     if (bulletLines > 2) {
         scores.task += 1.5
-        scores.meeting += 1 // Meeting notes often have bullets
+        scores.meeting += 1
     }
     if (numberedLines > 2) {
         scores.task += 1.5
-        scores.reference += 1 // Step-by-step guides
+        scores.reference += 1
     }
 
     // Check for question marks (idea exploration)
@@ -119,14 +178,13 @@ function classifyWithRules(content: string): ClassificationResult {
 
     // ===== KEYWORD ANALYSIS =====
 
-    // Meeting indicators (high weight)
+    // Meeting indicators
     const meetingKeywords = [
         { word: "meeting", weight: 3 },
         { word: "call", weight: 2 },
         { word: "sync", weight: 2.5 },
         { word: "standup", weight: 3 },
         { word: "1:1", weight: 3 },
-        { word: "one-on-one", weight: 3 },
         { word: "discussed", weight: 2 },
         { word: "attendees", weight: 3 },
         { word: "agenda", weight: 2.5 },
@@ -134,11 +192,7 @@ function classifyWithRules(content: string): ClassificationResult {
         { word: "follow-up", weight: 2 },
         { word: "participants", weight: 2.5 },
         { word: "zoom", weight: 2 },
-        { word: "teams", weight: 1.5 },
-        { word: "meet", weight: 1.5 },
-        { word: "scheduled", weight: 1.5 },
         { word: "recap", weight: 2 },
-        { word: "notes from", weight: 2 },
     ]
     for (const { word, weight } of meetingKeywords) {
         if (lowerContent.includes(word)) {
@@ -155,17 +209,11 @@ function classifyWithRules(content: string): ClassificationResult {
         { word: "[x]", weight: 3 },
         { word: "due", weight: 2 },
         { word: "deadline", weight: 2.5 },
-        { word: "complete", weight: 1.5 },
-        { word: "finish", weight: 1.5 },
         { word: "need to", weight: 2 },
         { word: "must", weight: 1.5 },
-        { word: "should", weight: 1 },
         { word: "priority", weight: 2 },
         { word: "urgent", weight: 2.5 },
-        { word: "asap", weight: 2.5 },
         { word: "reminder", weight: 2 },
-        { word: "don't forget", weight: 2 },
-        { word: "remember to", weight: 2 },
     ]
     for (const { word, weight } of taskKeywords) {
         if (lowerContent.includes(word)) {
@@ -179,19 +227,13 @@ function classifyWithRules(content: string): ClassificationResult {
         { word: "thought", weight: 2 },
         { word: "what if", weight: 2.5 },
         { word: "maybe", weight: 1.5 },
-        { word: "could", weight: 1 },
         { word: "brainstorm", weight: 3 },
         { word: "concept", weight: 2 },
         { word: "hypothesis", weight: 2.5 },
-        { word: "explore", weight: 1.5 },
-        { word: "consider", weight: 1.5 },
         { word: "wonder", weight: 2 },
         { word: "imagine", weight: 2 },
         { word: "potential", weight: 1.5 },
-        { word: "possibility", weight: 1.5 },
         { word: "experiment", weight: 2 },
-        { word: "theory", weight: 2 },
-        { word: "innovation", weight: 2 },
     ]
     for (const { word, weight } of ideaKeywords) {
         if (lowerContent.includes(word)) {
@@ -205,23 +247,15 @@ function classifyWithRules(content: string): ClassificationResult {
         { word: "feeling", weight: 2.5 },
         { word: "felt", weight: 2 },
         { word: "grateful", weight: 3 },
-        { word: "thankful", weight: 3 },
         { word: "reflection", weight: 2.5 },
         { word: "diary", weight: 3 },
-        { word: "personal", weight: 1.5 },
         { word: "mood", weight: 2 },
-        { word: "energy", weight: 1.5 },
-        { word: "sleep", weight: 1.5 },
         { word: "woke up", weight: 2 },
-        { word: "went to", weight: 1 },
         { word: "day was", weight: 2 },
-        { word: "morning", weight: 1.5 },
-        { word: "evening", weight: 1.5 },
         { word: "stressed", weight: 2 },
         { word: "happy", weight: 2 },
         { word: "sad", weight: 2 },
         { word: "excited", weight: 2 },
-        { word: "anxious", weight: 2 },
     ]
     for (const { word, weight } of journalKeywords) {
         if (lowerContent.includes(word)) {
@@ -232,23 +266,15 @@ function classifyWithRules(content: string): ClassificationResult {
     // Reference indicators
     const referenceKeywords = [
         { word: "definition", weight: 2.5 },
-        { word: "meaning", weight: 2 },
         { word: "reference", weight: 2.5 },
         { word: "source", weight: 2 },
-        { word: "link", weight: 1.5 },
         { word: "article", weight: 2 },
-        { word: "book", weight: 2 },
-        { word: "paper", weight: 2 },
         { word: "documentation", weight: 2.5 },
-        { word: "docs", weight: 2 },
-        { word: "api", weight: 2 },
         { word: "guide", weight: 2 },
         { word: "tutorial", weight: 2 },
         { word: "how to", weight: 2 },
         { word: "example", weight: 1.5 },
         { word: "syntax", weight: 2 },
-        { word: "function", weight: 1.5 },
-        { word: "method", weight: 1.5 },
     ]
     for (const { word, weight } of referenceKeywords) {
         if (lowerContent.includes(word)) {
@@ -267,7 +293,7 @@ function classifyWithRules(content: string): ClassificationResult {
         }
     }
 
-    // Calculate confidence based on score magnitude and separation from others
+    // Calculate confidence
     const sortedScores = Object.values(scores).sort((a, b) => b - a)
     const scoreDiff = sortedScores[0] - (sortedScores[1] || 0)
     const confidence = Math.min(0.4 + scoreDiff * 0.1 + maxScore * 0.03, 0.95)
@@ -278,13 +304,4 @@ function classifyWithRules(content: string): ClassificationResult {
     }
 
     return { type: maxType, confidence }
-}
-
-/**
- * AI-based classification (to be implemented)
- */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function classifyWithAI(content: string): Promise<ClassificationResult> {
-    // TODO: Implement ExecuTorch classification
-    return { type: "note", confidence: 0.5 }
 }

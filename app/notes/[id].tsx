@@ -2,6 +2,7 @@ import { Heading } from "@/components/ui/heading"
 import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
 import { getNoteTypeBadge } from "@/lib/ai/classify"
+import { useAI } from "@/lib/ai/provider"
 import { getNoteById, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database"
 import { findRelatedNotes, type SearchResult } from "@/lib/search"
 import * as Haptics from "expo-haptics"
@@ -9,7 +10,7 @@ import { Image } from "expo-image"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { ArrowLeftIcon, EditIcon, MicIcon, RecycleIcon, ScanIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
-import { useCallback, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -45,12 +46,17 @@ export default function NoteDetailScreen() {
     const router = useRouter()
     const isDark = colorScheme === "dark"
 
+    // Get AI embeddings model - use ref to avoid dependency issues
+    const { embeddings } = useAI()
+    const embeddingsRef = useRef(embeddings)
+    embeddingsRef.current = embeddings
+
     const [note, setNote] = useState<Note | null>(null)
     const [tags, setTags] = useState<Tag[]>([])
     const [relatedNotes, setRelatedNotes] = useState<SearchResult[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
-    // Load note
+    // Load note - don't depend on embeddings to avoid infinite loops
     const loadNote = useCallback(async () => {
         if (!id) return
 
@@ -63,15 +69,15 @@ export default function NoteDetailScreen() {
                 const fetchedTags = await getTagsForNote(id)
                 setTags(fetchedTags)
 
-                // Load related notes in background
-                findRelatedNotes(id, 3).then(setRelatedNotes).catch(console.error)
+                // Load related notes in background (using embeddings ref)
+                findRelatedNotes(id, embeddingsRef.current, 3).then(setRelatedNotes).catch(console.error)
             }
         } catch (error) {
             console.error("Failed to load note:", error)
         } finally {
             setIsLoading(false)
         }
-    }, [id])
+    }, [id]) // Only depend on id, not embeddings
 
     // Reload note when screen comes into focus (after editing)
     useFocusEffect(

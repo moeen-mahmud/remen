@@ -1,23 +1,90 @@
 /**
  * Embeddings module for semantic search
  *
- * This module provides text embeddings for semantic similarity search.
- * Currently uses a simplified TF-IDF-like approach for React Native compatibility.
- * Can be upgraded to use proper neural embeddings (like MiniLM) when available.
+ * Uses MiniLM (ALL_MINILM_L6_V2) via ExecutorTorch for real neural embeddings.
+ * Falls back to TF-IDF-like approach when the model isn't ready.
+ *
+ * MiniLM produces 384-dimensional embeddings, which provide much better
+ * semantic similarity compared to the fallback 256-dim hash vectors.
  */
 
+import type { EmbeddingsModel } from "./provider"
+
+// Embedding dimensions
+export const NEURAL_EMBEDDING_DIM = 384 // MiniLM output dimension
+export const FALLBACK_EMBEDDING_DIM = 256 // TF-IDF fallback dimension
+
 /**
- * Generate a simple embedding vector for text
- *
- * Uses a bag-of-words with TF-IDF-like weighting
- * This is a simplified approach that works offline and is fast.
+ * Generate an embedding vector for text using AI
  */
-export async function generateEmbedding(text: string): Promise<number[]> {
+export async function generateEmbedding(text: string, embeddingsModel: EmbeddingsModel | null): Promise<number[]> {
+    // Try neural embeddings if model is ready and not busy
+    if (embeddingsModel?.isReady && !embeddingsModel.isGenerating) {
+        try {
+            const embedding = await embeddingsModel.forward(text)
+            console.log(`📊 [Embeddings] Neural embedding generated: ${embedding.length} dimensions`)
+            return embedding
+        } catch (error) {
+            console.warn("⚠️ [Embeddings] Neural embedding generation failed, using fallback:", error)
+        }
+    } else {
+        console.log(
+            `📊 [Embeddings] Using fallback (model ready: ${embeddingsModel?.isReady || false}, generating: ${embeddingsModel?.isGenerating || false})`,
+        )
+    }
+
+    // Fallback to TF-IDF-like approach
+    const fallback = generateFallbackEmbedding(text)
+    console.log(`📊 [Embeddings] Fallback embedding generated: ${fallback.length} dimensions`)
+    return fallback
+}
+
+/**
+ * Calculate cosine similarity between two embedding vectors
+ * Note: Dimension mismatch (e.g., 256 vs 384) will give poor results!
+ * Always regenerate embeddings to match dimensions before comparing.
+ */
+export function cosineSimilarity(vecA: number[], vecB: number[]): number {
+    // Warn about dimension mismatch - this will give poor results
+    if (vecA.length !== vecB.length) {
+        console.warn(`⚠️ [Embeddings] Dimension mismatch: ${vecA.length} vs ${vecB.length} - results may be poor`)
+    }
+
+    const minLen = Math.min(vecA.length, vecB.length)
+
+    let dotProduct = 0
+    let magA = 0
+    let magB = 0
+
+    for (let i = 0; i < minLen; i++) {
+        dotProduct += vecA[i] * vecB[i]
+        magA += vecA[i] * vecA[i]
+        magB += vecB[i] * vecB[i]
+    }
+
+    const magnitude = Math.sqrt(magA) * Math.sqrt(magB)
+    return magnitude === 0 ? 0 : dotProduct / magnitude
+}
+
+/**
+ * Check if an embedding is from neural model (384-dim) or fallback (256-dim)
+ */
+export function isNeuralEmbedding(embedding: number[]): boolean {
+    return embedding.length === NEURAL_EMBEDDING_DIM
+}
+
+// ============= FALLBACK IMPLEMENTATION =============
+
+/**
+ * Generate a fallback embedding using TF-IDF-like approach
+ * Used when neural model isn't ready
+ */
+function generateFallbackEmbedding(text: string): number[] {
     // Normalize and tokenize
     const tokens = tokenize(text)
 
     // Create a fixed-dimension vector using hash-based approach
-    const embedding = new Array(256).fill(0)
+    const embedding = new Array(FALLBACK_EMBEDDING_DIM).fill(0)
 
     tokens.forEach((token, index) => {
         // Hash each token to a position in the vector
@@ -35,28 +102,6 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 
     // Normalize the vector
     return normalizeVector(embedding)
-}
-
-/**
- * Calculate cosine similarity between two embedding vectors
- */
-export function cosineSimilarity(vecA: number[], vecB: number[]): number {
-    if (vecA.length !== vecB.length) {
-        throw new Error("Vectors must have the same length")
-    }
-
-    let dotProduct = 0
-    let magA = 0
-    let magB = 0
-
-    for (let i = 0; i < vecA.length; i++) {
-        dotProduct += vecA[i] * vecB[i]
-        magA += vecA[i] * vecA[i]
-        magB += vecB[i] * vecB[i]
-    }
-
-    const magnitude = Math.sqrt(magA) * Math.sqrt(magB)
-    return magnitude === 0 ? 0 : dotProduct / magnitude
 }
 
 /**
@@ -176,37 +221,13 @@ const STOP_WORDS = new Set([
     "these",
     "those",
     "am",
-    "is",
-    "are",
-    "was",
-    "were",
-    "be",
-    "been",
     "being",
-    "have",
-    "has",
-    "had",
     "having",
-    "do",
-    "does",
-    "did",
     "doing",
-    "a",
-    "an",
-    "the",
-    "and",
-    "but",
     "if",
-    "or",
     "because",
-    "as",
     "until",
     "while",
-    "of",
-    "at",
-    "by",
-    "for",
-    "with",
     "about",
     "against",
     "between",
@@ -217,13 +238,9 @@ const STOP_WORDS = new Set([
     "after",
     "above",
     "below",
-    "to",
-    "from",
     "up",
     "down",
-    "in",
     "out",
-    "on",
     "off",
     "over",
     "under",

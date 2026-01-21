@@ -1,4 +1,12 @@
+/**
+ * Search module for notes
+ *
+ * Combines semantic search (using neural embeddings) with keyword search
+ * for comprehensive note retrieval. Supports natural language temporal queries.
+ */
+
 import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings"
+import type { EmbeddingsModel } from "@/lib/ai/provider"
 import { getAllNotes, searchNotes as keywordSearch, updateNote, type Note } from "@/lib/database"
 import { parseTemporalQuery, type TemporalFilter } from "@/lib/search/temporal-parser"
 
@@ -12,31 +20,56 @@ export interface EnhancedSearchResult {
     temporalFilter: TemporalFilter | null
 }
 
+/** Filler phrases that indicate a purely time-based query when combined with a temporal filter */
+const TEMPORAL_ONLY_PATTERNS = [
+    /^what\s+(i\s+)?(wrote|was\s+thinking|thought|noted)\s*[?.]?\s*$/i,
+    /^notes?\s+(from|i\s+wrote)\s*[?.]?\s*$/i,
+    /^(from|my\s+notes?)\s*[?.]?\s*$/i,
+]
+
+function isTemporalOnlyRemainder(q: string): boolean {
+    const s = q.replace(/[?.]/g, " ").trim()
+    if (!s) return true
+    return TEMPORAL_ONLY_PATTERNS.some((p) => p.test(q))
+}
+
 /**
  * Search notes using a hybrid approach combining semantic and keyword search
  * Now with natural language temporal parsing support
  */
-export async function searchNotes(query: string): Promise<SearchResult[]> {
-    const enhanced = await searchNotesEnhanced(query)
+export async function searchNotes(query: string, embeddingsModel: EmbeddingsModel | null): Promise<SearchResult[]> {
+    const enhanced = await searchNotesEnhanced(query, embeddingsModel)
     return enhanced.results
 }
 
 /**
  * Enhanced search that returns both results and any detected temporal filter
  */
-export async function searchNotesEnhanced(query: string): Promise<EnhancedSearchResult> {
+export async function searchNotesEnhanced(
+    query: string,
+    embeddingsModel: EmbeddingsModel | null,
+): Promise<EnhancedSearchResult> {
     if (query.trim().length === 0) {
         return { results: [], temporalFilter: null }
     }
 
+    console.log(`🔍 [Search] Starting enhanced search for: "${query}"`)
+    console.log(`🔍 [Search] Embeddings model ready: ${embeddingsModel?.isReady || false}`)
+
     // Parse any temporal expressions from the query
     const temporalFilter = parseTemporalQuery(query)
+    if (temporalFilter) {
+        console.log(`🔍 [Search] Temporal filter detected: ${temporalFilter.description}`)
+    }
 
     // Use the cleaned query (with temporal terms removed) or original
-    const searchQuery = temporalFilter?.query || query
+    const searchQuery = (temporalFilter?.query || query).trim()
 
-    // If we have a temporal filter but no remaining query, just filter by time
-    if (temporalFilter && (!searchQuery || searchQuery.trim().length === 0)) {
+    // If we have a temporal filter and the remaining text is empty or temporal-only
+    // filler ("what i wrote", "what I was thinking", etc.), treat as time-only: filter
+    // all notes by the time range.
+    if (temporalFilter && isTemporalOnlyRemainder(searchQuery)) {
+        console.log(`🔍 [Search] Temporal-only query, filtering notes by time: ${temporalFilter.description}`)
         const allNotes = await getAllNotes()
         const filteredNotes = allNotes.filter(
             (note) => note.created_at >= temporalFilter.startTime && note.created_at <= temporalFilter.endTime,
@@ -54,7 +87,7 @@ export async function searchNotesEnhanced(query: string): Promise<EnhancedSearch
 
     // Run both search methods in parallel
     const [semanticResults, keywordResults] = await Promise.all([
-        semanticSearch(searchQuery),
+        semanticSearch(searchQuery, embeddingsModel),
         keywordSearchWithScoring(searchQuery),
     ])
 
@@ -72,42 +105,64 @@ export async function searchNotesEnhanced(query: string): Promise<EnhancedSearch
 }
 
 /**
- * Semantic search using embeddings
+ * Semantic search using neural embeddings
  */
-async function semanticSearch(query: string): Promise<SearchResult[]> {
+async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | null): Promise<SearchResult[]> {
     try {
+        console.log(`🧠 [Semantic Search] Starting for: "${query}"`)
+
         // Generate query embedding
-        const queryEmbedding = await generateEmbedding(query)
+        const queryEmbedding = await generateEmbedding(query, embeddingsModel)
+        console.log(`🧠 [Semantic Search] Query embedding: ${queryEmbedding.length} dims`)
 
         // Get all notes
         const allNotes = await getAllNotes()
+        console.log(`🧠 [Semantic Search] Comparing against ${allNotes.length} notes`)
 
         // Calculate similarity for each note
         const results: SearchResult[] = []
+        const allScores: { title: string; similarity: number; noteDim: number }[] = []
 
         for (const note of allNotes) {
             // Generate embedding for note if not already done
             let noteEmbedding: number[]
+            let needsRegeneration = false
 
             if (note.embedding) {
                 try {
                     noteEmbedding = JSON.parse(note.embedding)
+                    // Regenerate if dimension mismatch (old fallback vs new neural)
+                    if (noteEmbedding.length !== queryEmbedding.length && embeddingsModel?.isReady) {
+                        needsRegeneration = true
+                    }
                 } catch {
-                    // Invalid embedding, regenerate
-                    noteEmbedding = await generateEmbedding(note.content)
-                    await updateNote(note.id, { embedding: JSON.stringify(noteEmbedding) })
+                    needsRegeneration = true
+                    noteEmbedding = []
                 }
             } else {
-                // Generate and store embedding
-                noteEmbedding = await generateEmbedding(note.content)
+                needsRegeneration = true
+                noteEmbedding = []
+            }
+
+            // Regenerate embedding if needed
+            if (needsRegeneration) {
+                noteEmbedding = await generateEmbedding(note.content, embeddingsModel)
                 await updateNote(note.id, { embedding: JSON.stringify(noteEmbedding) })
             }
 
             // Calculate similarity
             const similarity = cosineSimilarity(queryEmbedding, noteEmbedding)
 
-            // Only include if similarity is above threshold
-            if (similarity > 0.3) {
+            // Track all scores for debugging
+            allScores.push({
+                title: (note.title || note.content.substring(0, 30)).substring(0, 20),
+                similarity: Math.round(similarity * 100) / 100,
+                noteDim: noteEmbedding.length,
+            })
+
+            // Lower threshold for better recall - 0.25 for neural, 0.2 for fallback
+            const threshold = embeddingsModel?.isReady ? 0.25 : 0.2
+            if (similarity > threshold) {
                 results.push({
                     ...note,
                     relevanceScore: similarity,
@@ -116,10 +171,16 @@ async function semanticSearch(query: string): Promise<SearchResult[]> {
             }
         }
 
+        // Log all similarity scores for debugging
+        console.log(`🧠 [Semantic Search] Similarity scores:`, allScores)
+        console.log(
+            `🧠 [Semantic Search] Found ${results.length} semantic matches (threshold: ${embeddingsModel?.isReady ? 0.25 : 0.2})`,
+        )
+
         // Sort by relevance
         return results.sort((a, b) => b.relevanceScore - a.relevanceScore)
     } catch (error) {
-        console.error("Semantic search failed:", error)
+        console.error("❌ [Semantic Search] Failed:", error)
         return []
     }
 }
@@ -130,6 +191,7 @@ async function semanticSearch(query: string): Promise<SearchResult[]> {
 async function keywordSearchWithScoring(query: string): Promise<SearchResult[]> {
     try {
         const results = await keywordSearch(query)
+        console.log(`📝 [Keyword Search] Found ${results.length} keyword matches for: "${query}"`)
 
         return results.map((note) => {
             // Calculate a simple relevance score based on keyword frequency
@@ -203,7 +265,11 @@ function mergeSearchResults(semantic: SearchResult[], keyword: SearchResult[]): 
 /**
  * Find notes related to a given note
  */
-export async function findRelatedNotes(noteId: string, limit: number = 5): Promise<SearchResult[]> {
+export async function findRelatedNotes(
+    noteId: string,
+    embeddingsModel: EmbeddingsModel | null,
+    limit: number = 5,
+): Promise<SearchResult[]> {
     try {
         const allNotes = await getAllNotes()
         const targetNote = allNotes.find((n) => n.id === noteId)
@@ -215,9 +281,19 @@ export async function findRelatedNotes(noteId: string, limit: number = 5): Promi
         // Get or generate target note embedding
         let targetEmbedding: number[]
         if (targetNote.embedding) {
-            targetEmbedding = JSON.parse(targetNote.embedding)
+            try {
+                targetEmbedding = JSON.parse(targetNote.embedding)
+                // Regenerate if we have neural model but old fallback embedding
+                if (targetEmbedding.length === 256 && embeddingsModel?.isReady) {
+                    targetEmbedding = await generateEmbedding(targetNote.content, embeddingsModel)
+                    await updateNote(noteId, { embedding: JSON.stringify(targetEmbedding) })
+                }
+            } catch {
+                targetEmbedding = await generateEmbedding(targetNote.content, embeddingsModel)
+                await updateNote(noteId, { embedding: JSON.stringify(targetEmbedding) })
+            }
         } else {
-            targetEmbedding = await generateEmbedding(targetNote.content)
+            targetEmbedding = await generateEmbedding(targetNote.content, embeddingsModel)
             await updateNote(noteId, { embedding: JSON.stringify(targetEmbedding) })
         }
 
@@ -228,21 +304,34 @@ export async function findRelatedNotes(noteId: string, limit: number = 5): Promi
             if (note.id === noteId) continue // Skip the target note itself
 
             let noteEmbedding: number[]
+            let needsRegeneration = false
+
             if (note.embedding) {
                 try {
                     noteEmbedding = JSON.parse(note.embedding)
+                    // Regenerate if dimension mismatch
+                    if (noteEmbedding.length !== targetEmbedding.length && embeddingsModel?.isReady) {
+                        needsRegeneration = true
+                    }
                 } catch {
-                    noteEmbedding = await generateEmbedding(note.content)
-                    await updateNote(note.id, { embedding: JSON.stringify(noteEmbedding) })
+                    needsRegeneration = true
+                    noteEmbedding = []
                 }
             } else {
-                noteEmbedding = await generateEmbedding(note.content)
+                needsRegeneration = true
+                noteEmbedding = []
+            }
+
+            if (needsRegeneration) {
+                noteEmbedding = await generateEmbedding(note.content, embeddingsModel)
                 await updateNote(note.id, { embedding: JSON.stringify(noteEmbedding) })
             }
 
             const similarity = cosineSimilarity(targetEmbedding, noteEmbedding)
 
-            if (similarity > 0.4) {
+            // Lower threshold for related notes - 0.3 for neural, 0.25 for fallback
+            const threshold = embeddingsModel?.isReady ? 0.3 : 0.25
+            if (similarity > threshold) {
                 results.push({
                     ...note,
                     relevanceScore: similarity,
