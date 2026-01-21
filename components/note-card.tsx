@@ -101,7 +101,7 @@ export const NoteCard: FC<NoteCardProps> = ({
     }
 
     const handlePressOut = () => {
-        scale.value = withSpring(scaleValues.pressedOut, springConfigs.snappy)
+        scale.value = withSpring(scaleValues.pressedOut, springConfigs.gentle)
         shadowOpacity.value = withTiming(0.1, timingConfigs.fast)
     }
 
@@ -115,10 +115,10 @@ export const NoteCard: FC<NoteCardProps> = ({
     }
 
     const handleLongPress = async () => {
-        scale.value = withSpring(0.95, springConfigs.snappy)
+        scale.value = withSpring(0.95, springConfigs.gentle)
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
         setTimeout(() => {
-            scale.value = withSpring(1, springConfigs.snappy)
+            scale.value = withSpring(1, springConfigs.gentle)
         }, 100)
         onLongPress?.(note)
     }

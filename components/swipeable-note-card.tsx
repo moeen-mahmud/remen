@@ -1,13 +1,13 @@
 import { NoteCard, type NoteCardProps } from "@/components/note-card"
 import { Icon } from "@/components/ui/icon"
-import { gestureThresholds, springConfigs, timingConfigs } from "@/lib/animation-config"
+import { gestureThresholds, timingConfigs } from "@/lib/animation-config"
 import * as Haptics from "expo-haptics"
 import { ArchiveIcon, Trash2Icon, UndoIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { type FC, useCallback } from "react"
 import { Dimensions, StyleSheet, Text, View } from "react-native"
 import { Gesture, GestureDetector } from "react-native-gesture-handler"
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated"
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated"
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window")
 const SWIPE_THRESHOLD = SCREEN_WIDTH * gestureThresholds.swipeActionThreshold
@@ -96,10 +96,11 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
                     runOnJS(handleTrash)()
                 }
                 isRemoving.value = true
-                translateX.value = withTiming(SCREEN_WIDTH, timingConfigs.fast)
+                translateX.value = withTiming(SCREEN_WIDTH, timingConfigs.slow)
             } else {
                 // Snap back
-                translateX.value = withSpring(0, springConfigs.snappy)
+                // translateX.value = withSpring(0, springConfigs.gentle)
+                translateX.value = withTiming(0, timingConfigs.normal)
             }
         })
 

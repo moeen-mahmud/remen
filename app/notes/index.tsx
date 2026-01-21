@@ -12,6 +12,7 @@ import {
     ArchiveIcon,
     ListIcon,
     PlusIcon,
+    Recycle,
     SearchIcon,
     SettingsIcon,
     Share2Icon,
@@ -262,10 +263,10 @@ export default function NotesListScreen() {
         {
             id: "trash",
             label: "Recycle Bin",
-            icon: Trash2Icon,
+            icon: Recycle,
             onPress: handleTrash,
-            backgroundColor: isDark ? "#E7000B" : "#F9423C",
-            color: "#fff",
+            backgroundColor: isDark ? "#f7d512" : "#f7d512",
+            color: "#1a1b1c",
         },
     ]
 
