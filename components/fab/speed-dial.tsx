@@ -6,7 +6,8 @@ import { Pressable, StyleSheet, View } from "react-native"
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { FabItem } from "./fab-item"
+import { FabItem } from "@/components/fab/fab-item"
+import { springConfigs } from "@/lib/animation-config"
 import type { SpeedDialProps } from "./types"
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
@@ -30,8 +31,8 @@ export const SpeedDial: FC<SpeedDialProps> = ({
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
         setIsOpen((prev) => {
             const newState = !prev
-            rotation.value = withSpring(newState ? 45 : 0, { damping: 2, stiffness: 10 })
-            scale.value = withSpring(newState ? 1.1 : 1, { damping: 5 })
+            rotation.value = withSpring(newState ? 45 : 0, { ...springConfigs.stiff })
+            scale.value = withSpring(newState ? 1.1 : 1, { ...springConfigs.gentle })
             return newState
         })
     }
@@ -39,8 +40,8 @@ export const SpeedDial: FC<SpeedDialProps> = ({
     const closeMenu = () => {
         if (isOpen) {
             setIsOpen(false)
-            rotation.value = withSpring(0, { damping: 2, stiffness: 10 })
-            scale.value = withSpring(1, { damping: 5 })
+            rotation.value = withSpring(0, { ...springConfigs.stiff })
+            scale.value = withSpring(1, { ...springConfigs.gentle })
         }
     }
 
@@ -109,6 +110,7 @@ const styles = StyleSheet.create({
     },
     container: {
         position: "absolute",
+        marginBottom: 16,
         zIndex: 999,
         alignItems: "flex-end",
     },

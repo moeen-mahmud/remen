@@ -1,5 +1,6 @@
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
+import { springConfigs, timingConfigs } from "@/lib/animation-config"
 import { useColorScheme } from "nativewind"
 import { type FC, useEffect } from "react"
 import { StyleSheet, View } from "react-native"
@@ -14,12 +15,12 @@ import Animated, {
 } from "react-native-reanimated"
 
 interface EmptyStateProps {
-    icon?: string
+    icon?: React.ReactNode
     title: string
     description: string
 }
 
-export const EmptyState: FC<EmptyStateProps> = ({ icon = "📝", title, description }) => {
+export const EmptyState: FC<EmptyStateProps> = ({ icon, title, description }) => {
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
 
@@ -31,24 +32,21 @@ export const EmptyState: FC<EmptyStateProps> = ({ icon = "📝", title, descript
     useEffect(() => {
         // Icon animation - gentle bounce
         iconScale.value = withRepeat(
-            withSequence(
-                withSpring(1.1, { damping: 10, stiffness: 100 }),
-                withSpring(1, { damping: 10, stiffness: 100 }),
-            ),
+            withSequence(withSpring(1.1, springConfigs.bouncy), withSpring(1, springConfigs.bouncy)),
             -1,
             true,
         )
 
         // Subtle rotation
         iconRotation.value = withRepeat(
-            withSequence(withTiming(5, { duration: 1500 }), withTiming(-5, { duration: 1500 })),
+            withSequence(withTiming(5, timingConfigs.slow), withTiming(-5, timingConfigs.slow)),
             -1,
             true,
         )
 
         // Content fade in
-        contentOpacity.value = withDelay(300, withTiming(1, { duration: 500 }))
-        contentTranslateY.value = withDelay(300, withSpring(0, { damping: 15, stiffness: 100 }))
+        contentOpacity.value = withDelay(300, withTiming(1, timingConfigs.slow))
+        contentTranslateY.value = withDelay(300, withSpring(0, springConfigs.gentle))
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 

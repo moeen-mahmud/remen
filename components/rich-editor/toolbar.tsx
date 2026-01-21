@@ -242,22 +242,13 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
 
     const renderItem = ({ item }: ListRenderItemInfo<Item>) => {
         return (
-            <>
-                <Button
-                    className="bg-transparent data-[active=true]:bg-transparent px-3"
-                    size="md"
-                    onPress={handleHideKeyboard}
-                >
-                    <Icon as={ChevronDown} className={"text-typography-0 dark:text-typography-0"} />
-                </Button>
-                <ToolbarButton
-                    text={item.name}
-                    icon={item.icon as any}
-                    isActive={isActive(item)}
-                    isDisabled={isDisabled(item)}
-                    onPress={() => handlePress(item)}
-                />
-            </>
+            <ToolbarButton
+                text={item.name}
+                icon={item.icon as any}
+                isActive={isActive(item)}
+                isDisabled={isDisabled(item)}
+                onPress={() => handlePress(item)}
+            />
         )
     }
 
@@ -269,6 +260,15 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
             showsHorizontalScrollIndicator={false}
             horizontal
             data={STYLE_ITEMS}
+            ListHeaderComponent={() => (
+                <Button
+                    className="bg-transparent data-[active=true]:bg-transparent px-3"
+                    size="md"
+                    onPress={handleHideKeyboard}
+                >
+                    <Icon as={ChevronDown} className={"text-typography-0 dark:text-typography-0"} />
+                </Button>
+            )}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             style={styles.container}

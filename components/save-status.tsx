@@ -1,3 +1,4 @@
+import { springConfigs, timingConfigs } from "@/lib/animation-config"
 import { CheckCircleIcon, CloudIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { type FC, useEffect } from "react"
@@ -27,24 +28,21 @@ export const SaveStatus: FC<SaveStatusProps> = ({ state }) => {
 
     useEffect(() => {
         if (state === "idle") {
-            opacity.value = withTiming(0, { duration: 200 })
+            opacity.value = withTiming(0, timingConfigs.fast)
         } else if (state === "saving") {
-            opacity.value = withTiming(1, { duration: 200 })
-            scale.value = withSpring(1, { damping: 15 })
+            opacity.value = withTiming(1, timingConfigs.fast)
+            scale.value = withSpring(1, springConfigs.snappy)
             // Pulse animation for saving
             iconRotation.value = withSequence(
-                withTiming(10, { duration: 300 }),
-                withTiming(-10, { duration: 300 }),
-                withTiming(0, { duration: 300 }),
+                withTiming(10, timingConfigs.normal),
+                withTiming(-10, timingConfigs.normal),
+                withTiming(0, timingConfigs.normal),
             )
         } else if (state === "saved") {
-            opacity.value = withTiming(1, { duration: 200 })
-            scale.value = withSequence(
-                withSpring(1.2, { damping: 10, stiffness: 200 }),
-                withSpring(1, { damping: 10, stiffness: 200 }),
-            )
+            opacity.value = withTiming(1, timingConfigs.fast)
+            scale.value = withSequence(withSpring(1.2, springConfigs.bouncy), withSpring(1, springConfigs.bouncy))
             // Fade out after 2 seconds
-            opacity.value = withDelay(2000, withTiming(0, { duration: 500 }))
+            opacity.value = withDelay(2000, withTiming(0, timingConfigs.slow))
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [state])

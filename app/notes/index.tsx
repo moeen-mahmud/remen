@@ -8,7 +8,16 @@ import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type 
 import { searchNotesEnhanced } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import { ArchiveIcon, PlusIcon, SearchIcon, SettingsIcon, Share2Icon, Trash2Icon, XIcon } from "lucide-react-native"
+import {
+    ArchiveIcon,
+    ListIcon,
+    PlusIcon,
+    SearchIcon,
+    SettingsIcon,
+    Share2Icon,
+    Trash2Icon,
+    XIcon,
+} from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useState } from "react"
 import {
@@ -239,16 +248,16 @@ export default function NotesListScreen() {
             label: "Settings",
             icon: SettingsIcon,
             onPress: handleSettings,
-            backgroundColor: isDark ? "#272E38" : "#E8E8E8",
-            color: isDark ? "#F8F8F8" : "#161616",
+            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
+            color: isDark ? "#F8F8F8" : "#1a1b1c",
         },
         {
             id: "archives",
             label: "Archives",
             icon: ArchiveIcon,
             onPress: handleArchives,
-            backgroundColor: isDark ? "#272E38" : "#E8E8E8",
-            color: isDark ? "#F8F8F8" : "#161616",
+            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
+            color: isDark ? "#F8F8F8" : "#1a1b1c",
         },
         {
             id: "trash",
@@ -292,7 +301,13 @@ export default function NotesListScreen() {
     // Empty state
     const renderEmptyState = () => (
         <EmptyState
-            icon={searchQuery ? "🔍" : "📝"}
+            icon={
+                searchQuery ? (
+                    <SearchIcon size={56} color={isDark ? "#444" : "#ccc"} />
+                ) : (
+                    <ListIcon size={56} color={isDark ? "#444" : "#ccc"} />
+                )
+            }
             title={searchQuery ? "No notes found" : "No notes yet"}
             description={
                 searchQuery
@@ -493,7 +508,6 @@ const styles = StyleSheet.create({
     },
     listContent: {
         flexGrow: 1,
-        paddingHorizontal: 16,
     },
     listFooter: {
         paddingHorizontal: 16,

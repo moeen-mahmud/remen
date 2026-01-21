@@ -1,3 +1,4 @@
+import { springConfigs, timingConfigs } from "@/lib/animation-config"
 import { useColorScheme } from "nativewind"
 import { type FC } from "react"
 import { StyleSheet, Text, View } from "react-native"
@@ -35,7 +36,7 @@ export const RemenLogo: FC<RemenLogoProps> = ({ size = "md", showIcon = true, an
     // Subtle pulse animation for the icon
     if (animated) {
         scale.value = withRepeat(
-            withSequence(withTiming(1.05, { duration: 1500 }), withTiming(1, { duration: 1500 })),
+            withSequence(withTiming(1.05, timingConfigs.slow), withTiming(1, timingConfigs.slow)),
             -1,
             true,
         )
@@ -113,7 +114,7 @@ export const RemenIcon: FC<{ size?: number; color?: string }> = ({ size = 24, co
 
     // Breathing animation
     scale.value = withRepeat(
-        withSequence(withSpring(1.1, { damping: 10, stiffness: 100 }), withSpring(1, { damping: 10, stiffness: 100 })),
+        withSequence(withSpring(1.1, springConfigs.bouncy), withSpring(1, springConfigs.bouncy)),
         -1,
         true,
     )

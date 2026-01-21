@@ -1,6 +1,7 @@
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
 import { getNoteTypeBadge } from "@/lib/ai/classify"
+import { scaleValues, springConfigs, timingConfigs } from "@/lib/animation-config"
 
 import type { Note, Tag } from "@/lib/database"
 import * as Haptics from "expo-haptics"
@@ -95,13 +96,13 @@ export const NoteCard: FC<NoteCardProps> = ({
     }))
 
     const handlePressIn = () => {
-        scale.value = withSpring(0.98, { damping: 20, stiffness: 300 })
-        shadowOpacity.value = withTiming(0.2, { duration: 100 })
+        scale.value = withSpring(scaleValues.pressedIn, springConfigs.stiff)
+        shadowOpacity.value = withTiming(0.2, timingConfigs.fast)
     }
 
     const handlePressOut = () => {
-        scale.value = withSpring(1, { damping: 15, stiffness: 200 })
-        shadowOpacity.value = withTiming(0.1, { duration: 150 })
+        scale.value = withSpring(scaleValues.pressedOut, springConfigs.snappy)
+        shadowOpacity.value = withTiming(0.1, timingConfigs.fast)
     }
 
     const handlePress = async () => {
@@ -114,10 +115,10 @@ export const NoteCard: FC<NoteCardProps> = ({
     }
 
     const handleLongPress = async () => {
-        scale.value = withSpring(0.95, { damping: 15 })
+        scale.value = withSpring(0.95, springConfigs.snappy)
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
         setTimeout(() => {
-            scale.value = withSpring(1, { damping: 15 })
+            scale.value = withSpring(1, springConfigs.snappy)
         }, 100)
         onLongPress?.(note)
     }

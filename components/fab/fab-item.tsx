@@ -1,10 +1,9 @@
+import { FabItemProps } from "@/components/fab/types"
 import * as Haptics from "expo-haptics"
 import type { LucideIcon } from "lucide-react-native"
 import React, { type FC, isValidElement } from "react"
-import { Pressable, StyleSheet, Text, View } from "react-native"
-import Animated, { FadeIn, FadeOut, SlideInDown, SlideOutDown } from "react-native-reanimated"
-
-import type { FabItemProps } from "./types"
+import { Pressable, StyleSheet, View } from "react-native"
+import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated"
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
@@ -16,7 +15,7 @@ export const FabItem: FC<FabItemProps> = ({ action, index, isOpen, totalItems, o
     }
 
     // Calculate stagger delay based on index (reverse order - bottom items animate first)
-    const delay = (totalItems - 1 - index) * 50
+    const delay = (totalItems - 1 - index) * 100
 
     if (!isOpen) return null
 
@@ -25,7 +24,7 @@ export const FabItem: FC<FabItemProps> = ({ action, index, isOpen, totalItems, o
 
     return (
         <AnimatedPressable
-            entering={SlideInDown.delay(delay).springify().damping(15).stiffness(150)}
+            entering={SlideInDown.delay(delay)}
             exiting={SlideOutDown.delay((totalItems - 1 - index) * 30).duration(200)}
             onPress={handlePress}
             style={({ pressed }) => [
@@ -35,13 +34,12 @@ export const FabItem: FC<FabItemProps> = ({ action, index, isOpen, totalItems, o
             ]}
         >
             {/* Label */}
-            <Animated.View
+            {/* <Animated.View
                 entering={FadeIn.delay(delay + 100).duration(200)}
                 exiting={FadeOut.duration(100)}
                 style={[styles.labelContainer, { backgroundColor: isDark ? "#1a1a1a" : "#ffffff" }]}
             >
-                <Text style={[styles.label, { color: isDark ? "#fff" : "#000" }]}>{action.label}</Text>
-            </Animated.View>
+            </Animated.View> */}
 
             {/* Icon Button */}
             <View
@@ -88,9 +86,10 @@ const styles = StyleSheet.create({
         fontWeight: "600",
     },
     iconButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        width: 60,
+        height: 60,
+        marginBottom: 12,
+        borderRadius: 50,
         alignItems: "center",
         justifyContent: "center",
         shadowColor: "#000",
