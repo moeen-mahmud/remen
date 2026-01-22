@@ -7,9 +7,9 @@ import type { Note, Tag } from "@/lib/database"
 import * as Haptics from "expo-haptics"
 import { CheckCircleIcon, CircleIcon, MicIcon, ScanIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
-import type { FC } from "react"
+import { useEffect, type FC } from "react"
 import { Pressable, StyleSheet, View } from "react-native"
-import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated"
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from "react-native-reanimated"
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
@@ -21,6 +21,7 @@ export interface NoteCardProps {
     isSelectionMode?: boolean
     isSelected?: boolean
     onToggleSelect?: (note: Note) => void
+    isProcessing?: boolean
 }
 
 // Format relative time
@@ -73,6 +74,7 @@ export const NoteCard: FC<NoteCardProps> = ({
     isSelectionMode = false,
     isSelected = false,
     onToggleSelect,
+    isProcessing = false,
 }) => {
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
@@ -89,10 +91,22 @@ export const NoteCard: FC<NoteCardProps> = ({
     // Animation values
     const scale = useSharedValue(1)
     const shadowOpacity = useSharedValue(0.1)
+    const borderAnim = useSharedValue(0)
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
         shadowOpacity: shadowOpacity.value,
+    }))
+
+    const borderStyle = useAnimatedStyle(() => ({
+        borderWidth: isProcessing ? 2 : isSelected ? 2 : StyleSheet.hairlineWidth,
+        borderColor: isProcessing
+            ? `rgba(57, 255, 20, ${borderAnim.value})`
+            : isSelected
+              ? selectedBorderColor
+              : isDark
+                ? "#333"
+                : "#e5e5e5",
     }))
 
     const handlePressIn = () => {
@@ -123,6 +137,17 @@ export const NoteCard: FC<NoteCardProps> = ({
         onLongPress?.(note)
     }
 
+    // Animate border when processing
+    useEffect(() => {
+        if (isProcessing) {
+            borderAnim.value = withTiming(1, { duration: 500 }, () => {
+                borderAnim.value = withRepeat(withTiming(0.3, { duration: 1000 }), -1, true)
+            })
+        } else {
+            borderAnim.value = withTiming(0, { duration: 300 })
+        }
+    }, [isProcessing])
+
     const selectedBorderColor = isDark ? "#39FF14" : "#00B700"
 
     return (
@@ -134,11 +159,10 @@ export const NoteCard: FC<NoteCardProps> = ({
             delayLongPress={400}
             style={[
                 animatedStyle,
+                borderStyle,
                 styles.container,
                 {
                     backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
-                    borderColor: isSelected ? selectedBorderColor : isDark ? "#333" : "#e5e5e5",
-                    borderWidth: isSelected ? 2 : StyleSheet.hairlineWidth,
                     shadowColor: isDark ? "#39FF14" : "#000",
                     shadowOffset: { width: 0, height: 2 },
                     shadowRadius: 8,

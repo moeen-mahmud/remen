@@ -22,8 +22,10 @@ export interface AIModels {
     embeddings: EmbeddingsModel | null
 }
 
+export type ProcessingCompleteCallback = (noteId: string) => void
+
 // Small delay between AI operations to prevent "ModelGenerating" errors
-const AI_OPERATION_DELAY = 100
+const AI_OPERATION_DELAY = 2000
 
 /**
  * Wait for a model to be ready and not generating
@@ -46,8 +48,56 @@ async function waitForModel(
 
 class AIProcessingQueue {
     private queue: NoteJob[] = []
+    private pendingQueue: NoteJob[] = [] // Notes waiting for user to leave editing
     private isProcessing = false
+    private currentJob: NoteJob | null = null
     private models: AIModels = { llm: null, embeddings: null }
+    private onProcessingCompleteCallbacks: ProcessingCompleteCallback[] = []
+    private processingTimeouts: Map<string, NodeJS.Timeout> = new Map()
+    private isOnEditingPage = false
+
+    /**
+     * Set whether the user is currently on an editing page
+     */
+    setOnEditingPage(isOnEditing: boolean) {
+        const wasOnEditing = this.isOnEditingPage
+        this.isOnEditingPage = isOnEditing
+
+        // If user just left editing page, process any pending notes
+        if (wasOnEditing && !isOnEditing && this.pendingQueue.length > 0) {
+            console.log(`📋 [Queue] User left editing page, processing ${this.pendingQueue.length} pending notes`)
+            // Move all pending notes to the processing queue
+            this.pendingQueue.forEach((job) => this.addImmediate(job))
+            this.pendingQueue = []
+        }
+    }
+
+    /**
+     * Add a note to the processing queue (immediate)
+     */
+    private addImmediate(job: NoteJob) {
+        // Check if job already exists to avoid duplicates
+        if (!this.queue.some((j) => j.noteId === job.noteId)) {
+            this.queue.push(job)
+            console.log(
+                `📋 [Queue] Added note to immediate queue: ${job.noteId.substring(0, 8)}... (queue size: ${this.queue.length})`,
+            )
+
+            // Clear any existing timeout for this note
+            const existingTimeout = this.processingTimeouts.get(job.noteId)
+            if (existingTimeout) {
+                clearTimeout(existingTimeout)
+            }
+
+            // Add 2-second delay before processing starts
+            const timeout = setTimeout(() => {
+                this.processingTimeouts.delete(job.noteId)
+                this.processNext()
+            }, 2000)
+
+            this.processingTimeouts.set(job.noteId, timeout as unknown as NodeJS.Timeout)
+        }
+    }
 
     /**
      * Set the AI models to use for processing
@@ -74,17 +124,40 @@ class AIProcessingQueue {
     }
 
     /**
+     * Register a callback to be called when processing completes for a note
+     */
+    onProcessingComplete(callback: ProcessingCompleteCallback) {
+        this.onProcessingCompleteCallbacks.push(callback)
+    }
+
+    /**
+     * Remove a processing complete callback
+     */
+    removeProcessingCompleteCallback(callback: ProcessingCompleteCallback) {
+        const index = this.onProcessingCompleteCallbacks.indexOf(callback)
+        if (index > -1) {
+            this.onProcessingCompleteCallbacks.splice(index, 1)
+        }
+    }
+
+    /**
      * Add a note to the processing queue
      */
-    add(job: NoteJob) {
-        // Check if job already exists to avoid duplicates
-        if (!this.queue.some((j) => j.noteId === job.noteId)) {
-            this.queue.push(job)
-            console.log(
-                `📋 [Queue] Added note to queue: ${job.noteId.substring(0, 8)}... (queue size: ${this.queue.length})`,
-            )
-            this.processNext()
+    add(job: NoteJob, fromEditor = false) {
+        // If from editor and currently on editing page, add to pending queue
+        if (fromEditor && this.isOnEditingPage) {
+            // Check if job already exists in pending queue
+            if (!this.pendingQueue.some((j) => j.noteId === job.noteId)) {
+                this.pendingQueue.push(job)
+                console.log(
+                    `📋 [Queue] Added note to pending queue: ${job.noteId.substring(0, 8)}... (pending: ${this.pendingQueue.length})`,
+                )
+            }
+            return
         }
+
+        // Otherwise, add to immediate processing queue
+        this.addImmediate(job)
     }
 
     /**
@@ -95,15 +168,25 @@ class AIProcessingQueue {
 
         this.isProcessing = true
         const job = this.queue.shift()!
+        this.currentJob = job
 
         console.log(`📋 [Queue] Processing note: ${job.noteId.substring(0, 8)}... (${this.queue.length} remaining)`)
 
         try {
             await this.processNote(job)
+            // Notify callbacks that processing completed
+            this.onProcessingCompleteCallbacks.forEach((callback) => {
+                try {
+                    callback(job.noteId)
+                } catch (error) {
+                    console.error("Error in processing complete callback:", error)
+                }
+            })
         } catch (error) {
             console.error(`❌ [Queue] AI processing failed for note: ${job.noteId.substring(0, 8)}...`, error)
         } finally {
             this.isProcessing = false
+            this.currentJob = null
             // Small delay before processing next to let models settle
             setTimeout(() => this.processNext(), AI_OPERATION_DELAY)
         }
@@ -240,6 +323,10 @@ class AIProcessingQueue {
      */
     clear() {
         this.queue = []
+        this.pendingQueue = []
+        // Clear all timeouts
+        this.processingTimeouts.forEach((timeout) => clearTimeout(timeout))
+        this.processingTimeouts.clear()
     }
 
     /**
@@ -248,7 +335,10 @@ class AIProcessingQueue {
     getStatus() {
         return {
             queueLength: this.queue.length,
+            pendingQueueLength: this.pendingQueue.length,
             isProcessing: this.isProcessing,
+            currentJobId: this.currentJob?.noteId || null,
+            isOnEditingPage: this.isOnEditingPage,
             llmReady: this.models.llm?.isReady || false,
             llmGenerating: this.models.llm?.isGenerating || false,
             embeddingsReady: this.models.embeddings?.isReady || false,

@@ -38,6 +38,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
     isSelectionMode,
     isSelected,
     onToggleSelect,
+    isProcessing,
 }) => {
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
@@ -185,6 +186,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
                         isSelectionMode={isSelectionMode}
                         isSelected={isSelected}
                         onToggleSelect={onToggleSelect}
+                        isProcessing={isProcessing}
                     />
                 </Animated.View>
             </GestureDetector>

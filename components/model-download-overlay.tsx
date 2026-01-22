@@ -1,9 +1,12 @@
 import { RemenLogo } from "@/components/brand/logo"
 import { Text } from "@/components/ui/text"
+import { Minimize2, X } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
-import { useEffect, useRef } from "react"
-import { Animated, Easing, StyleSheet, View } from "react-native"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Animated, Dimensions, Easing, Pressable, StyleSheet, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window")
 
 interface ModelDownloadOverlayProps {
     progress: number // 0 to 1
@@ -11,6 +14,9 @@ interface ModelDownloadOverlayProps {
     embeddingsProgress: number
     ocrProgress: number
     isVisible: boolean
+    onMinimize?: () => void
+    onClose?: () => void
+    isMinimized?: boolean
 }
 
 export function ModelDownloadOverlay({
@@ -19,15 +25,21 @@ export function ModelDownloadOverlay({
     embeddingsProgress,
     ocrProgress,
     isVisible,
+    onMinimize,
+    onClose,
+    isMinimized = false,
 }: ModelDownloadOverlayProps) {
     const { top, bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
 
+    const [internalMinimized, setInternalMinimized] = useState(isMinimized)
+
     // Animation values
     const fadeAnim = useRef(new Animated.Value(1)).current
     const pulseAnim = useRef(new Animated.Value(1)).current
     const progressAnim = useRef(new Animated.Value(0)).current
+    const minimizeAnim = useRef(new Animated.Value(0)).current
 
     // Pulse animation for the logo
     useEffect(() => {
@@ -72,6 +84,32 @@ export function ModelDownloadOverlay({
         }
     }, [isVisible, fadeAnim])
 
+    // Handle minimize
+    const handleMinimize = useCallback(() => {
+        setInternalMinimized(true)
+        onMinimize?.()
+    }, [onMinimize])
+
+    // Handle close
+    const handleClose = useCallback(() => {
+        onClose?.()
+    }, [onClose])
+
+    // Update internal minimized state when prop changes
+    useEffect(() => {
+        setInternalMinimized(isMinimized)
+    }, [isMinimized])
+
+    // Animate minimize state
+    useEffect(() => {
+        Animated.timing(minimizeAnim, {
+            toValue: internalMinimized ? 1 : 0,
+            duration: 300,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+        }).start()
+    }, [internalMinimized, minimizeAnim])
+
     if (!isVisible && progress >= 1) {
         return null
     }
@@ -83,6 +121,22 @@ export function ModelDownloadOverlay({
         outputRange: ["0%", "100%"],
     })
 
+    // Don't render if not visible and progress is complete
+    if (!isVisible && progress >= 1) {
+        return null
+    }
+
+    const minimizedStyle = {
+        transform: [
+            {
+                translateY: minimizeAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -SCREEN_HEIGHT + 120 + top],
+                }),
+            },
+        ],
+    }
+
     return (
         <Animated.View
             style={[
@@ -93,9 +147,24 @@ export function ModelDownloadOverlay({
                     paddingBottom: bottom + 40,
                     opacity: fadeAnim,
                 },
+                internalMinimized && minimizedStyle,
             ]}
             pointerEvents={isVisible ? "auto" : "none"}
         >
+            {/* Header with controls */}
+            <View style={styles.header}>
+                <View style={styles.headerLeft} />
+                <Text style={[styles.headerTitle, { color: isDark ? "#fff" : "#000" }]}>Downloading AI Models</Text>
+                <View style={styles.headerRight}>
+                    <Pressable onPress={handleMinimize} style={styles.headerButton}>
+                        <Minimize2 size={20} color={isDark ? "#fff" : "#000"} />
+                    </Pressable>
+                    <Pressable onPress={handleClose} style={styles.headerButton}>
+                        <X size={20} color={isDark ? "#fff" : "#000"} />
+                    </Pressable>
+                </View>
+            </View>
+
             {/* Logo with pulse animation */}
             <Animated.View style={[styles.logoContainer, { transform: [{ scale: pulseAnim }] }]}>
                 <RemenLogo size="lg" showIcon={true} animated={false} />
@@ -198,6 +267,33 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         paddingHorizontal: 32,
+    },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%",
+        marginBottom: 20,
+    },
+    headerLeft: {
+        width: 40,
+    },
+    headerTitle: {
+        fontSize: 16,
+        fontWeight: "600",
+        textAlign: "center",
+    },
+    headerRight: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+    },
+    headerButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        alignItems: "center",
+        justifyContent: "center",
     },
     logoContainer: {
         marginTop: 60,

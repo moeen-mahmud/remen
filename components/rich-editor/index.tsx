@@ -156,7 +156,7 @@ export default function RichEditor({
 
                     // Queue for AI processing (re-process on update)
                     aiQueue.setModels({ llm, embeddings })
-                    aiQueue.add({ noteId, content: noteContent })
+                    aiQueue.add({ noteId, content: noteContent }, true)
 
                     return noteId
                 } else {
@@ -170,7 +170,7 @@ export default function RichEditor({
 
                     // Queue for AI processing
                     aiQueue.setModels({ llm, embeddings })
-                    aiQueue.add({ noteId: note.id, content: noteContent })
+                    aiQueue.add({ noteId: note.id, content: noteContent }, true)
 
                     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
                     return note.id

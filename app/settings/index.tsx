@@ -1,6 +1,7 @@
 import { RemenLogo } from "@/components/brand/logo"
 import { Box } from "@/components/ui/box"
 import { Text } from "@/components/ui/text"
+import { useAI } from "@/lib/ai/provider"
 import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database"
 import { getPreferences, savePreferences, type Preferences } from "@/lib/preferences"
 import * as Haptics from "expo-haptics"
@@ -8,13 +9,17 @@ import { useRouter } from "expo-router"
 import {
     ArchiveIcon,
     ArrowLeftIcon,
+    CheckCircle,
     ChevronRightIcon,
+    Download,
     MoonIcon,
     SmartphoneIcon,
     SunIcon,
     Trash2Icon,
     TrashIcon,
     VibrateIcon,
+    XCircle,
+    Zap,
 } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useState } from "react"
@@ -26,6 +31,8 @@ export default function SettingsScreen() {
     const { colorScheme, setColorScheme } = useColorScheme()
     const router = useRouter()
     const isDark = colorScheme === "dark"
+
+    const { llm, embeddings, ocr, overallProgress, isInitializing } = useAI()
 
     const [preferences, setPreferences] = useState<Preferences | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -309,6 +316,140 @@ export default function SettingsScreen() {
                     </View>
                 </View>
 
+                {/* AI Section */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, { color: isDark ? "#888" : "#666" }]}>AI MODELS</Text>
+
+                    <View style={[styles.card, { backgroundColor: isDark ? "#1a1a1a" : "#f5f5f5" }]}>
+                        {/* Language Model */}
+                        <View style={styles.modelRow}>
+                            <View style={styles.modelInfo}>
+                                <Text style={[styles.modelName, { color: isDark ? "#fff" : "#000" }]}>
+                                    Language Model
+                                </Text>
+                                <Text style={[styles.modelDescription, { color: isDark ? "#666" : "#999" }]}>
+                                    For smart categorization and titles
+                                </Text>
+                            </View>
+                            <View style={styles.modelStatus}>
+                                {llm?.isReady ? (
+                                    <View style={styles.statusRow}>
+                                        <CheckCircle size={16} color={isDark ? "#39FF14" : "#00B700"} />
+                                        <Text style={[styles.statusText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                                            Ready
+                                        </Text>
+                                    </View>
+                                ) : isInitializing ? (
+                                    <View style={styles.statusRow}>
+                                        <Download size={16} color={isDark ? "#39FF14" : "#00B700"} />
+                                        <Text style={[styles.statusText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                                            {Math.round((llm?.downloadProgress || 0) * 100)}%
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <View style={styles.statusRow}>
+                                        <XCircle size={16} color={isDark ? "#666" : "#999"} />
+                                        <Text style={[styles.statusText, { color: isDark ? "#666" : "#999" }]}>
+                                            Not loaded
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+
+                        <View style={[styles.separator, { backgroundColor: isDark ? "#333" : "#e5e5e5" }]} />
+
+                        {/* Embeddings Model */}
+                        <View style={styles.modelRow}>
+                            <View style={styles.modelInfo}>
+                                <Text style={[styles.modelName, { color: isDark ? "#fff" : "#000" }]}>
+                                    Semantic Search
+                                </Text>
+                                <Text style={[styles.modelDescription, { color: isDark ? "#666" : "#999" }]}>
+                                    For intelligent note discovery
+                                </Text>
+                            </View>
+                            <View style={styles.modelStatus}>
+                                {embeddings?.isReady ? (
+                                    <View style={styles.statusRow}>
+                                        <CheckCircle size={16} color={isDark ? "#39FF14" : "#00B700"} />
+                                        <Text style={[styles.statusText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                                            Ready
+                                        </Text>
+                                    </View>
+                                ) : isInitializing ? (
+                                    <View style={styles.statusRow}>
+                                        <Download size={16} color={isDark ? "#39FF14" : "#00B700"} />
+                                        <Text style={[styles.statusText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                                            {Math.round((embeddings?.downloadProgress || 0) * 100)}%
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <View style={styles.statusRow}>
+                                        <XCircle size={16} color={isDark ? "#666" : "#999"} />
+                                        <Text style={[styles.statusText, { color: isDark ? "#666" : "#999" }]}>
+                                            Not loaded
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+
+                        <View style={[styles.separator, { backgroundColor: isDark ? "#333" : "#e5e5e5" }]} />
+
+                        {/* OCR Model */}
+                        <View style={styles.modelRow}>
+                            <View style={styles.modelInfo}>
+                                <Text style={[styles.modelName, { color: isDark ? "#fff" : "#000" }]}>
+                                    Text Recognition
+                                </Text>
+                                <Text style={[styles.modelDescription, { color: isDark ? "#666" : "#999" }]}>
+                                    For scanning documents
+                                </Text>
+                            </View>
+                            <View style={styles.modelStatus}>
+                                {ocr?.isReady ? (
+                                    <View style={styles.statusRow}>
+                                        <CheckCircle size={16} color={isDark ? "#39FF14" : "#00B700"} />
+                                        <Text style={[styles.statusText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                                            Ready
+                                        </Text>
+                                    </View>
+                                ) : isInitializing ? (
+                                    <View style={styles.statusRow}>
+                                        <Download size={16} color={isDark ? "#39FF14" : "#00B700"} />
+                                        <Text style={[styles.statusText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                                            {Math.round((ocr?.downloadProgress || 0) * 100)}%
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <View style={styles.statusRow}>
+                                        <XCircle size={16} color={isDark ? "#666" : "#999"} />
+                                        <Text style={[styles.statusText, { color: isDark ? "#666" : "#999" }]}>
+                                            Not loaded
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Download Progress */}
+                    {isInitializing && (
+                        <View style={[styles.progressCard, { backgroundColor: isDark ? "#1a2a1a" : "#e8f5e9" }]}>
+                            <View style={styles.progressHeader}>
+                                <Zap size={20} color={isDark ? "#39FF14" : "#00B700"} />
+                                <Text style={[styles.progressTitle, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                                    Downloading AI Models
+                                </Text>
+                            </View>
+                            <Text style={[styles.progressText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                                {Math.round(overallProgress * 100)}% complete • All processing happens on-device
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
                 {/* About Section */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: isDark ? "#888" : "#666" }]}>ABOUT</Text>
@@ -412,5 +553,55 @@ const styles = StyleSheet.create({
     },
     versionText: {
         fontSize: 14,
+    },
+    modelRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: 16,
+    },
+    modelInfo: {
+        flex: 1,
+        marginRight: 16,
+    },
+    modelName: {
+        fontSize: 16,
+        fontWeight: "500",
+        marginBottom: 2,
+    },
+    modelDescription: {
+        fontSize: 13,
+    },
+    modelStatus: {
+        alignItems: "flex-end",
+    },
+    statusRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+    },
+    statusText: {
+        fontSize: 14,
+        fontWeight: "500",
+    },
+    progressCard: {
+        borderRadius: 12,
+        padding: 16,
+        marginTop: 16,
+        marginHorizontal: 16,
+    },
+    progressHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 8,
+    },
+    progressTitle: {
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    progressText: {
+        fontSize: 14,
+        opacity: 0.9,
     },
 })

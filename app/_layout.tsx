@@ -1,5 +1,6 @@
 import { MemoryErrorOverlay } from "@/components/memory-error-overlay"
 import { ModelDownloadOverlay } from "@/components/model-download-overlay"
+import { Onboarding } from "@/components/onboarding"
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider"
 import { AIProvider, useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
@@ -8,7 +9,7 @@ import { getPreferences, savePreferences } from "@/lib/preferences"
 import { Stack } from "expo-router"
 import * as SplashScreen from "expo-splash-screen"
 import { StatusBar } from "expo-status-bar"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import "react-native-get-random-values"
 import { KeyboardProvider } from "react-native-keyboard-controller"
@@ -21,20 +22,28 @@ SplashScreen.preventAutoHideAsync()
  */
 function AppInitializer({ children }: { children: React.ReactNode }) {
     const [isReady, setIsReady] = useState(false)
+    const [showOnboarding, setShowOnboarding] = useState(false)
     const [showDownloadOverlay, setShowDownloadOverlay] = useState(false)
+    const [downloadOverlayMinimized, setDownloadOverlayMinimized] = useState(false)
     const [modelsDownloadedPreviously, setModelsDownloadedPreviously] = useState<boolean | null>(null)
+    const [, setOnboardingCompleted] = useState<boolean | null>(null)
     const { llm, embeddings, ocr, isInitializing, overallProgress, error, hasMemoryError } = useAI()
 
     // Track previous state to avoid duplicate logs
     const prevStateRef = useRef({ llmReady: false, embeddingsReady: false, lastProgress: 0 })
 
-    // Check if models were previously downloaded
+    // Check if models were previously downloaded and onboarding completed
     useEffect(() => {
         async function checkPreferences() {
             const prefs = await getPreferences()
             setModelsDownloadedPreviously(prefs.modelsDownloaded)
-            // Show overlay only if models were NOT previously downloaded
-            if (!prefs.modelsDownloaded) {
+            setOnboardingCompleted(prefs.onboardingCompleted)
+            setDownloadOverlayMinimized(prefs.downloadOverlayMinimized)
+
+            // Show onboarding if not completed, otherwise show download overlay if models not downloaded
+            if (!prefs.onboardingCompleted) {
+                setShowOnboarding(true)
+            } else if (!prefs.modelsDownloaded && !prefs.downloadOverlayMinimized) {
                 setShowDownloadOverlay(true)
             }
         }
@@ -88,6 +97,46 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
         markModelsDownloaded()
     }, [allModelsReady, modelsDownloadedPreviously, hasMemoryError])
 
+    // Handle onboarding completion
+    const handleOnboardingComplete = useCallback(async () => {
+        await savePreferences({ onboardingCompleted: true })
+        setShowOnboarding(false)
+        setOnboardingCompleted(true)
+
+        // Check if we should show download overlay after onboarding
+        const prefs = await getPreferences()
+        if (!prefs.modelsDownloaded) {
+            setShowDownloadOverlay(true)
+        }
+    }, [])
+
+    // Handle onboarding skip
+    const handleOnboardingSkip = useCallback(async () => {
+        await savePreferences({ onboardingCompleted: true })
+        setShowOnboarding(false)
+        setOnboardingCompleted(true)
+
+        // Check if we should show download overlay after onboarding
+        const prefs = await getPreferences()
+        if (!prefs.modelsDownloaded && !prefs.downloadOverlayMinimized) {
+            setShowDownloadOverlay(true)
+        }
+    }, [])
+
+    // Handle download overlay minimize
+    const handleDownloadOverlayMinimize = useCallback(async () => {
+        await savePreferences({ downloadOverlayMinimized: true })
+        setDownloadOverlayMinimized(true)
+        setShowDownloadOverlay(false)
+    }, [])
+
+    // Handle download overlay close
+    const handleDownloadOverlayClose = useCallback(async () => {
+        await savePreferences({ downloadOverlayMinimized: true, modelsDownloaded: true })
+        setDownloadOverlayMinimized(true)
+        setShowDownloadOverlay(false)
+    }, [])
+
     useEffect(() => {
         const prev = prevStateRef.current
 
@@ -130,7 +179,10 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
     return (
         <>
             {children}
-            {/* Show download overlay on first launch while models are downloading (only if no memory error) */}
+            {/* Show onboarding on first launch */}
+            {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} onSkip={handleOnboardingSkip} />}
+
+            {/* Show download overlay after onboarding while models are downloading (only if no memory error) */}
             {showDownloadOverlay && !hasMemoryError && (
                 <ModelDownloadOverlay
                     progress={overallProgress}
@@ -138,6 +190,9 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
                     embeddingsProgress={embeddings?.downloadProgress || 0}
                     ocrProgress={ocr?.downloadProgress || 0}
                     isVisible={showDownloadOverlay && isInitializing && !hasMemoryError}
+                    onMinimize={handleDownloadOverlayMinimize}
+                    onClose={handleDownloadOverlayClose}
+                    isMinimized={downloadOverlayMinimized}
                 />
             )}
 

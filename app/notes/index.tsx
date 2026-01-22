@@ -5,10 +5,11 @@ import { SwipeableNoteCard } from "@/components/swipeable-note-card"
 import { Text } from "@/components/ui/text"
 import { useSelectionMode } from "@/hooks/use-selection-mode"
 import { useAI, useAILLM } from "@/lib/ai/provider"
+import { aiQueue } from "@/lib/ai/queue"
 import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database"
 import { askNotesSearch } from "@/lib/search"
 import * as Haptics from "expo-haptics"
-import { useRouter } from "expo-router"
+import { useFocusEffect, useRouter } from "expo-router"
 import { Archive, Bolt, ListIcon, PlusIcon, Recycle, SearchIcon, Share2Icon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -52,6 +53,7 @@ export default function NotesListScreen() {
     const [isSearching, setIsSearching] = useState(false)
     const [isUsingLLM, setIsUsingLLM] = useState(false)
     const [interpretedQuery, setInterpretedQuery] = useState<string | null>(null)
+    const [processingNoteIds, setProcessingNoteIds] = useState<Set<string>>(new Set())
 
     // Selection mode
     const {
@@ -90,6 +92,48 @@ export default function NotesListScreen() {
     // Initial load
     useEffect(() => {
         loadNotes()
+    }, [loadNotes])
+
+    // Refresh notes when screen comes into focus (e.g., after restoring from archive/trash)
+    useFocusEffect(
+        useCallback(() => {
+            loadNotes()
+        }, [loadNotes]),
+    )
+
+    // Track AI processing queue
+    useEffect(() => {
+        const updateProcessingNotes = () => {
+            const queueStatus = aiQueue.getStatus()
+            const processingIds = new Set<string>()
+            if (queueStatus.currentJobId) {
+                processingIds.add(queueStatus.currentJobId)
+            }
+            setProcessingNoteIds(processingIds)
+        }
+
+        // Listen for processing complete events
+        const handleProcessingComplete = (noteId: string) => {
+            console.log(`📋 [Notes] AI processing completed for note: ${noteId.substring(0, 8)}...`)
+            // Refresh notes to show updated tags/categories
+            loadNotes()
+            // Update processing status
+            updateProcessingNotes()
+        }
+
+        // Register callback
+        aiQueue.onProcessingComplete(handleProcessingComplete)
+
+        // Update immediately
+        updateProcessingNotes()
+
+        // Check periodically for processing status
+        const interval = setInterval(updateProcessingNotes, 1000)
+
+        return () => {
+            clearInterval(interval)
+            aiQueue.removeProcessingCompleteCallback(handleProcessingComplete)
+        }
     }, [loadNotes])
 
     // Filter notes based on search query (using LLM-powered search when appropriate)
@@ -316,6 +360,7 @@ export default function NotesListScreen() {
                 isSelectionMode={isSelectionMode}
                 isSelected={isSelected(item.id)}
                 onToggleSelect={handleToggleSelect}
+                isProcessing={processingNoteIds.has(item.id)}
             />
         ),
         [
@@ -326,6 +371,7 @@ export default function NotesListScreen() {
             isSelectionMode,
             isSelected,
             handleToggleSelect,
+            processingNoteIds,
         ],
     )
 
@@ -333,23 +379,35 @@ export default function NotesListScreen() {
     const keyExtractor = useCallback((item: Note) => item.id, [])
 
     // Empty state
-    const renderEmptyState = () => (
-        <EmptyState
-            icon={
-                searchQuery ? (
-                    <SearchIcon size={56} color={isDark ? "#444" : "#ccc"} />
-                ) : (
-                    <ListIcon size={56} color={isDark ? "#444" : "#ccc"} />
-                )
-            }
-            title={searchQuery ? "No notes found" : "No notes yet"}
-            description={
-                searchQuery
-                    ? "Try a different search term or time expression"
-                    : "Tap the + button to capture your first thought"
-            }
-        />
-    )
+    const renderEmptyState = () => {
+        if (isSearching && searchQuery) {
+            return (
+                <EmptyState
+                    icon={<SearchIcon size={56} color={isDark ? "#39FF14" : "#00B700"} />}
+                    title="AI is searching..."
+                    description="Using intelligent search to find relevant notes"
+                />
+            )
+        }
+
+        return (
+            <EmptyState
+                icon={
+                    searchQuery ? (
+                        <SearchIcon size={56} color={isDark ? "#444" : "#ccc"} />
+                    ) : (
+                        <ListIcon size={56} color={isDark ? "#444" : "#ccc"} />
+                    )
+                }
+                title={searchQuery ? "No notes found" : "No notes yet"}
+                description={
+                    searchQuery
+                        ? "Try a different search term or time expression"
+                        : "Tap the + button to capture your first thought"
+                }
+            />
+        )
+    }
 
     if (isLoading) {
         return (

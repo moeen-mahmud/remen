@@ -7,6 +7,7 @@
  * - OCR for document scanning
  */
 
+import { usePathname } from "expo-router"
 import React, {
     createContext,
     useCallback,
@@ -25,6 +26,7 @@ import {
     useOCR,
     useTextEmbeddings,
 } from "react-native-executorch"
+import { aiQueue } from "./queue"
 
 // Types for the AI context
 export interface Message {
@@ -121,6 +123,7 @@ export function AIProvider({ children }: AIProviderProps) {
     const [isInitializing, setIsInitializing] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [hasMemoryError, setHasMemoryError] = useState(false)
+    const pathname = usePathname()
 
     // Track previous states for logging changes
     const prevStatesRef = useRef({ llmReady: false, embeddingsReady: false, ocrReady: false })
@@ -222,6 +225,17 @@ export function AIProvider({ children }: AIProviderProps) {
         isInitializing,
         hasMemoryError,
     ])
+
+    // Track navigation to pause/resume AI processing on editing pages
+    useEffect(() => {
+        // Check if current route is an editing page
+        const isEditingPage = pathname === "/" || pathname.startsWith("/edit/")
+
+        // Update queue with editing page status
+        if (aiQueue) {
+            aiQueue.setOnEditingPage(isEditingPage)
+        }
+    }, [pathname])
 
     // Store hook references in refs to avoid stale closures (only if hooks are available)
     const llmHookRef = useRef(llmHook)

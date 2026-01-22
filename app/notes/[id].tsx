@@ -3,15 +3,16 @@ import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
 import { getNoteTypeBadge } from "@/lib/ai/classify"
 import { useAI } from "@/lib/ai/provider"
-import { getNoteById, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database"
+import { aiQueue } from "@/lib/ai/queue"
+import { getNoteById, getTagsForNote, moveToTrash, updateNote, type Note, type Tag } from "@/lib/database"
 import { findRelatedNotes, type SearchResult } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
 import { ArrowLeftIcon, EditIcon, MicIcon, RecycleIcon, ScanIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
-import { useCallback, useRef, useState } from "react"
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from "react-native"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 // Format full date
@@ -55,6 +56,9 @@ export default function NoteDetailScreen() {
     const [tags, setTags] = useState<Tag[]>([])
     const [relatedNotes, setRelatedNotes] = useState<SearchResult[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [isProcessingThisNote, setIsProcessingThisNote] = useState(false)
+    const [isEditingTitle, setIsEditingTitle] = useState(false)
+    const [editingTitle, setEditingTitle] = useState("")
 
     // Load note - don't depend on embeddings to avoid infinite loops
     const loadNote = useCallback(async () => {
@@ -85,6 +89,39 @@ export default function NoteDetailScreen() {
             loadNote()
         }, [loadNote]),
     )
+
+    // Track AI processing status for this specific note
+    useEffect(() => {
+        const updateProcessingStatus = () => {
+            if (!id) return
+            const queueStatus = aiQueue.getStatus()
+            setIsProcessingThisNote(queueStatus.currentJobId === id)
+        }
+
+        const handleProcessingComplete = (processedNoteId: string) => {
+            if (processedNoteId === id) {
+                console.log(`📋 [NoteDetail] AI processing completed for current note: ${processedNoteId}`)
+                // Refresh note data to show updated tags/categories
+                loadNote()
+                // Update processing status
+                updateProcessingStatus()
+            }
+        }
+
+        // Register callback for processing completion
+        aiQueue.onProcessingComplete(handleProcessingComplete)
+
+        // Update immediately
+        updateProcessingStatus()
+
+        // Check periodically for processing status changes
+        const interval = setInterval(updateProcessingStatus, 1000)
+
+        return () => {
+            clearInterval(interval)
+            aiQueue.removeProcessingCompleteCallback(handleProcessingComplete)
+        }
+    }, [id, loadNote])
 
     // Handle related note press
     const handleRelatedNotePress = useCallback(
@@ -135,6 +172,32 @@ export default function NoteDetailScreen() {
             ],
         )
     }, [note, router])
+
+    // Handle title editing
+    const handleTitlePress = useCallback(() => {
+        setEditingTitle(note?.title || "")
+        setIsEditingTitle(true)
+    }, [note?.title])
+
+    const handleTitleSave = useCallback(async () => {
+        if (!note || !editingTitle.trim() || isProcessingThisNote) return
+
+        try {
+            const trimmedTitle = editingTitle.trim()
+            await updateNote(note.id, { title: trimmedTitle })
+            setNote({ ...note, title: trimmedTitle })
+            setIsEditingTitle(false)
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        } catch (error) {
+            console.error("Failed to update note title:", error)
+            Alert.alert("Error", "Failed to update title")
+        }
+    }, [note, editingTitle, isProcessingThisNote])
+
+    const handleTitleCancel = useCallback(() => {
+        setIsEditingTitle(false)
+        setEditingTitle(note?.title || "")
+    }, [note?.title])
 
     if (isLoading) {
         return (
@@ -190,11 +253,46 @@ export default function NoteDetailScreen() {
                 )}
 
                 {/* Title */}
-                {note.title && (
-                    <Heading size="xl" style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
-                        {note.title}
-                    </Heading>
-                )}
+                <View style={styles.titleContainer}>
+                    {isEditingTitle ? (
+                        <View style={styles.titleEditContainer}>
+                            <TextInput
+                                style={[styles.titleInput, { color: isDark ? "#fff" : "#000" }]}
+                                value={editingTitle}
+                                onChangeText={setEditingTitle}
+                                placeholder="Enter title..."
+                                placeholderTextColor={isDark ? "#666" : "#999"}
+                                autoFocus
+                                selectTextOnFocus
+                                onSubmitEditing={handleTitleSave}
+                                maxLength={100}
+                            />
+                            <View style={styles.titleActions}>
+                                <Pressable onPress={handleTitleCancel} style={styles.titleActionButton}>
+                                    <Text style={[styles.titleActionText, { color: isDark ? "#666" : "#999" }]}>
+                                        Cancel
+                                    </Text>
+                                </Pressable>
+                                <Pressable onPress={handleTitleSave} style={styles.titleActionButton}>
+                                    <Text style={[styles.titleActionText, { color: "#39FF14" }]}>Save</Text>
+                                </Pressable>
+                            </View>
+                        </View>
+                    ) : note.title ? (
+                        <Pressable onPress={handleTitlePress} style={styles.titlePressable}>
+                            <Heading size="xl" style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
+                                {note.title}
+                            </Heading>
+                            <Text style={[styles.titleHint, { color: isDark ? "#666" : "#999" }]}>Tap to edit</Text>
+                        </Pressable>
+                    ) : (
+                        <Pressable onPress={handleTitlePress} style={styles.titlePlaceholder}>
+                            <Text style={[styles.titlePlaceholderText, { color: isDark ? "#666" : "#999" }]}>
+                                Add a title...
+                            </Text>
+                        </Pressable>
+                    )}
+                </View>
 
                 {/* Unified Type + Tags Row */}
                 <View style={styles.badgesContainer}>
@@ -223,10 +321,21 @@ export default function NoteDetailScreen() {
                 </Pressable>
 
                 {/* Processing status */}
-                {note.is_processed && (
+                {(note.is_processed || isProcessingThisNote) && (
                     <View style={styles.processedContainer}>
-                        <View style={[styles.processedDot, { backgroundColor: "#10B981" }]} />
-                        <Text style={[styles.processedText, { color: isDark ? "#888" : "#666" }]}>AI organized</Text>
+                        {isProcessingThisNote ? (
+                            <>
+                                <ActivityIndicator size="small" color="#39FF14" style={styles.processingIndicator} />
+                                <Text style={[styles.processedText, { color: "#39FF14" }]}>AI organizing...</Text>
+                            </>
+                        ) : (
+                            <>
+                                <View style={[styles.processedDot, { backgroundColor: "#10B981" }]} />
+                                <Text style={[styles.processedText, { color: isDark ? "#888" : "#666" }]}>
+                                    AI organized
+                                </Text>
+                            </>
+                        )}
                     </View>
                 )}
 
@@ -322,9 +431,57 @@ const styles = StyleSheet.create({
         aspectRatio: 16 / 9,
         borderRadius: 16,
     },
-    title: {
+    titleContainer: {
         marginBottom: 16,
+    },
+    titlePressable: {
+        alignItems: "flex-start",
+    },
+    title: {
         lineHeight: 40,
+        textAlign: "left",
+    },
+    titleHint: {
+        fontSize: 12,
+        marginTop: 4,
+        opacity: 0.7,
+    },
+    titleEditContainer: {
+        alignItems: "flex-start",
+    },
+    titleInput: {
+        fontSize: 24,
+        fontWeight: "bold",
+        textAlign: "left",
+        minWidth: "100%",
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#39FF14",
+        backgroundColor: "rgba(57, 255, 20, 0.1)",
+    },
+    titleActions: {
+        flexDirection: "row",
+        gap: 16,
+        marginTop: 12,
+    },
+    titleActionButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+    },
+    titleActionText: {
+        fontSize: 14,
+        fontWeight: "600",
+    },
+    titlePlaceholder: {
+        alignItems: "center",
+        paddingVertical: 16,
+    },
+    titlePlaceholderText: {
+        fontSize: 20,
+        fontStyle: "italic",
+        opacity: 0.7,
     },
     badgesContainer: {
         flexDirection: "row",
@@ -385,6 +542,9 @@ const styles = StyleSheet.create({
     processedText: {
         fontSize: 13,
         fontWeight: "500",
+    },
+    processingIndicator: {
+        marginRight: 10,
     },
     relatedSection: {
         marginTop: 40,

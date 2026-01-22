@@ -7,6 +7,8 @@ export interface Preferences {
     hapticFeedback: boolean
     autoSaveDelay: number // in milliseconds
     modelsDownloaded: boolean // tracks if AI models have been downloaded (first-time only)
+    onboardingCompleted: boolean // tracks if user has completed onboarding
+    downloadOverlayMinimized: boolean // tracks if download overlay has been minimized
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
@@ -14,6 +16,8 @@ const DEFAULT_PREFERENCES: Preferences = {
     hapticFeedback: true,
     autoSaveDelay: 3000,
     modelsDownloaded: false,
+    onboardingCompleted: false,
+    downloadOverlayMinimized: false,
 }
 
 export async function getPreferences(): Promise<Preferences> {
