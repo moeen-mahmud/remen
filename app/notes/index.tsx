@@ -4,9 +4,9 @@ import { SpeedDial, type FabAction } from "@/components/fab"
 import { SwipeableNoteCard } from "@/components/swipeable-note-card"
 import { Text } from "@/components/ui/text"
 import { useSelectionMode } from "@/hooks/use-selection-mode"
-import { useAI } from "@/lib/ai/provider"
+import { useAI, useAILLM } from "@/lib/ai/provider"
 import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database"
-import { searchNotesEnhanced } from "@/lib/search"
+import { askNotesSearch } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
 import { Archive, Bolt, ListIcon, PlusIcon, Recycle, SearchIcon, Share2Icon, XIcon } from "lucide-react-native"
@@ -35,10 +35,13 @@ export default function NotesListScreen() {
     const router = useRouter()
     const isDark = colorScheme === "dark"
 
-    // Get AI embeddings model for search - use ref to avoid dependency issues
+    // Get AI models for search - use ref to avoid dependency issues
     const { embeddings } = useAI()
+    const llm = useAILLM()
     const embeddingsRef = useRef(embeddings)
+    const llmRef = useRef(llm)
     embeddingsRef.current = embeddings
+    llmRef.current = llm
 
     const [notes, setNotes] = useState<NoteWithTags[]>([])
     const [filteredNotes, setFilteredNotes] = useState<NoteWithTags[]>([])
@@ -47,6 +50,8 @@ export default function NotesListScreen() {
     const [searchQuery, setSearchQuery] = useState("")
     const [temporalFilterDescription, setTemporalFilterDescription] = useState<string | null>(null)
     const [isSearching, setIsSearching] = useState(false)
+    const [isUsingLLM, setIsUsingLLM] = useState(false)
+    const [interpretedQuery, setInterpretedQuery] = useState<string | null>(null)
 
     // Selection mode
     const {
@@ -87,28 +92,38 @@ export default function NotesListScreen() {
         loadNotes()
     }, [loadNotes])
 
-    // Filter notes based on search query (using enhanced hybrid search with temporal parsing)
+    // Filter notes based on search query (using LLM-powered search when appropriate)
     // Use debounced search to prevent rapid re-renders
     useEffect(() => {
         if (searchQuery.trim() === "") {
             setFilteredNotes(notes)
             setTemporalFilterDescription(null)
             setIsSearching(false)
+            setIsUsingLLM(false)
+            setInterpretedQuery(null)
             return
         }
 
         setIsSearching(true)
+        setIsUsingLLM(false)
+        setInterpretedQuery(null)
 
         // Debounce search
         const timeoutId = setTimeout(async () => {
             try {
                 console.log("🔍 [Search] Searching for:", searchQuery)
-                // Use enhanced hybrid search with temporal parsing (with AI embeddings via ref)
-                const { results, temporalFilter } = await searchNotesEnhanced(searchQuery, embeddingsRef.current)
-                console.log(`🔍 [Search] Found ${results.length} results`)
 
-                // Update temporal filter description for UI
+                // Use LLM-powered search if LLM is available
+                const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current, llmRef.current)
+                const { results, temporalFilter, interpretedQuery: llmInterpretedQuery } = searchResult
+
+                console.log(`🔍 [Search] Found ${results.length} results`)
+                console.log(`🤖 [Search] Interpreted query:`, llmInterpretedQuery)
+
+                // Update UI state
                 setTemporalFilterDescription(temporalFilter?.description || null)
+                setIsUsingLLM(!!llmInterpretedQuery)
+                setInterpretedQuery(llmInterpretedQuery || null)
 
                 // Match results with notes to get tags
                 const resultIds = new Set(results.map((r) => r.id))
@@ -123,6 +138,8 @@ export default function NotesListScreen() {
             } catch (error) {
                 console.error("❌ [Search] Search failed:", error)
                 setTemporalFilterDescription(null)
+                setIsUsingLLM(false)
+                setInterpretedQuery(null)
                 // Fallback to simple filtering
                 const query = searchQuery.toLowerCase()
                 const filtered = notes.filter(
@@ -138,7 +155,7 @@ export default function NotesListScreen() {
         }, 300) // 300ms debounce
 
         return () => clearTimeout(timeoutId)
-    }, [searchQuery, notes]) // Remove embeddings from dependency array
+    }, [searchQuery, notes]) // Remove AI models from dependency array
 
     // Handle refresh
     const handleRefresh = useCallback(() => {
@@ -384,7 +401,7 @@ export default function NotesListScreen() {
                 <SearchIcon size={18} color={isDark ? "#888" : "#666"} style={styles.searchIcon} />
                 <TextInput
                     style={[styles.searchInput, { color: isDark ? "#fff" : "#000" }]}
-                    placeholder="Enter your query..."
+                    placeholder="Ask me anything..."
                     placeholderTextColor={isDark ? "#888" : "#999"}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
@@ -392,18 +409,32 @@ export default function NotesListScreen() {
                     autoCorrect={false}
                 />
                 {isSearching ? (
-                    <ActivityIndicator size="small" color={isDark ? "#888" : "#666"} />
+                    <View style={styles.searchIndicator}>
+                        {isUsingLLM && (
+                            <Text style={[styles.aiIndicator, { color: isDark ? "#39FF14" : "#00B700" }]}>AI</Text>
+                        )}
+                        <ActivityIndicator
+                            size="small"
+                            color={isUsingLLM ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#888" : "#666"}
+                        />
+                    </View>
                 ) : searchQuery ? (
                     <Pressable onPress={() => setSearchQuery("")}>
                         <XIcon size={22} color={isDark ? "#888" : "#666"} />
                     </Pressable>
                 ) : null}
             </View>
-            {/* helper text */}
-            {!temporalFilterDescription ? (
+            {/* Helper text or AI interpretation */}
+            {interpretedQuery ? (
                 <View style={[styles.temporalFilter, { backgroundColor: isDark ? "#1a2a1a" : "#e8f5e9" }]}>
                     <Text style={[styles.temporalFilterText, { color: isDark ? "#39FF14" : "#00B700" }]}>
-                        {`Instead of searching, ask a question. Try "What I wrote on [date]" or "What I was thinking about [topic]".`}
+                        🤖 AI interpreted as: &ldquo;{interpretedQuery}&rdquo;
+                    </Text>
+                </View>
+            ) : !temporalFilterDescription && searchQuery ? null : !temporalFilterDescription ? (
+                <View style={[styles.temporalFilter, { backgroundColor: isDark ? "#1a2a1a" : "#e8f5e9" }]}>
+                    <Text style={[styles.temporalFilterText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                        {`Try asking questions like "What I wrote about work last week" or "Find my ideas about travel"`}
                     </Text>
                 </View>
             ) : null}
@@ -548,5 +579,15 @@ const styles = StyleSheet.create({
     listFooterText: {
         textAlign: "center",
         fontSize: 14,
+    },
+    searchIndicator: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+    },
+    aiIndicator: {
+        fontSize: 10,
+        fontWeight: "700",
+        letterSpacing: 0.5,
     },
 })

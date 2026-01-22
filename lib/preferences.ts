@@ -6,12 +6,14 @@ export interface Preferences {
     theme: "system" | "light" | "dark"
     hapticFeedback: boolean
     autoSaveDelay: number // in milliseconds
+    modelsDownloaded: boolean // tracks if AI models have been downloaded (first-time only)
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
     theme: "system",
     hapticFeedback: true,
     autoSaveDelay: 3000,
+    modelsDownloaded: false,
 }
 
 export async function getPreferences(): Promise<Preferences> {

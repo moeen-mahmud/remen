@@ -6,7 +6,8 @@
  */
 
 import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings"
-import type { EmbeddingsModel } from "@/lib/ai/provider"
+import type { EmbeddingsModel, LLMModel } from "@/lib/ai/provider"
+import { interpretQuery, shouldUseLLM, type AskNotesResult } from "@/lib/ask-notes"
 import { getAllNotes, searchNotes as keywordSearch, updateNote, type Note } from "@/lib/database"
 import { parseTemporalQuery, type TemporalFilter } from "@/lib/search/temporal-parser"
 
@@ -18,6 +19,7 @@ export interface SearchResult extends Note {
 export interface EnhancedSearchResult {
     results: SearchResult[]
     temporalFilter: TemporalFilter | null
+    interpretedQuery?: string // For LLM-interpreted queries
 }
 
 /** Filler phrases that indicate a purely time-based query when combined with a temporal filter */
@@ -260,6 +262,79 @@ function mergeSearchResults(semantic: SearchResult[], keyword: SearchResult[]): 
     return Array.from(resultMap.values())
         .sort((a, b) => b.relevanceScore - a.relevanceScore)
         .slice(0, 50) // Limit results
+}
+
+/**
+ * Enhanced search with LLM-powered query interpretation
+ * Uses LLM to understand natural language queries before searching
+ */
+export async function askNotesSearch(
+    query: string,
+    embeddingsModel: EmbeddingsModel | null,
+    llmModel: LLMModel | null,
+): Promise<EnhancedSearchResult> {
+    if (query.trim().length === 0) {
+        return { results: [], temporalFilter: null }
+    }
+
+    console.log(`🤖 [Ask Notes Search] Starting LLM-powered search for: "${query}"`)
+    console.log(`🤖 [Ask Notes Search] Should use LLM: ${shouldUseLLM(query)}`)
+
+    // Check if we should use LLM interpretation
+    if (!shouldUseLLM(query) || !llmModel?.isReady) {
+        console.log(`🤖 [Ask Notes Search] Falling back to regular search`)
+        return searchNotesEnhanced(query, embeddingsModel)
+    }
+
+    try {
+        // Use LLM to interpret the query
+        const interpretation: AskNotesResult = await interpretQuery(query, llmModel)
+        console.log(`🤖 [Ask Notes Search] LLM interpretation complete:`, interpretation)
+
+        // Create a combined search query from the interpreted terms
+        let combinedQuery = interpretation.searchTerms.join(" ")
+
+        // Add topics to search terms if they're distinct
+        const uniqueTopics = interpretation.topics.filter(
+            (topic) => !interpretation.searchTerms.some((term) => term.toLowerCase().includes(topic.toLowerCase())),
+        )
+        if (uniqueTopics.length > 0) {
+            combinedQuery += " " + uniqueTopics.join(" ")
+        }
+
+        console.log(`🤖 [Ask Notes Search] Combined search query: "${combinedQuery}"`)
+
+        // Perform the actual search with the interpreted query
+        const searchResult = await searchNotesEnhanced(combinedQuery, embeddingsModel)
+
+        // If we have a temporal hint from LLM, try to parse it
+        let temporalFilter = searchResult.temporalFilter
+        if (interpretation.temporalHint && !temporalFilter) {
+            // Try to parse the temporal hint as a query
+            const temporalQuery = `notes from ${interpretation.temporalHint}`
+            temporalFilter = parseTemporalQuery(temporalQuery)
+            if (temporalFilter) {
+                console.log(`🤖 [Ask Notes Search] Applied LLM temporal hint: ${temporalFilter.description}`)
+                // Re-filter results with temporal constraint
+                searchResult.results = searchResult.results.filter(
+                    (result) =>
+                        result.created_at >= temporalFilter!.startTime && result.created_at <= temporalFilter!.endTime,
+                )
+            }
+        }
+
+        // Add interpretation metadata to the result
+        return {
+            ...searchResult,
+            temporalFilter,
+            // Store the interpreted query for UI display
+            interpretedQuery: interpretation.interpretedQuery,
+        }
+    } catch (error) {
+        console.error("❌ [Ask Notes Search] LLM interpretation failed, falling back:", error)
+        // Fallback to regular search
+        return searchNotesEnhanced(query, embeddingsModel)
+    }
 }
 
 /**

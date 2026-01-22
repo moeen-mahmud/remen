@@ -2,7 +2,7 @@
  * AI Provider Context
  *
  * Initializes and provides access to all ExecutorTorch AI models:
- * - LLM (Llama 3.2 1B) for title generation, classification, and tag extraction
+ * - LLM (SmallLM 2.1 360M) for title generation, classification, and tag extraction
  * - Text Embeddings (MiniLM) for semantic search
  * - OCR for document scanning
  */
@@ -17,7 +17,14 @@ import React, {
     useState,
     type ReactNode,
 } from "react"
-import { ALL_MINILM_L6_V2, LLAMA3_2_1B, OCR_ENGLISH, useLLM, useOCR, useTextEmbeddings } from "react-native-executorch"
+import {
+    ALL_MINILM_L6_V2,
+    OCR_ENGLISH,
+    SMOLLM2_1_135M_QUANTIZED,
+    useLLM,
+    useOCR,
+    useTextEmbeddings,
+} from "react-native-executorch"
 
 // Types for the AI context
 export interface Message {
@@ -67,6 +74,7 @@ export interface AIContextType {
     isInitializing: boolean
     overallProgress: number
     error: string | null
+    hasMemoryError: boolean
 }
 
 const AIContext = createContext<AIContextType>({
@@ -76,6 +84,7 @@ const AIContext = createContext<AIContextType>({
     isInitializing: true,
     overallProgress: 0,
     error: null,
+    hasMemoryError: false,
 })
 
 export function useAI(): AIContextType {
@@ -111,35 +120,37 @@ interface AIProviderProps {
 export function AIProvider({ children }: AIProviderProps) {
     const [isInitializing, setIsInitializing] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [hasMemoryError, setHasMemoryError] = useState(false)
 
     // Track previous states for logging changes
     const prevStatesRef = useRef({ llmReady: false, embeddingsReady: false, ocrReady: false })
 
     // Initialize LLM (Llama 3.2 1B)
     const llmHook = useLLM({
-        model: LLAMA3_2_1B,
+        model: SMOLLM2_1_135M_QUANTIZED,
     })
 
-    // Initialize Text Embeddings (MiniLM)
     const embeddingsHook = useTextEmbeddings({
         model: ALL_MINILM_L6_V2,
     })
 
-    // Initialize OCR
     const ocrHook = useOCR({
         model: OCR_ENGLISH,
     })
 
     // Track overall initialization progress
     const overallProgress =
-        ((llmHook.downloadProgress || 0) + (embeddingsHook.downloadProgress || 0) + (ocrHook.downloadProgress || 0)) / 3
+        ((llmHook?.downloadProgress || 0) +
+            (embeddingsHook?.downloadProgress || 0) +
+            (ocrHook?.downloadProgress || 0)) /
+        3
 
     // Log model status changes
     useEffect(() => {
         const prev = prevStatesRef.current
 
         // Log LLM status changes
-        if (llmHook.isReady !== prev.llmReady) {
+        if (llmHook && llmHook.isReady !== prev.llmReady) {
             if (llmHook.isReady) {
                 console.log("✅ [AI] LLM (Llama 3.2 1B) is READY")
             } else {
@@ -149,7 +160,7 @@ export function AIProvider({ children }: AIProviderProps) {
         }
 
         // Log Embeddings status changes
-        if (embeddingsHook.isReady !== prev.embeddingsReady) {
+        if (embeddingsHook && embeddingsHook.isReady !== prev.embeddingsReady) {
             if (embeddingsHook.isReady) {
                 console.log("✅ [AI] Embeddings (MiniLM) is READY")
             } else {
@@ -161,7 +172,7 @@ export function AIProvider({ children }: AIProviderProps) {
         }
 
         // Log OCR status changes
-        if (ocrHook.isReady !== prev.ocrReady) {
+        if (ocrHook && ocrHook.isReady !== prev.ocrReady) {
             if (ocrHook.isReady) {
                 console.log("✅ [AI] OCR (English) is READY")
             } else {
@@ -170,17 +181,17 @@ export function AIProvider({ children }: AIProviderProps) {
             prev.ocrReady = ocrHook.isReady
         }
     }, [
-        llmHook.isReady,
-        llmHook.downloadProgress,
-        embeddingsHook.isReady,
-        embeddingsHook.downloadProgress,
-        ocrHook.isReady,
-        ocrHook.downloadProgress,
+        llmHook?.isReady,
+        llmHook?.downloadProgress,
+        embeddingsHook?.isReady,
+        embeddingsHook?.downloadProgress,
+        ocrHook?.isReady,
+        ocrHook?.downloadProgress,
     ])
 
     // Check if all models are ready
     useEffect(() => {
-        const allReady = llmHook.isReady && embeddingsHook.isReady && ocrHook.isReady
+        const allReady = llmHook?.isReady && embeddingsHook?.isReady && ocrHook?.isReady
 
         if (allReady && isInitializing) {
             setIsInitializing(false)
@@ -188,30 +199,39 @@ export function AIProvider({ children }: AIProviderProps) {
         }
 
         // Check for errors
-        const errors = [llmHook.error, embeddingsHook.error, ocrHook.error].filter(Boolean)
+        const errors = [llmHook?.error, embeddingsHook?.error, ocrHook?.error].filter(Boolean)
         if (errors.length > 0) {
-            setError(errors.join("; "))
+            const errorMessages = errors.map((error) => (error as unknown as Error).message)
+            setError(errorMessages.join("; "))
             console.error("❌ [AI] Model loading errors:", errors)
+
+            // Check for memory errors
+            const hasBadAlloc = errorMessages.some((message) => message.includes("bad_alloc"))
+            if (hasBadAlloc && !hasMemoryError) {
+                setHasMemoryError(true)
+                console.error("🚨 [AI] Memory allocation error detected - models require too much RAM")
+            }
         }
     }, [
-        llmHook.isReady,
-        embeddingsHook.isReady,
-        ocrHook.isReady,
-        llmHook.error,
-        embeddingsHook.error,
-        ocrHook.error,
+        llmHook?.isReady,
+        embeddingsHook?.isReady,
+        ocrHook?.isReady,
+        llmHook?.error,
+        embeddingsHook?.error,
+        ocrHook?.error,
         isInitializing,
+        hasMemoryError,
     ])
 
-    // Store hook references in refs to avoid stale closures
+    // Store hook references in refs to avoid stale closures (only if hooks are available)
     const llmHookRef = useRef(llmHook)
     const embeddingsHookRef = useRef(embeddingsHook)
     const ocrHookRef = useRef(ocrHook)
 
-    // Keep refs updated
-    llmHookRef.current = llmHook
-    embeddingsHookRef.current = embeddingsHook
-    ocrHookRef.current = ocrHook
+    // Keep refs updated (only if hooks exist)
+    if (llmHook) llmHookRef.current = llmHook
+    if (embeddingsHook) embeddingsHookRef.current = embeddingsHook
+    if (ocrHook) ocrHookRef.current = ocrHook
 
     // Memoized generate function for LLM
     const llmGenerate = useCallback(async (messages: Message[]): Promise<string> => {
@@ -311,8 +331,9 @@ export function AIProvider({ children }: AIProviderProps) {
             isInitializing,
             overallProgress,
             error,
+            hasMemoryError,
         }),
-        [llm, embeddings, ocr, isInitializing, overallProgress, error],
+        [llm, embeddings, ocr, isInitializing, overallProgress, error, hasMemoryError],
     )
 
     return <AIContext.Provider value={contextValue}>{children}</AIContext.Provider>

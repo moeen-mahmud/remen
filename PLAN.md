@@ -111,7 +111,7 @@ Three buttons:
 **Technical Requirements:**
 
 - `@react-native-voice/voice` for speech recognition
-- `@react-native-ml-kit/text-recognition` for OCR
+- `react-native-executorch` for OCR
 - `react-native-vision-camera` for camera access
 - Haptic feedback on button press
 
@@ -135,35 +135,6 @@ Camera workflow:
 - Language identification
 - Structured text parsing (lists, tables)
 
-**Implementation:**
-
-```javascript
-import TextRecognition from '@react-native-ml-kit/text-recognition';
-import EntityExtraction from '@react-native-ml-kit/entity-extraction';
-
-async function processScannedNote(imagePath) {
-  // Step 1: OCR
-  const ocrResult = await TextRecognition.recognize(imagePath);
-  const extractedText = ocrResult.text;
-  
-  // Step 2: Extract entities (dates, emails, etc.)
-  const entities = await EntityExtraction.extractEntities(
-    extractedText,
-    ['date', 'email', 'phone', 'address', 'url']
-  );
-  
-  // Step 3: Detect structure (lists, headings)
-  const structure = analyzeTextStructure(ocrResult.blocks);
-  
-  return {
-    text: extractedText,
-    entities: entities,
-    structure: structure,
-    originalImage: imagePath,
-    confidence: ocrResult.blocks.map(b => b.confidence).reduce((a,b) => a+b) / ocrResult.blocks.length
-  };
-}
-
 function analyzeTextStructure(blocks) {
   // Detect bullet points, numbered lists, headings
   const lines = blocks.map(block => ({
@@ -175,6 +146,7 @@ function analyzeTextStructure(blocks) {
   
   return lines;
 }
+
 ```
 
 #### 1.4 Entity-Based Auto-Tagging
@@ -239,7 +211,7 @@ Gemini Nano is available via:
 ```bash
 
 # iOS Use smaller ExecuTorch model or react native ml kit
-bun install react-native-executorch || bun install @react-native-ml-kit/text-recognition
+bun install react-native-executorch
 ```
 
 **Model Setup:**
@@ -387,47 +359,7 @@ async function processNoteWithAI(noteId, noteContent) {
     return await fallbackProcessing(noteId, noteContent);
   }
 }
-```
 
-#### 2.3 Fallback for iOS (ExecuTorch)
-
-**Since Gemini Nano may not be on iOS yet**
-
-Use a lightweight Llama model via ExecuTorch:
-
-```javascript
-import { ExecuTorch } from 'react-native-executorch';
-
-// Download once on first launch (~50MB)
-await ExecuTorch.downloadModel('llama-3.2-1b');
-
-async function generateTitleFallback(noteContent) {
-  const result = await ExecuTorch.generate({
-    model: 'llama-3.2-1b',
-    prompt: `Title (max 50 chars):\n${noteContent.substring(0, 300)}\n\nTitle:`,
-    maxTokens: 20,
-    temperature: 0.3
-  });
-  
-  return result.text.trim();
-}
-```
-
-**Platform Detection:**
-
-```javascript
-import { Platform } from 'react-native';
-
-const useGeminiNano = Platform.OS === 'android' && Platform.Version >= 34;
-
-async function generateTitle(content) {
-  if (useGeminiNano) {
-    return await generateTitleWithGemini(content);
-  } else {
-    return await generateTitleWithExecuTorch(content);
-  }
-}
-```
 
 ---
 
@@ -747,12 +679,12 @@ CREATE INDEX idx_notes_type ON notes(type);
 **AI Services:**
 
 - **ML Kit** (text recognition, entity extraction)
-  - `@react-native-ml-kit/text-recognition`
-  - `@react-native-ml-kit/entity-extraction`
+  - `react-native-executorch`
+  - `react-native-executorch`
 - **Gemini Nano** (Android on-device LLM)
   - `@google/generative-ai-edge`
 - **ExecuTorch** (iOS fallback LLM)
-  - `react-native-executorch` with Llama 3.2 1B
+  - `react-native-executorch` with SmolLM 360M
 - **Transformers.js** (on-device embeddings)
   - `@xenova/transformers`
 - **Claude API** (premium features only)
@@ -767,8 +699,6 @@ CREATE INDEX idx_notes_type ON notes(type);
     "expo": "~50.0.0",
     "@react-native-voice/voice": "^3.2.4",
     "react-native-vision-camera": "^3.8.0",
-    "@react-native-ml-kit/text-recognition": "^0.6.0",
-    "@react-native-ml-kit/entity-extraction": "^0.4.0",
     "@google/generative-ai-edge": "^0.1.0",
     "react-native-executorch": "^0.3.0",
     "@xenova/transformers": "^2.10.0",
@@ -796,7 +726,7 @@ CREATE INDEX idx_notes_type ON notes(type);
 - [x] Setup SQLite database + schema
 - [x] Implement basic save/load
 - [x] Add voice recording (basic)
-- [x] Integrate ML Kit text recognition
+- [x] Integrate ExecutorTorch OCR
 
 ### Week 2: ML Kit Integration
 

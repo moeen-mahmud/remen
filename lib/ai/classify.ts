@@ -1,7 +1,7 @@
 /**
  * Classify the type of a note based on its content
  *
- * Uses Llama 3.2 1B via ExecutorTorch for intelligent classification.
+ * Uses SmolLM 360M via ExecutorTorch for intelligent classification.
  * Falls back to rule-based classification when the model isn't ready.
  * Voice and scan types are set explicitly when creating notes.
  */

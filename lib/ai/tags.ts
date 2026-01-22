@@ -1,7 +1,7 @@
 /**
  * Extract relevant tags from note content
  *
- * Uses Llama 3.2 1B via ExecutorTorch for intelligent tag extraction.
+ * Uses SmolLM 360M via ExecutorTorch for intelligent tag extraction.
  * Falls back to rule-based extraction when the model isn't ready.
  */
 

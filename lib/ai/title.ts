@@ -1,7 +1,7 @@
 /**
  * Generate a title for a note
  *
- * Uses Llama 3.2 1B via ExecutorTorch for intelligent title generation.
+ * Uses SmolLM 360M via ExecutorTorch for intelligent title generation.
  * Falls back to rule-based extraction when the model isn't ready.
  */
 
@@ -41,7 +41,7 @@ export async function generateTitle(content: string, llm: LLMModel | null): Prom
 }
 
 /**
- * Generate title using LLM (Llama 3.2 1B via ExecutorTorch)
+ * Generate title using LLM (SmolLM 360M via ExecutorTorch)
  */
 async function generateTitleWithAI(content: string, llm: LLMModel): Promise<string | null> {
     const messages: Message[] = [
