@@ -6,7 +6,7 @@ import { createNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { useRouter } from "expo-router"
-import { CameraIcon, CheckIcon, RefreshCwIcon, XIcon } from "lucide-react-native"
+import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from "react-native"
@@ -178,7 +178,16 @@ export default function ScanCaptureScreen() {
                 />
 
                 {/* Camera overlay with guide */}
-                <View style={styles.cameraOverlay}>
+                <View style={styles.mask}>
+                    <View style={styles.maskTop} />
+                    <View style={styles.maskMiddle}>
+                        <View style={styles.maskSide} />
+                        <View style={styles.scanFrame} />
+                        <View style={styles.maskSide} />
+                    </View>
+                    <View style={styles.maskBottom} />
+                </View>
+                {/* <View style={styles.cameraOverlay}>
                     <View style={styles.guideBox}>
                         <View style={[styles.guideCorner, styles.guideTopLeft]} />
                         <View style={[styles.guideCorner, styles.guideTopRight]} />
@@ -186,7 +195,7 @@ export default function ScanCaptureScreen() {
                         <View style={[styles.guideCorner, styles.guideBottomRight]} />
                     </View>
                     <Text style={styles.guideText}>Position document within frame</Text>
-                </View>
+                </View> */}
 
                 {/* OCR Model Status */}
                 {!ocr?.isReady && (
@@ -203,7 +212,7 @@ export default function ScanCaptureScreen() {
                         onPress={handleCapture}
                         style={[styles.captureButton, !ocr?.isReady && styles.captureButtonDisabled]}
                     >
-                        <CameraIcon size={32} color="#fff" />
+                        {/* <CameraIcon size={32} color="#fff" /> */}
                     </Pressable>
                 </View>
 
@@ -232,8 +241,8 @@ export default function ScanCaptureScreen() {
         >
             {/* Scanned image preview */}
             {capturedImagePath && (
-                <View style={styles.imagePreviewContainer}>
-                    <Image source={{ uri: capturedImagePath }} style={styles.imagePreview} contentFit="cover" />
+                <View className="dark:bg-neutral-900 bg-neutral-200" style={styles.imagePreviewContainer}>
+                    <Image source={{ uri: capturedImagePath }} style={styles.imagePreview} />
                     <View style={styles.confidenceBadge}>
                         <Text style={styles.confidenceText}>{Math.round(confidence * 100)}% confidence</Text>
                     </View>
@@ -459,10 +468,10 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: "#D97706",
+        backgroundColor: "#fff",
         alignItems: "center",
         justifyContent: "center",
-        shadowColor: "#D97706",
+        shadowColor: "#fff",
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.35,
         shadowRadius: 16,
@@ -515,7 +524,7 @@ const styles = StyleSheet.create({
         padding: 16,
     },
     imagePreviewContainer: {
-        marginBottom: 24,
+        marginVertical: 24,
         borderRadius: 16,
         overflow: "hidden",
         shadowColor: "#000",
@@ -526,7 +535,10 @@ const styles = StyleSheet.create({
     },
     imagePreview: {
         width: "100%",
-        height: 220,
+        height: "auto",
+        resizeMode: "contain",
+        aspectRatio: 16 / 9,
+        borderRadius: 16,
     },
     confidenceBadge: {
         position: "absolute",
@@ -584,4 +596,16 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: "600",
     },
+    mask: { ...StyleSheet.absoluteFillObject },
+    maskTop: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
+    maskMiddle: { flexDirection: "row" },
+    maskSide: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
+    scanFrame: {
+        width: "85%",
+        aspectRatio: 0.7,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: "#fff",
+    },
+    maskBottom: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
 })

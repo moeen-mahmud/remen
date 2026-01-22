@@ -247,7 +247,7 @@ export default function NoteDetailScreen() {
             >
                 {/* Original image for scan notes */}
                 {note.type === "scan" && note.original_image && (
-                    <View style={styles.imageContainer}>
+                    <View className="dark:bg-neutral-900 bg-neutral-200" style={styles.imageContainer}>
                         <Image source={{ uri: note.original_image }} style={styles.scanImage} />
                     </View>
                 )}
@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     scanImage: {
         width: "100%",
         height: "auto",
-        objectFit: "contain",
+        resizeMode: "contain",
         aspectRatio: 16 / 9,
         borderRadius: 16,
     },
