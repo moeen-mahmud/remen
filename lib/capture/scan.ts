@@ -1,14 +1,5 @@
-/**
- * Document scanning and OCR module
- *
- * Hardened for ExecutorTorch edge cases:
- * - Empty detections
- * - Partial / malformed outputs
- * - Zero-text scenarios
- */
-
 import type { OCRBbox, OCRDetection, OCRModel } from "@/lib/ai/provider"
-import { Directory, File, Paths } from "expo-file-system/next"
+import { Directory, File, Paths } from "expo-file-system"
 
 /* ---------------------------------- Types --------------------------------- */
 
@@ -156,7 +147,7 @@ export function formatOCRText(result: ScanResult): string {
 
     return result.blocks
         .map((block) => {
-            if (block.isHeading) return `## ${block.text}`
+            if (block.isHeading) return `# ${block.text}`
             return block.text
         })
         .join("\n\n")

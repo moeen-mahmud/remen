@@ -126,7 +126,12 @@ export function AIProvider({ children }: AIProviderProps) {
     const pathname = usePathname()
 
     // Track previous states for logging changes
-    const prevStatesRef = useRef({ llmReady: false, embeddingsReady: false, ocrReady: false })
+    const prevStatesRef = useRef({
+        llmReady: false,
+        embeddingsReady: false,
+        ocrReady: false,
+        classificationReady: false,
+    })
 
     // Initialize LLM (Llama 3.2 1B)
     const llmHook = useLLM({
@@ -257,7 +262,12 @@ export function AIProvider({ children }: AIProviderProps) {
             throw new Error("LLM is currently generating")
         }
         console.log("🤖 [AI] LLM generating response...")
-        await hook.generate(messages)
+        try {
+            await hook.generate(messages)
+        } catch (error) {
+            console.error("❌ [AI] LLM generation failed:", error)
+            return ""
+        }
         console.log("🤖 [AI] LLM response complete")
         return hook.response || ""
     }, [])
@@ -271,9 +281,14 @@ export function AIProvider({ children }: AIProviderProps) {
         if (hook.isGenerating) {
             throw new Error("Embeddings model is currently processing")
         }
-        const result = await hook.forward(text)
-        // Convert Float32Array to number[] if needed
-        return Array.from(result)
+        console.log("📊 [AI] Embeddings processing text...")
+        try {
+            const result = await hook.forward(text)
+            return Array.from(result)
+        } catch (error) {
+            console.error("❌ [AI] Embeddings inference failed:", error)
+            return []
+        }
     }, [])
 
     // Memoized forward function for OCR
@@ -285,15 +300,20 @@ export function AIProvider({ children }: AIProviderProps) {
         if (hook.isGenerating) {
             throw new Error("OCR model is currently processing")
         }
-        console.log("📷 [AI] OCR processing image...")
-        const result = await hook.forward(imagePath)
-        console.log(`📷 [AI] OCR found ${result.length} text regions`)
-        // Map the result to our OCRDetection type
-        return result.map((r) => ({
-            bbox: r.bbox,
-            text: r.text,
-            score: r.score,
-        }))
+        try {
+            console.log("📷 [AI] OCR processing image...")
+            const result = await hook.forward(imagePath)
+            console.log(`📷 [AI] OCR found ${result.length} text regions`)
+            // Map the result to our OCRDetection type
+            return result.map((r) => ({
+                bbox: r.bbox,
+                text: r.text,
+                score: r.score,
+            }))
+        } catch (error) {
+            console.error("❌ [AI] OCR inference failed:", error)
+            return []
+        }
     }, [])
 
     // Memoize model wrapper objects to prevent unnecessary re-renders

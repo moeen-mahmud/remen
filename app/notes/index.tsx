@@ -5,8 +5,8 @@ import { SwipeableNoteCard } from "@/components/swipeable-note-card"
 import { Text } from "@/components/ui/text"
 import { useSelectionMode } from "@/hooks/use-selection-mode"
 import { useAI, useAILLM } from "@/lib/ai/provider"
-import { aiQueue } from "@/lib/ai/queue"
 import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database"
+import { useAIProcessingNotes } from "@/lib/hooks/use-ai-processing-notes"
 import { askNotesSearch } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { useFocusEffect, useRouter } from "expo-router"
@@ -33,10 +33,10 @@ interface NoteWithTags extends Note {
 export default function NotesListScreen() {
     const { top, bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
-    const router = useRouter()
     const isDark = colorScheme === "dark"
+    const router = useRouter()
 
-    // Get AI models for search - use ref to avoid dependency issues
+    /* -------------------- AI refs (stable) -------------------- */
     const { embeddings } = useAI()
     const llm = useAILLM()
     const embeddingsRef = useRef(embeddings)
@@ -44,18 +44,18 @@ export default function NotesListScreen() {
     embeddingsRef.current = embeddings
     llmRef.current = llm
 
+    /* -------------------- State -------------------- */
     const [notes, setNotes] = useState<NoteWithTags[]>([])
     const [filteredNotes, setFilteredNotes] = useState<NoteWithTags[]>([])
+    const [searchQuery, setSearchQuery] = useState("")
     const [isLoading, setIsLoading] = useState(true)
     const [isRefreshing, setIsRefreshing] = useState(false)
-    const [searchQuery, setSearchQuery] = useState("")
-    const [temporalFilterDescription, setTemporalFilterDescription] = useState<string | null>(null)
     const [isSearching, setIsSearching] = useState(false)
     const [isUsingLLM, setIsUsingLLM] = useState(false)
     const [interpretedQuery, setInterpretedQuery] = useState<string | null>(null)
-    const [processingNoteIds, setProcessingNoteIds] = useState<Set<string>>(new Set())
+    const [temporalFilterDescription, setTemporalFilterDescription] = useState<string | null>(null)
 
-    // Selection mode
+    /* -------------------- Selection -------------------- */
     const {
         isSelectionMode,
         selectedIds,
@@ -66,35 +66,28 @@ export default function NotesListScreen() {
         isSelected,
     } = useSelectionMode()
 
-    // Load notes with tags
+    /* -------------------- AI processing -------------------- */
+    const processingNoteIds = useAIProcessingNotes(notes.length > 0)
+
+    /* -------------------- Load Notes -------------------- */
     const loadNotes = useCallback(async () => {
         try {
             const allNotes = await getAllNotes()
-
-            // Fetch tags for each note in parallel
-            const notesWithTags = await Promise.all(
-                allNotes.map(async (note) => {
-                    const tags = await getTagsForNote(note.id)
-                    return { ...note, tags }
-                }),
+            const withTags = await Promise.all(
+                allNotes.map(async (note) => ({
+                    ...note,
+                    tags: await getTagsForNote(note.id),
+                })),
             )
 
-            setNotes(notesWithTags)
-            setFilteredNotes(notesWithTags)
-        } catch (error) {
-            console.error("Failed to load notes:", error)
+            setNotes(withTags)
+            setFilteredNotes((prev) => (prev.length === withTags.length ? prev : withTags))
         } finally {
             setIsLoading(false)
             setIsRefreshing(false)
         }
     }, [])
 
-    // Initial load
-    useEffect(() => {
-        loadNotes()
-    }, [loadNotes])
-
-    // Refresh notes when screen comes into focus (e.g., after restoring from archive/trash)
     useFocusEffect(
         useCallback(() => {
             loadNotes()
@@ -102,104 +95,150 @@ export default function NotesListScreen() {
     )
 
     // Track AI processing queue
-    useEffect(() => {
-        const updateProcessingNotes = () => {
-            const queueStatus = aiQueue.getStatus()
-            const processingIds = new Set<string>()
-            if (queueStatus.currentJobId) {
-                processingIds.add(queueStatus.currentJobId)
-            }
-            setProcessingNoteIds(processingIds)
-        }
+    // useEffect(() => {
+    //     const updateProcessingNotes = () => {
+    //         const queueStatus = aiQueue.getStatus()
+    //         const processingIds = new Set<string>()
+    //         if (queueStatus.currentJobId) {
+    //             processingIds.add(queueStatus.currentJobId)
+    //         }
+    //         setProcessingNoteIds(processingIds)
+    //     }
 
-        // Listen for processing complete events
-        const handleProcessingComplete = (noteId: string) => {
-            console.log(`📋 [Notes] AI processing completed for note: ${noteId.substring(0, 8)}...`)
-            // Refresh notes to show updated tags/categories
-            loadNotes()
-            // Update processing status
-            updateProcessingNotes()
-        }
+    //     // Listen for processing complete events
+    //     const handleProcessingComplete = (noteId: string) => {
+    //         console.log(`📋 [Notes] AI processing completed for note: ${noteId.substring(0, 8)}...`)
+    //         // Refresh notes to show updated tags/categories
+    //         loadNotes()
+    //         // Update processing status
+    //         updateProcessingNotes()
+    //     }
 
-        // Register callback
-        aiQueue.onProcessingComplete(handleProcessingComplete)
+    //     // Register callback
+    //     aiQueue.onProcessingComplete(handleProcessingComplete)
 
-        // Update immediately
-        updateProcessingNotes()
+    //     // Update immediately
+    //     updateProcessingNotes()
 
-        // Check periodically for processing status
-        const interval = setInterval(updateProcessingNotes, 1000)
+    //     // Check periodically for processing status
+    //     const interval = (notes.length || filteredNotes.length) > 0 ? setInterval(updateProcessingNotes, 1000) : 0
 
-        return () => {
-            clearInterval(interval)
-            aiQueue.removeProcessingCompleteCallback(handleProcessingComplete)
-        }
-    }, [loadNotes])
+    //     return () => {
+    //         if ((notes.length || filteredNotes.length) > 0) {
+    //             clearInterval(interval)
+    //         }
+    //         aiQueue.removeProcessingCompleteCallback(handleProcessingComplete)
+    //     }
+    // }, [loadNotes, notes, filteredNotes])
 
     // Filter notes based on search query (using LLM-powered search when appropriate)
     // Use debounced search to prevent rapid re-renders
+    // useEffect(() => {
+    //     if (searchQuery.trim() === "") {
+    //         setFilteredNotes(notes)
+    //         setTemporalFilterDescription(null)
+    //         setIsSearching(false)
+    //         setIsUsingLLM(false)
+    //         setInterpretedQuery(null)
+    //         return
+    //     }
+
+    //     setIsSearching(true)
+    //     setIsUsingLLM(false)
+    //     setInterpretedQuery(null)
+
+    //     // Debounce search
+    //     const timeoutId = setTimeout(async () => {
+    //         try {
+    //             console.log("🔍 [Search] Searching for:", searchQuery)
+
+    //             // Use LLM-powered search if LLM is available
+    //             const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current, llmRef.current)
+    //             const { results, temporalFilter, interpretedQuery: llmInterpretedQuery } = searchResult
+
+    //             console.log(`🔍 [Search] Found ${results.length} results`)
+    //             console.log(`🤖 [Search] Interpreted query:`, llmInterpretedQuery)
+
+    //             // Update UI state
+    //             setTemporalFilterDescription(temporalFilter?.description || null)
+    //             setIsUsingLLM(!!llmInterpretedQuery)
+    //             setInterpretedQuery(llmInterpretedQuery || null)
+
+    //             // Match results with notes to get tags
+    //             const resultIds = new Set(results.map((r) => r.id))
+    //             const filtered = notes.filter((note) => resultIds.has(note.id))
+    //             // Sort by the search results order
+    //             filtered.sort((a, b) => {
+    //                 const aIndex = results.findIndex((r) => r.id === a.id)
+    //                 const bIndex = results.findIndex((r) => r.id === b.id)
+    //                 return aIndex - bIndex
+    //             })
+    //             setFilteredNotes(filtered)
+    //         } catch (error) {
+    //             console.error("❌ [Search] Search failed:", error)
+    //             setTemporalFilterDescription(null)
+    //             setIsUsingLLM(false)
+    //             setInterpretedQuery(null)
+    //             // Fallback to simple filtering
+    //             const query = searchQuery.toLowerCase()
+    //             const filtered = notes.filter(
+    //                 (note) =>
+    //                     note.content.toLowerCase().includes(query) ||
+    //                     (note.title && note.title.toLowerCase().includes(query)) ||
+    //                     note.tags.some((tag) => tag.name.toLowerCase().includes(query)),
+    //             )
+    //             setFilteredNotes(filtered)
+    //         } finally {
+    //             setIsSearching(false)
+    //         }
+    //     }, 300) // 300ms debounce
+
+    //     return () => clearTimeout(timeoutId)
+    // }, [searchQuery, notes]) // Remove AI models from dependency array
+
+    /* -------------------- Search (Debounced & Stable) -------------------- */
     useEffect(() => {
-        if (searchQuery.trim() === "") {
-            setFilteredNotes(notes)
-            setTemporalFilterDescription(null)
+        if (!searchQuery.trim()) {
+            setFilteredNotes((prev) => (prev.length === notes.length ? prev : notes))
             setIsSearching(false)
             setIsUsingLLM(false)
             setInterpretedQuery(null)
+            setTemporalFilterDescription(null)
             return
         }
 
         setIsSearching(true)
-        setIsUsingLLM(false)
-        setInterpretedQuery(null)
 
-        // Debounce search
-        const timeoutId = setTimeout(async () => {
+        const timeout = setTimeout(async () => {
             try {
-                console.log("🔍 [Search] Searching for:", searchQuery)
-
-                // Use LLM-powered search if LLM is available
-                const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current, llmRef.current)
-                const { results, temporalFilter, interpretedQuery: llmInterpretedQuery } = searchResult
-
-                console.log(`🔍 [Search] Found ${results.length} results`)
-                console.log(`🤖 [Search] Interpreted query:`, llmInterpretedQuery)
-
-                // Update UI state
-                setTemporalFilterDescription(temporalFilter?.description || null)
-                setIsUsingLLM(!!llmInterpretedQuery)
-                setInterpretedQuery(llmInterpretedQuery || null)
-
-                // Match results with notes to get tags
-                const resultIds = new Set(results.map((r) => r.id))
-                const filtered = notes.filter((note) => resultIds.has(note.id))
-                // Sort by the search results order
-                filtered.sort((a, b) => {
-                    const aIndex = results.findIndex((r) => r.id === a.id)
-                    const bIndex = results.findIndex((r) => r.id === b.id)
-                    return aIndex - bIndex
-                })
-                setFilteredNotes(filtered)
-            } catch (error) {
-                console.error("❌ [Search] Search failed:", error)
-                setTemporalFilterDescription(null)
-                setIsUsingLLM(false)
-                setInterpretedQuery(null)
-                // Fallback to simple filtering
-                const query = searchQuery.toLowerCase()
-                const filtered = notes.filter(
-                    (note) =>
-                        note.content.toLowerCase().includes(query) ||
-                        (note.title && note.title.toLowerCase().includes(query)) ||
-                        note.tags.some((tag) => tag.name.toLowerCase().includes(query)),
+                const { results, interpretedQuery, temporalFilter } = await askNotesSearch(
+                    searchQuery,
+                    embeddingsRef.current,
+                    llmRef.current,
                 )
-                setFilteredNotes(filtered)
+
+                const resultIds = new Set(results.map((r) => r.id))
+                const next = notes.filter((n) => resultIds.has(n.id))
+
+                setFilteredNotes((prev) => {
+                    if (prev.length === next.length && prev.every((n, i) => n.id === next[i]?.id)) {
+                        return prev
+                    }
+                    return next
+                })
+
+                setIsUsingLLM(Boolean(interpretedQuery))
+                setInterpretedQuery(interpretedQuery ?? null)
+                setTemporalFilterDescription(temporalFilter?.description ?? null)
+            } catch {
+                setFilteredNotes([])
             } finally {
                 setIsSearching(false)
             }
-        }, 300) // 300ms debounce
+        }, 300)
 
-        return () => clearTimeout(timeoutId)
-    }, [searchQuery, notes]) // Remove AI models from dependency array
+        return () => clearTimeout(timeout)
+    }, [searchQuery, notes])
 
     // Handle refresh
     const handleRefresh = useCallback(() => {
@@ -379,7 +418,7 @@ export default function NotesListScreen() {
     const keyExtractor = useCallback((item: Note) => item.id, [])
 
     // Empty state
-    const renderEmptyState = () => {
+    const renderEmptyState = useCallback(() => {
         if (isSearching && searchQuery) {
             return (
                 <EmptyState
@@ -407,7 +446,7 @@ export default function NotesListScreen() {
                 }
             />
         )
-    }
+    }, [isDark, searchQuery, isSearching])
 
     if (isLoading) {
         return (

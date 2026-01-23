@@ -3,16 +3,17 @@ import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
 import { formatOCRText, processImageOCR, saveScannedImage } from "@/lib/capture/scan"
 import { createNote } from "@/lib/database"
+import { CameraView, useCameraPermissions } from "expo-camera"
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { useRouter } from "expo-router"
 import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from "react-native"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera"
+// import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera"
 
 type ScanState = "camera" | "processing" | "review" | "model-loading"
 
@@ -25,11 +26,13 @@ export default function ScanCaptureScreen() {
     // Get OCR model from AI provider
     const { ocr, llm, embeddings } = useAI()
 
-    const { hasPermission, requestPermission } = useCameraPermission()
-    const device = useCameraDevice("back")
-    const cameraRef = useRef<Camera>(null)
+    const [hasPermission, requestPermission] = useCameraPermissions()
+    const cameraRef = useRef<CameraView>(null)
+    // const { hasPermission, requestPermission } = useCameraPermission()
+    // const device = useCameraDevice("back")
+    // const cameraRef = useRef<Camera>(null)
 
-    const [state, setState] = useState<ScanState>("camera")
+    const [scanState, setScanState] = useState<ScanState>("camera")
     const [capturedImagePath, setCapturedImagePath] = useState<string | null>(null)
     const [extractedText, setExtractedText] = useState("")
     const [confidence, setConfidence] = useState(0)
@@ -37,19 +40,19 @@ export default function ScanCaptureScreen() {
     const [isSaving, setIsSaving] = useState(false)
 
     // Request permission on mount
-    useEffect(() => {
-        if (!hasPermission) {
-            requestPermission()
-        }
-    }, [hasPermission, requestPermission])
+    // useEffect(() => {
+    //     if (!hasPermission) {
+    //         requestPermission()
+    //     }
+    // }, [hasPermission])
 
     // Take photo and process
     const handleCapture = useCallback(async () => {
-        if (!cameraRef.current) return
+        if (!hasPermission) return
 
         // Check if OCR model is ready
         if (!ocr?.isReady) {
-            setState("model-loading")
+            setScanState("model-loading")
             return
         }
 
@@ -58,31 +61,36 @@ export default function ScanCaptureScreen() {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
             // Take photo
-            const photo = await cameraRef.current.takePhoto()
-            setState("processing")
+            const photo = await cameraRef.current?.takePictureAsync()
+            if (!photo?.uri) {
+                Alert.alert("No photo", "No photo was captured. Please try again.")
+                setScanState("camera")
+                return
+            }
+            setScanState("processing")
 
             // Save image permanently
-            const savedPath = await saveScannedImage(photo.path)
+            const savedPath = await saveScannedImage(photo.uri)
             setCapturedImagePath(savedPath)
 
             // Process OCR using ExecutorTorch
-            const result = await processImageOCR(photo.path, ocr)
+            const result = await processImageOCR(photo.uri, ocr)
             setExtractedText(formatOCRText(result))
             setConfidence(result.confidence)
 
-            setState("review")
+            setScanState("review")
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
         } catch (err) {
             console.error("Failed to capture/process:", err)
             setError("Failed to process image. Please try again.")
-            setState("camera")
+            setScanState("camera")
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
         }
-    }, [ocr])
+    }, [ocr, hasPermission])
 
     // Retake photo
     const handleRetake = useCallback(() => {
-        setState("camera")
+        setScanState("camera")
         setCapturedImagePath(null)
         setExtractedText("")
         setConfidence(0)
@@ -91,7 +99,7 @@ export default function ScanCaptureScreen() {
 
     // Save and navigate to note detail
     const handleSave = useCallback(async () => {
-        if (extractedText.trim().length === 0) {
+        if (!extractedText || extractedText?.trim()?.length === 0) {
             Alert.alert("No Text", "No text was extracted from the image.")
             return
         }
@@ -134,7 +142,7 @@ export default function ScanCaptureScreen() {
                 {Math.round((ocr?.downloadProgress || 0) * 100)}% downloaded
             </Text>
             <Pressable
-                onPress={() => setState("camera")}
+                onPress={() => setScanState("camera")}
                 style={[styles.cancelButton, { borderColor: isDark ? "#333" : "#ddd" }]}
             >
                 <Text style={[styles.cancelButtonText, { color: isDark ? "#fff" : "#000" }]}>Cancel</Text>
@@ -157,24 +165,18 @@ export default function ScanCaptureScreen() {
             )
         }
 
-        if (!device) {
-            return (
-                <View style={styles.centeredContainer}>
-                    <Text className="text-typography-600" style={styles.permissionText}>
-                        No camera device found
-                    </Text>
-                </View>
-            )
-        }
-
         return (
             <View style={styles.cameraContainer}>
-                <Camera
+                <CameraView
                     ref={cameraRef}
                     style={StyleSheet.absoluteFill}
-                    device={device}
-                    isActive={state === "camera"}
-                    photo={true}
+                    mode="picture"
+                    facing="back"
+                    animateShutter
+                    barcodeScannerSettings={{
+                        barcodeTypes: ["qr"],
+                    }}
+                    responsiveOrientationWhenOrientationLocked
                 />
 
                 {/* Camera overlay with guide */}
@@ -198,13 +200,13 @@ export default function ScanCaptureScreen() {
                 </View> */}
 
                 {/* OCR Model Status */}
-                {!ocr?.isReady && (
+                {!ocr?.isReady ? (
                     <View style={styles.modelStatusBanner}>
                         <Text style={styles.modelStatusText}>
                             OCR model loading: {Math.round((ocr?.downloadProgress || 0) * 100)}%
                         </Text>
                     </View>
-                )}
+                ) : null}
 
                 {/* Capture button */}
                 <View style={[styles.captureButtonContainer, { paddingBottom: bottom + 20 }]}>
@@ -216,11 +218,11 @@ export default function ScanCaptureScreen() {
                     </Pressable>
                 </View>
 
-                {error && (
+                {error ? (
                     <View style={styles.errorBanner}>
                         <Text style={styles.errorText}>{error}</Text>
                     </View>
-                )}
+                ) : null}
             </View>
         )
     }
@@ -240,14 +242,14 @@ export default function ScanCaptureScreen() {
             contentContainerStyle={styles.reviewContent}
         >
             {/* Scanned image preview */}
-            {capturedImagePath && (
+            {capturedImagePath ? (
                 <View className="dark:bg-neutral-900 bg-neutral-200" style={styles.imagePreviewContainer}>
                     <Image source={{ uri: capturedImagePath }} style={styles.imagePreview} />
                     <View style={styles.confidenceBadge}>
                         <Text style={styles.confidenceText}>{Math.round(confidence * 100)}% confidence</Text>
                     </View>
                 </View>
-            )}
+            ) : null}
 
             {/* Extracted text */}
             <View style={styles.textSection}>
@@ -309,24 +311,26 @@ export default function ScanCaptureScreen() {
                     styles.header,
                     {
                         paddingTop: top + 8,
-                        backgroundColor: state === "camera" ? "rgba(0,0,0,0.5)" : isDark ? "#000" : "#fff",
+                        backgroundColor: scanState === "camera" ? "rgba(0,0,0,0.5)" : isDark ? "#000" : "#fff",
                     },
                 ]}
             >
                 <Pressable onPress={handleClose} style={styles.closeButton}>
-                    <XIcon size={24} color={state === "camera" ? "#fff" : isDark ? "#fff" : "#000"} />
+                    <XIcon size={24} color={scanState === "camera" ? "#fff" : isDark ? "#fff" : "#000"} />
                 </Pressable>
-                <Text style={[styles.headerTitle, { color: state === "camera" ? "#fff" : isDark ? "#fff" : "#000" }]}>
+                <Text
+                    style={[styles.headerTitle, { color: scanState === "camera" ? "#fff" : isDark ? "#fff" : "#000" }]}
+                >
                     Scan Document
                 </Text>
                 <View style={styles.closeButton} />
             </View>
 
             {/* Content based on state */}
-            {state === "camera" && renderCamera()}
-            {state === "processing" && renderProcessing()}
-            {state === "review" && renderReview()}
-            {state === "model-loading" && renderModelLoading()}
+            {scanState === "camera" ? renderCamera() : null}
+            {scanState === "processing" ? renderProcessing() : null}
+            {scanState === "review" ? renderReview() : null}
+            {scanState === "model-loading" ? renderModelLoading() : null}
         </View>
     )
 }
