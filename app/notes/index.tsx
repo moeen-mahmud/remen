@@ -4,9 +4,9 @@ import { SpeedDial, type FabAction } from "@/components/fab"
 import { SwipeableNoteCard } from "@/components/swipeable-note-card"
 import { Text } from "@/components/ui/text"
 import { useSelectionMode } from "@/hooks/use-selection-mode"
+import { aiQueue } from "@/lib/ai"
 import { useAI, useAILLM } from "@/lib/ai/provider"
 import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database"
-import { useAIProcessingNotes } from "@/lib/hooks/use-ai-processing-notes"
 import { askNotesSearch } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { useFocusEffect, useRouter } from "expo-router"
@@ -33,10 +33,10 @@ interface NoteWithTags extends Note {
 export default function NotesListScreen() {
     const { top, bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
     const router = useRouter()
+    const isDark = colorScheme === "dark"
 
-    /* -------------------- AI refs (stable) -------------------- */
+    // Get AI models for search - use ref to avoid dependency issues
     const { embeddings } = useAI()
     const llm = useAILLM()
     const embeddingsRef = useRef(embeddings)
@@ -44,18 +44,18 @@ export default function NotesListScreen() {
     embeddingsRef.current = embeddings
     llmRef.current = llm
 
-    /* -------------------- State -------------------- */
     const [notes, setNotes] = useState<NoteWithTags[]>([])
     const [filteredNotes, setFilteredNotes] = useState<NoteWithTags[]>([])
-    const [searchQuery, setSearchQuery] = useState("")
     const [isLoading, setIsLoading] = useState(true)
     const [isRefreshing, setIsRefreshing] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
+    const [temporalFilterDescription, setTemporalFilterDescription] = useState<string | null>(null)
     const [isSearching, setIsSearching] = useState(false)
     const [isUsingLLM, setIsUsingLLM] = useState(false)
     const [interpretedQuery, setInterpretedQuery] = useState<string | null>(null)
-    const [temporalFilterDescription, setTemporalFilterDescription] = useState<string | null>(null)
+    const [processingNoteIds, setProcessingNoteIds] = useState<Set<string>>(new Set())
 
-    /* -------------------- Selection -------------------- */
+    // Selection mode
     const {
         isSelectionMode,
         selectedIds,
@@ -66,28 +66,30 @@ export default function NotesListScreen() {
         isSelected,
     } = useSelectionMode()
 
-    /* -------------------- AI processing -------------------- */
-    const processingNoteIds = useAIProcessingNotes(notes.length > 0)
-
-    /* -------------------- Load Notes -------------------- */
+    // Load notes with tags
     const loadNotes = useCallback(async () => {
         try {
             const allNotes = await getAllNotes()
-            const withTags = await Promise.all(
-                allNotes.map(async (note) => ({
-                    ...note,
-                    tags: await getTagsForNote(note.id),
-                })),
+
+            // Fetch tags for each note in parallel
+            const notesWithTags = await Promise.all(
+                allNotes.map(async (note) => {
+                    const tags = await getTagsForNote(note.id)
+                    return { ...note, tags }
+                }),
             )
 
-            setNotes(withTags)
-            setFilteredNotes((prev) => (prev.length === withTags.length ? prev : withTags))
+            setNotes(notesWithTags)
+            setFilteredNotes(notesWithTags)
+        } catch (error) {
+            console.error("Failed to load notes:", error)
         } finally {
             setIsLoading(false)
             setIsRefreshing(false)
         }
     }, [])
 
+    // Refresh notes when screen comes into focus (e.g., after restoring from archive/trash)
     useFocusEffect(
         useCallback(() => {
             loadNotes()
@@ -95,44 +97,102 @@ export default function NotesListScreen() {
     )
 
     // Track AI processing queue
-    // useEffect(() => {
-    //     const updateProcessingNotes = () => {
-    //         const queueStatus = aiQueue.getStatus()
-    //         const processingIds = new Set<string>()
-    //         if (queueStatus.currentJobId) {
-    //             processingIds.add(queueStatus.currentJobId)
-    //         }
-    //         setProcessingNoteIds(processingIds)
-    //     }
+    useEffect(() => {
+        const updateProcessingNotes = () => {
+            const queueStatus = aiQueue.getStatus()
+            const processingIds = new Set<string>()
+            if (queueStatus.currentJobId) {
+                processingIds.add(queueStatus.currentJobId)
+            }
+            setProcessingNoteIds(processingIds)
+        }
 
-    //     // Listen for processing complete events
-    //     const handleProcessingComplete = (noteId: string) => {
-    //         console.log(`📋 [Notes] AI processing completed for note: ${noteId.substring(0, 8)}...`)
-    //         // Refresh notes to show updated tags/categories
-    //         loadNotes()
-    //         // Update processing status
-    //         updateProcessingNotes()
-    //     }
+        // Listen for processing complete events
+        const handleProcessingComplete = (noteId: string) => {
+            console.log(`📋 [Notes] AI processing completed for note: ${noteId.substring(0, 8)}...`)
+            // Refresh notes to show updated tags/categories
+            loadNotes()
+            // Update processing status
+            updateProcessingNotes()
+        }
 
-    //     // Register callback
-    //     aiQueue.onProcessingComplete(handleProcessingComplete)
+        // Register callback
+        aiQueue.onProcessingComplete(handleProcessingComplete)
 
-    //     // Update immediately
-    //     updateProcessingNotes()
+        // Update immediately
+        updateProcessingNotes()
 
-    //     // Check periodically for processing status
-    //     const interval = (notes.length || filteredNotes.length) > 0 ? setInterval(updateProcessingNotes, 1000) : 0
+        // Check periodically for processing status
+        const interval = (notes.length || filteredNotes.length) > 0 ? setInterval(updateProcessingNotes, 1000) : 0
 
-    //     return () => {
-    //         if ((notes.length || filteredNotes.length) > 0) {
-    //             clearInterval(interval)
-    //         }
-    //         aiQueue.removeProcessingCompleteCallback(handleProcessingComplete)
-    //     }
-    // }, [loadNotes, notes, filteredNotes])
+        return () => {
+            if ((notes.length || filteredNotes.length) > 0) {
+                clearInterval(interval)
+            }
+            aiQueue.removeProcessingCompleteCallback(handleProcessingComplete)
+        }
+    }, [loadNotes, notes, filteredNotes])
 
     // Filter notes based on search query (using LLM-powered search when appropriate)
     // Use debounced search to prevent rapid re-renders
+    const handleSearch = useCallback(async () => {
+        if (searchQuery.trim() === "") {
+            setFilteredNotes(notes)
+            setTemporalFilterDescription(null)
+            setIsSearching(false)
+            setIsUsingLLM(false)
+            setInterpretedQuery(null)
+            return
+        }
+
+        setIsSearching(true)
+        setIsUsingLLM(false)
+        setInterpretedQuery(null)
+
+        // Debounce search
+        try {
+            console.log("🔍 [Search] Searching for:", searchQuery)
+
+            // Use LLM-powered search if LLM is available
+            const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current, llmRef.current)
+            const { results, temporalFilter, interpretedQuery: llmInterpretedQuery } = searchResult
+
+            console.log(`🔍 [Search] Found ${results.length} results`)
+            console.log(`🤖 [Search] Interpreted query:`, llmInterpretedQuery)
+
+            // Update UI state
+            setTemporalFilterDescription(temporalFilter?.description || null)
+            setIsUsingLLM(!!llmInterpretedQuery)
+            setInterpretedQuery(llmInterpretedQuery || null)
+
+            // Match results with notes to get tags
+            const resultIds = new Set(results.map((r) => r.id))
+            const filtered = notes.filter((note) => resultIds.has(note.id))
+            // Sort by the search results order
+            filtered.sort((a, b) => {
+                const aIndex = results.findIndex((r) => r.id === a.id)
+                const bIndex = results.findIndex((r) => r.id === b.id)
+                return aIndex - bIndex
+            })
+            setFilteredNotes(filtered)
+        } catch (error) {
+            console.error("❌ [Search] Search failed:", error)
+            setTemporalFilterDescription(null)
+            setIsUsingLLM(false)
+            setInterpretedQuery(null)
+            // Fallback to simple filtering
+            const query = searchQuery.toLowerCase()
+            const filtered = notes.filter(
+                (note) =>
+                    note.content.toLowerCase().includes(query) ||
+                    (note.title && note.title.toLowerCase().includes(query)) ||
+                    note.tags.some((tag) => tag.name.toLowerCase().includes(query)),
+            )
+            setFilteredNotes(filtered)
+        } finally {
+            setIsSearching(false)
+        }
+    }, [searchQuery, notes])
     // useEffect(() => {
     //     if (searchQuery.trim() === "") {
     //         setFilteredNotes(notes)
@@ -194,51 +254,7 @@ export default function NotesListScreen() {
     //     }, 300) // 300ms debounce
 
     //     return () => clearTimeout(timeoutId)
-    // }, [searchQuery, notes]) // Remove AI models from dependency array
-
-    /* -------------------- Search (Debounced & Stable) -------------------- */
-    useEffect(() => {
-        if (!searchQuery.trim()) {
-            setFilteredNotes((prev) => (prev.length === notes.length ? prev : notes))
-            setIsSearching(false)
-            setIsUsingLLM(false)
-            setInterpretedQuery(null)
-            setTemporalFilterDescription(null)
-            return
-        }
-
-        setIsSearching(true)
-
-        const timeout = setTimeout(async () => {
-            try {
-                const { results, interpretedQuery, temporalFilter } = await askNotesSearch(
-                    searchQuery,
-                    embeddingsRef.current,
-                    llmRef.current,
-                )
-
-                const resultIds = new Set(results.map((r) => r.id))
-                const next = notes.filter((n) => resultIds.has(n.id))
-
-                setFilteredNotes((prev) => {
-                    if (prev.length === next.length && prev.every((n, i) => n.id === next[i]?.id)) {
-                        return prev
-                    }
-                    return next
-                })
-
-                setIsUsingLLM(Boolean(interpretedQuery))
-                setInterpretedQuery(interpretedQuery ?? null)
-                setTemporalFilterDescription(temporalFilter?.description ?? null)
-            } catch {
-                setFilteredNotes([])
-            } finally {
-                setIsSearching(false)
-            }
-        }, 300)
-
-        return () => clearTimeout(timeout)
-    }, [searchQuery, notes])
+    // }, [searchQuery, notes])
 
     // Handle refresh
     const handleRefresh = useCallback(() => {
@@ -352,14 +368,6 @@ export default function NotesListScreen() {
 
     // FAB actions for list screen
     const fabActions: FabAction[] = [
-        // {
-        //     id: "settings",
-        //     label: "Settings",
-        //     icon: SettingsIcon,
-        //     onPress: handleSettings,
-        //     backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-        //     color: isDark ? "#F8F8F8" : "#1a1b1c",
-        // },
         {
             id: "trash",
             label: "Recycle Bin",
@@ -417,36 +425,39 @@ export default function NotesListScreen() {
     // Key extractor
     const keyExtractor = useCallback((item: Note) => item.id, [])
 
-    // Empty state
-    const renderEmptyState = useCallback(() => {
+    // Determine empty state props based on current state
+    const getEmptyStateProps = useCallback(() => {
+        // Show searching state while actively searching
         if (isSearching && searchQuery) {
-            return (
-                <EmptyState
-                    icon={<SearchIcon size={56} color={isDark ? "#39FF14" : "#00B700"} />}
-                    title="AI is searching..."
-                    description="Using intelligent search to find relevant notes"
-                />
-            )
+            return {
+                icon: <SearchIcon size={56} color={isDark ? "#39FF14" : "#00B700"} />,
+                title: "AI is searching...",
+                description: "Using intelligent search to find relevant notes",
+            }
         }
 
-        return (
-            <EmptyState
-                icon={
-                    searchQuery ? (
-                        <SearchIcon size={56} color={isDark ? "#444" : "#ccc"} />
-                    ) : (
-                        <ListIcon size={56} color={isDark ? "#444" : "#ccc"} />
-                    )
-                }
-                title={searchQuery ? "No notes found" : "No notes yet"}
-                description={
-                    searchQuery
-                        ? "Try a different search term or time expression"
-                        : "Tap the + button to capture your first thought"
-                }
-            />
-        )
-    }, [isDark, searchQuery, isSearching])
+        // Show no results state when search is complete but no matches
+        if (searchQuery && !isSearching) {
+            return {
+                icon: <SearchIcon size={56} color={isDark ? "#444" : "#ccc"} />,
+                title: "No notes found",
+                description: "Try a different search term or time expression",
+            }
+        }
+
+        // Show default empty state when no search and no notes
+        return {
+            icon: <ListIcon size={56} color={isDark ? "#444" : "#ccc"} />,
+            title: "No notes yet",
+            description: "Tap the + button to capture your first thought",
+        }
+    }, [isSearching, searchQuery, isDark])
+
+    // Render empty state with dynamic props
+    const renderEmptyState = useCallback(() => {
+        const emptyStateProps = getEmptyStateProps()
+        return <EmptyState {...emptyStateProps} />
+    }, [getEmptyStateProps])
 
     if (isLoading) {
         return (
@@ -502,6 +513,8 @@ export default function NotesListScreen() {
                     placeholderTextColor={isDark ? "#888" : "#999"}
                     value={searchQuery}
                     onChangeText={setSearchQuery}
+                    onSubmitEditing={handleSearch}
+                    returnKeyType="search"
                     autoCapitalize="none"
                     autoCorrect={false}
                 />
@@ -521,6 +534,7 @@ export default function NotesListScreen() {
                     </Pressable>
                 ) : null}
             </View>
+
             {/* Helper text or AI interpretation */}
             {interpretedQuery ? (
                 <View style={[styles.temporalFilter, { backgroundColor: isDark ? "#1a2a1a" : "#e8f5e9" }]}>
@@ -528,22 +542,19 @@ export default function NotesListScreen() {
                         🤖 AI interpreted as: &ldquo;{interpretedQuery}&rdquo;
                     </Text>
                 </View>
-            ) : !temporalFilterDescription && searchQuery ? null : !temporalFilterDescription ? (
+            ) : temporalFilterDescription ? (
+                <View style={[styles.temporalFilter, { backgroundColor: isDark ? "#1a2a1a" : "#e8f5e9" }]}>
+                    <Text style={[styles.temporalFilterText, { color: isDark ? "#39FF14" : "#00B700" }]}>
+                        Showing notes from: {temporalFilterDescription}
+                    </Text>
+                </View>
+            ) : !searchQuery ? (
                 <View style={[styles.temporalFilter, { backgroundColor: isDark ? "#1a2a1a" : "#e8f5e9" }]}>
                     <Text style={[styles.temporalFilterText, { color: isDark ? "#39FF14" : "#00B700" }]}>
                         {`Try asking questions like "What I wrote about work last week" or "Find my ideas about travel"`}
                     </Text>
                 </View>
             ) : null}
-
-            {/* Temporal Filter Indicator */}
-            {temporalFilterDescription && (
-                <View style={[styles.temporalFilter, { backgroundColor: isDark ? "#1a2a1a" : "#e8f5e9" }]}>
-                    <Text style={[styles.temporalFilterText, { color: isDark ? "#39FF14" : "#00B700" }]}>
-                        Showing notes from: {temporalFilterDescription}
-                    </Text>
-                </View>
-            )}
 
             {/* Notes count */}
             <View style={styles.countContainer}>

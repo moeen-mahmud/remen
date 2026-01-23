@@ -5,9 +5,9 @@ import { voiceCapture, type VoiceState } from "@/lib/capture/voice"
 import { createNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import { MicIcon, XIcon } from "lucide-react-native"
+import { MicIcon, MicOffIcon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
@@ -41,6 +41,8 @@ export default function VoiceCaptureScreen() {
         transform: [{ scale: pulseScale.value }],
         opacity: pulseOpacity.value,
     }))
+
+    let currentTranscript = voiceCapture.getCurrentTranscript()
 
     // Start pulse animation when recording
     useEffect(() => {
@@ -145,6 +147,11 @@ export default function VoiceCaptureScreen() {
             aiQueue.add({ noteId: note.id, content: transcript })
 
             // Navigate to note detail
+            currentTranscript = ""
+            voiceCapture.destroy()
+            if (timerRef.current) {
+                clearInterval(timerRef.current)
+            }
             router.replace(`/notes/${note.id}` as any)
         } catch (error) {
             console.error("Failed to save voice note:", error)
@@ -154,15 +161,15 @@ export default function VoiceCaptureScreen() {
     }
 
     // Close without saving
-    const handleClose = useCallback(() => {
-        voiceCapture.cancel()
+    const handleClose = () => {
+        console.log("close")
+        currentTranscript = ""
+        voiceCapture.destroy()
         if (timerRef.current) {
             clearInterval(timerRef.current)
         }
         router.back()
-    }, [router])
-
-    const currentTranscript = voiceCapture.getCurrentTranscript()
+    }
 
     return (
         <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff", paddingTop: top }]}>
@@ -183,7 +190,7 @@ export default function VoiceCaptureScreen() {
             {/* Status */}
             <View style={styles.statusContainer}>
                 <Text style={[styles.statusText, { color: isDark ? "#fff" : "#000" }]}>
-                    {isSaving ? "Saving..." : isRecording ? "Listening..." : "Hold to record"}
+                    {isSaving ? "Saving..." : isRecording ? "Press again to save" : ""}
                 </Text>
                 {isRecording && (
                     <Text style={[styles.timerText, { color: "#EF4444" }]}>{formatTime(recordingTime)}</Text>
@@ -191,34 +198,46 @@ export default function VoiceCaptureScreen() {
             </View>
 
             {/* Live transcript */}
-            {currentTranscript.length > 0 && (
+            {isRecording && currentTranscript?.length > 0 ? (
                 <View style={styles.transcriptContainer}>
                     <Text style={[styles.transcriptText, { color: isDark ? "#ddd" : "#333" }]} numberOfLines={5}>
                         &ldquo;{currentTranscript}&rdquo;
                     </Text>
                 </View>
-            )}
+            ) : null}
 
             {/* Mic button */}
             <View style={[styles.micContainer, { paddingBottom: bottom + 40 }]}>
                 {/* Pulse ring */}
-                <Animated.View style={[styles.pulseRing, { backgroundColor: "#EF4444" }, pulseStyle]} />
-
-                {/* Main button */}
-                <Pressable
-                    onPressIn={startRecording}
-                    onPressOut={stopRecording}
-                    disabled={isSaving}
-                    style={[
-                        styles.micButton,
-                        { backgroundColor: isRecording ? "#EF4444" : isDark ? "#333" : "#f0f0f0" },
-                    ]}
-                >
-                    <MicIcon size={40} color={isRecording ? "#fff" : isDark ? "#fff" : "#000"} />
-                </Pressable>
+                <Animated.View style={[styles.pulseRing, { backgroundColor: "#EF4444" }, pulseStyle]}>
+                    {/* Main button */}
+                    {isRecording ? (
+                        <Pressable
+                            onPress={stopRecording}
+                            disabled={isSaving}
+                            style={[
+                                styles.micButton,
+                                { backgroundColor: isRecording ? "#EF4444" : isDark ? "#333" : "#f0f0f0" },
+                            ]}
+                        >
+                            <MicOffIcon size={40} color={isRecording ? "#fff" : isDark ? "#fff" : "#000"} />
+                        </Pressable>
+                    ) : (
+                        <Pressable
+                            onPress={startRecording}
+                            disabled={isSaving}
+                            style={[
+                                styles.micButton,
+                                { backgroundColor: isRecording ? "#EF4444" : isDark ? "#333" : "#f0f0f0" },
+                            ]}
+                        >
+                            <MicIcon size={40} color={isRecording ? "#fff" : isDark ? "#fff" : "#000"} />
+                        </Pressable>
+                    )}
+                </Animated.View>
 
                 <Text style={[styles.hintText, { color: isDark ? "#888" : "#666" }]}>
-                    {isRecording ? "Release to save" : "Hold to record"}
+                    {isRecording ? "Listening..." : "Start speaking"}
                 </Text>
             </View>
         </View>
@@ -283,14 +302,17 @@ const styles = StyleSheet.create({
         opacity: 0.9,
     },
     micContainer: {
+        position: "relative",
         alignItems: "center",
         paddingVertical: 48,
     },
     pulseRing: {
-        position: "absolute",
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        // position: "absolute",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 110,
+        height: 110,
+        borderRadius: 55,
     },
     micButton: {
         width: 100,
