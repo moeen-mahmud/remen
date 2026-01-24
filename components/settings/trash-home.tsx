@@ -1,20 +1,29 @@
 import { EmptyPage } from "@/components/empty-page"
+import { SettingsNoteCounter } from "@/components/settings/settings-note-counter"
 import { SwipeableNoteCard } from "@/components/swipeable-note-card"
 import { Box } from "@/components/ui/box"
 import { PageLoader } from "@/components/ui/page-loader"
-import { Text } from "@/components/ui/text"
-import { getArchivedNotes, getTagsForNote, moveToTrash, unarchiveNote, type Note, type Tag } from "@/lib/database"
+import {
+    deleteNote,
+    emptyTrash,
+    getTagsForNote,
+    getTrashedNotes,
+    restoreFromTrash,
+    type Note,
+    type Tag,
+} from "@/lib/database"
+import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import { ArchiveIcon } from "lucide-react-native"
+import { Recycle } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useState } from "react"
-import { FlatList, RefreshControl } from "react-native"
+import { Alert, FlatList, RefreshControl } from "react-native"
 
 interface NoteWithTags extends Note {
     tags: Tag[]
 }
 
-export const ArchivesHome: React.FC = () => {
+export const TrashHome: React.FC = () => {
     const { colorScheme } = useColorScheme()
     const router = useRouter()
     const isDark = colorScheme === "dark"
@@ -25,10 +34,10 @@ export const ArchivesHome: React.FC = () => {
 
     const loadNotes = useCallback(async () => {
         try {
-            const archivedNotes = await getArchivedNotes()
+            const trashedNotes = await getTrashedNotes()
 
             const notesWithTags = await Promise.all(
-                archivedNotes.map(async (note) => {
+                trashedNotes.map(async (note) => {
                     const tags = await getTagsForNote(note.id)
                     return { ...note, tags }
                 }),
@@ -36,7 +45,7 @@ export const ArchivesHome: React.FC = () => {
 
             setNotes(notesWithTags)
         } catch (error) {
-            console.error("Failed to load archived notes:", error)
+            console.error("Failed to load trashed notes:", error)
         } finally {
             setIsLoading(false)
             setIsRefreshing(false)
@@ -47,6 +56,10 @@ export const ArchivesHome: React.FC = () => {
         loadNotes()
     }, [loadNotes])
 
+    const handleBack = useCallback(() => {
+        router.back()
+    }, [router])
+
     const handleNotePress = useCallback(
         (note: Note) => {
             router.push(`/notes/${note.id}` as any)
@@ -55,12 +68,12 @@ export const ArchivesHome: React.FC = () => {
     )
 
     const handleRestore = useCallback(async (noteId: string) => {
-        await unarchiveNote(noteId)
+        await restoreFromTrash(noteId)
         setNotes((prev) => prev.filter((n) => n.id !== noteId))
     }, [])
 
-    const handleTrash = useCallback(async (noteId: string) => {
-        await moveToTrash(noteId)
+    const handlePermanentDelete = useCallback(async (noteId: string) => {
+        await deleteNote(noteId)
         setNotes((prev) => prev.filter((n) => n.id !== noteId))
     }, [])
 
@@ -69,6 +82,21 @@ export const ArchivesHome: React.FC = () => {
         loadNotes()
     }, [loadNotes])
 
+    const handleEmptyTrash = useCallback(async () => {
+        Alert.alert("Empty Recycle Bin", "This will permanently delete all notes. This cannot be undone.", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Empty",
+                style: "destructive",
+                onPress: async () => {
+                    await emptyTrash()
+                    setNotes([])
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+                },
+            },
+        ])
+    }, [])
+
     const renderNote = useCallback(
         ({ item }: { item: NoteWithTags }) => (
             <SwipeableNoteCard
@@ -76,20 +104,20 @@ export const ArchivesHome: React.FC = () => {
                 tags={item.tags}
                 onPress={handleNotePress}
                 onRestore={() => handleRestore(item.id)}
-                onTrash={() => handleTrash(item.id)}
-                isArchived={true}
+                onArchive={() => handlePermanentDelete(item.id)}
+                isTrashed={true}
             />
         ),
-        [handleNotePress, handleRestore, handleTrash],
+        [handleNotePress, handleRestore, handlePermanentDelete],
     )
 
     const keyExtractor = useCallback((item: Note) => item.id, [])
 
     const renderEmptyState = () => (
         <EmptyPage
-            icon={<ArchiveIcon size={56} color={isDark ? "#444" : "#ccc"} />}
-            title="No archived notes"
-            description="Notes you archive will appear here"
+            icon={<Recycle size={56} color={isDark ? "#444" : "#ccc"} />}
+            title="Recycle Bin is empty"
+            description="Deleted notes will appear here"
         />
     )
 
@@ -100,11 +128,7 @@ export const ArchivesHome: React.FC = () => {
     return (
         <Box className="flex-1">
             {/* Count */}
-            <Box className="px-4">
-                <Text className="mb-2 font-medium text-typography-500">
-                    {notes.length} {notes.length === 1 ? "note" : "notes"}
-                </Text>
-            </Box>
+            <SettingsNoteCounter notes={notes} />
 
             {/* Notes List */}
             <FlatList

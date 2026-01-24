@@ -4,7 +4,7 @@ import { Divider } from "@/components/ui/divider"
 import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
 import { useSettingsActions } from "@/hooks/use-settings-actions"
-import { Archive, ChevronRightIcon, Recycle, TrashIcon } from "lucide-react-native"
+import { AlertCircle, Archive, ChevronRightIcon, Recycle } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { Pressable } from "react-native"
 
@@ -46,7 +46,7 @@ export const SettingsData: React.FC = () => {
                         <Divider className="bg-background-50 dark:bg-background-100" />
                         <Pressable style={styles.row} onPress={handleEmptyTrash}>
                             <Box style={styles.rowLeft}>
-                                <Icon as={TrashIcon} />
+                                <Icon as={AlertCircle} color={isDark ? "#E7000B" : "#F9423C"} />
                                 <Text style={{ color: isDark ? "#E7000B" : "#F9423C" }}>Empty Recycle Bin</Text>
                             </Box>
                         </Pressable>

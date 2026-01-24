@@ -1,5 +1,5 @@
-import { ArchivesHome } from "@/components/archives/archive-home"
 import { PageWrapper } from "@/components/page-wrapper"
+import { ArchivesHome } from "@/components/settings/archive-home"
 import { SettingsHeader } from "@/components/settings/settings-header"
 
 export default function ArchivesScreen() {
