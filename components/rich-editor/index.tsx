@@ -1,4 +1,3 @@
-import { RemenLogo } from "@/components/brand/logo"
 import {
     AUTOSAVE_DELAY,
     DEFAULT_LINK_STATE,
@@ -8,21 +7,21 @@ import {
     type Selection,
     type StylesState,
 } from "@/components/rich-editor/constants"
+import { EditorHeader } from "@/components/rich-editor/editor-header"
 import { editorStyles } from "@/components/rich-editor/editor-styles"
 import { htmlStyle } from "@/components/rich-editor/html-styles"
 import { LinkModal } from "@/components/rich-editor/link-modal"
 import { Toolbar } from "@/components/rich-editor/toolbar"
 import { Box } from "@/components/ui/box"
-import { Text } from "@/components/ui/text"
+import { PageLoader } from "@/components/ui/page-loader"
 import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
 import { createNote, getNoteById, updateNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import { ArrowLeftIcon, CameraIcon, ChevronDownIcon, ListIcon, MicIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ActivityIndicator, AppState, Pressable, View } from "react-native"
+import { AppState } from "react-native"
 import {
     EnrichedTextInput,
     type EnrichedTextInputInstance,
@@ -58,7 +57,6 @@ interface RichEditorProps {
     /**
      * Whether to show quick action buttons (voice/scan) (default: true)
      */
-    showQuickActions?: boolean
     /**
      * Custom placeholder text
      */
@@ -69,7 +67,6 @@ export default function RichEditor({
     noteId: initialNoteId = null,
     onClose,
     showBackButton = true,
-    showQuickActions = true,
     placeholder = "What's on your mind?",
 }: RichEditorProps) {
     const { top, bottom } = useSafeAreaInsets()
@@ -290,8 +287,6 @@ export default function RichEditor({
         await KeyboardController.dismiss()
     }, [])
 
-    const isEditMode = !!currentNoteId
-
     const insideCurrentLink =
         stylesState.link.isActive &&
         currentLink.url.length > 0 &&
@@ -337,46 +332,12 @@ export default function RichEditor({
         router.push("/notes" as any)
     }, [router])
 
-    // Render save status indicator
-    // const renderSaveStatus = () => {
-    //     // Use the new animated SaveStatus component
-    //     return <SaveStatus state={saveStatus as SaveState} />
-    // }
-
-    if (isLoading) {
-        return (
-            <View style={[editorStyles.container, { backgroundColor: isDark ? "#000" : "#fff" }]}>
-                <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-                    <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
-                </View>
-            </View>
-        )
-    }
+    if (isLoading) return <PageLoader />
 
     return (
-        <View style={[editorStyles.container, { backgroundColor: isDark ? "#000" : "#fff" }]}>
+        <Box className="flex-1 bg-background" style={{ paddingTop: top }}>
             {/* Header */}
-            <View
-                style={[editorStyles.header, { paddingTop: top + 8, borderBottomColor: isDark ? "#333" : "#e5e5e5" }]}
-            >
-                {showBackButton ? (
-                    <Pressable onPress={handleBack} style={editorStyles.headerButton}>
-                        <ArrowLeftIcon size={22} color={isDark ? "#fff" : "#000"} />
-                        <Text className="text-lg font-bold">Edit Note</Text>
-                    </Pressable>
-                ) : (
-                    <View style={editorStyles.brandContainer}>
-                        <RemenLogo size="md" showIcon={true} />
-                    </View>
-                )}
-
-                {/* {renderSaveStatus()} */}
-
-                {/* Spacer for header alignment */}
-                <Pressable onPress={handleViewNotes} hitSlop={10}>
-                    <ListIcon size={24} color={isDark ? "#fff" : "#000"} />
-                </Pressable>
-            </View>
+            <EditorHeader showBackButton={showBackButton} handleBack={handleBack} handleViewNotes={handleViewNotes} />
 
             {/* Editor */}
             <KeyboardAwareScrollView
@@ -388,11 +349,11 @@ export default function RichEditor({
                 <Box className="w-full">
                     <EnrichedTextInput
                         ref={ref}
-                        style={[editorStyles.editorInput, { color: isDark ? "#fdfcfc" : "#141414" }] as any}
+                        style={[editorStyles.editorInput, { color: isDark ? "#ffffff" : "#000000" }] as any}
                         htmlStyle={htmlStyle}
                         defaultValue={initialContent}
                         placeholder={placeholder}
-                        placeholderTextColor={isDark ? "#555" : "#aaa"}
+                        placeholderTextColor={isDark ? "#555555" : "#aaaaaa"}
                         selectionColor={isDark ? "#dddddd" : "#666666"}
                         autoCapitalize="sentences"
                         autoFocus={false}
@@ -408,40 +369,17 @@ export default function RichEditor({
 
             {/* Bottom Bar */}
             <KeyboardAvoidingView behavior="padding" style={editorStyles.bottomBarContainer}>
-                <View
-                    style={[
-                        editorStyles.bottomBar,
-                        {
-                            borderTopColor: isDark ? "#333" : "#e5e5e5",
-                            backgroundColor: isDark ? "#000" : "#fff",
-                            paddingBottom: isKeyboardVisible ? 8 : bottom + 8,
-                        },
-                    ]}
+                <Box
+                    className="pt-2 border-t border-background-300 bg-background"
+                    style={{ paddingBottom: isKeyboardVisible ? 0 : bottom + 8 }}
                 >
-                    {/* Quick capture buttons */}
-                    {showQuickActions && (
-                        <View style={editorStyles.quickActions}>
-                            <Pressable onPress={handleVoice} style={editorStyles.quickButton}>
-                                <MicIcon size={22} color={isDark ? "#fff" : "#000"} />
-                            </Pressable>
-                            <Pressable onPress={handleScan} style={editorStyles.quickButton}>
-                                <CameraIcon size={22} color={isDark ? "#fff" : "#000"} />
-                            </Pressable>
-                            {isKeyboardVisible && (
-                                <Pressable onPress={handleDismissKeyboard} style={editorStyles.quickButton}>
-                                    <ChevronDownIcon size={22} color={isDark ? "#fff" : "#000"} />
-                                </Pressable>
-                            )}
-                        </View>
-                    )}
-
                     {/* Formatting toolbar (only when keyboard is visible) */}
                     {isKeyboardVisible && (
-                        <View style={editorStyles.toolbarContainer}>
+                        <Box className="mt-2">
                             <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
-                        </View>
+                        </Box>
                     )}
-                </View>
+                </Box>
             </KeyboardAvoidingView>
 
             {/* Modals */}
@@ -452,6 +390,6 @@ export default function RichEditor({
                 onSubmit={submitLink}
                 onClose={closeLinkModal}
             />
-        </View>
+        </Box>
     )
 }

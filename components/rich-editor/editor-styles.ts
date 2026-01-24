@@ -5,25 +5,7 @@ export const editorStyles = StyleSheet.create({
         flex: 1,
     },
     header: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingBottom: 12,
         borderBottomWidth: StyleSheet.hairlineWidth,
-    },
-    headerButton: {
-        padding: 8,
-        gap: 4,
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-    brandContainer: {
-        // paddingHorizontal: 4,
-        // paddingVertical: 8,
-        minWidth: 44,
-        justifyContent: "center",
     },
     headerTitle: {
         fontSize: 14,

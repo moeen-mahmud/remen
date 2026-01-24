@@ -184,7 +184,7 @@ module.exports = {
                     foreground: "rgb(var(--color-typography-950)/<alpha-value>)",
                 },
                 // Direct theme mappings
-                brand: "rgb(var(--color-primary-500)/<alpha-value>)",
+                brand: "rgb(var(--color-brand-primary)/<alpha-value>)",
                 highlight: "rgb(var(--color-primary-400)/<alpha-value>)",
             },
             fontFamily: {

@@ -1,10 +1,10 @@
 import { SpeedDial, type FabAction } from "@/components/fab"
 import RichEditor from "@/components/rich-editor"
+import { Box } from "@/components/ui/box"
 import { useRouter } from "expo-router"
 import { CameraIcon, MicIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback } from "react"
-import { View } from "react-native"
 
 export default function Index() {
     const router = useRouter()
@@ -20,14 +20,6 @@ export default function Index() {
     }, [router])
 
     const fabActions: FabAction[] = [
-        // {
-        //     id: "notes",
-        //     label: "All Notes",
-        //     icon: ListIcon,
-        //     onPress: handleViewNotes,
-        //     backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-        //     color: isDark ? "#F8F8F8" : "#1a1b1c",
-        // },
         {
             id: "scan",
             label: "Scan",
@@ -47,9 +39,9 @@ export default function Index() {
     ]
 
     return (
-        <View className="flex-1">
-            <RichEditor showBackButton={false} showQuickActions={false} />
+        <Box className="flex-1 bg-background-50">
+            <RichEditor showBackButton={false} />
             <SpeedDial actions={fabActions} position="bottom-right" />
-        </View>
+        </Box>
     )
 }
