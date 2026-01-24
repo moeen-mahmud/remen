@@ -175,9 +175,14 @@ export default function NoteDetailScreen() {
 
     // Handle title editing
     const handleTitlePress = useCallback(() => {
+        if (isProcessingThisNote) {
+            Alert.alert("Processing", "AI is still processing this note. Please wait for it to complete.", [
+                { text: "OK", onPress: () => {} },
+            ])
+        }
         setEditingTitle(note?.title || "")
         setIsEditingTitle(true)
-    }, [note?.title])
+    }, [note?.title, isProcessingThisNote])
 
     const handleTitleSave = useCallback(async () => {
         if (!note || !editingTitle.trim() || isProcessingThisNote) return

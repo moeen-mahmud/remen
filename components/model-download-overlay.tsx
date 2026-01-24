@@ -1,6 +1,6 @@
 import { RemenLogo } from "@/components/brand/logo"
 import { Text } from "@/components/ui/text"
-import { Minimize2, X } from "lucide-react-native"
+import { Minimize2 } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Animated, Dimensions, Easing, Pressable, StyleSheet, View } from "react-native"
@@ -159,9 +159,7 @@ export function ModelDownloadOverlay({
                     <Pressable onPress={handleMinimize} style={styles.headerButton}>
                         <Minimize2 size={20} color={isDark ? "#fff" : "#000"} />
                     </Pressable>
-                    <Pressable onPress={handleClose} style={styles.headerButton}>
-                        <X size={20} color={isDark ? "#fff" : "#000"} />
-                    </Pressable>
+                    <View />
                 </View>
             </View>
 

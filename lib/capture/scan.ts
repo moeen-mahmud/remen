@@ -72,22 +72,56 @@ function getBboxBottomY(bbox?: OCRBbox[]): number {
 
 /* ----------------------------- Core OCR Logic ------------------------------ */
 
+// export async function processImageOCR(imagePath: string, ocrModel: OCRModel | null): Promise<ScanResult> {
+//     if (!ocrModel?.isReady) {
+//         throw new Error("OCR model not ready")
+//     }
+
+//     try {
+//         const rawDetections = await ocrModel.forward(imagePath)
+
+//         if (!Array.isArray(rawDetections) || rawDetections.length === 0) {
+//             return emptyScanResult()
+//         }
+
+//         return parseOCRDetections(rawDetections)
+//     } catch (error) {
+//         console.error("OCR inference failed:", error)
+//         return emptyScanResult()
+//     }
+// }
+
 export async function processImageOCR(imagePath: string, ocrModel: OCRModel | null): Promise<ScanResult> {
     if (!ocrModel?.isReady) {
         throw new Error("OCR model not ready")
     }
 
+    if (ocrModel.isGenerating) {
+        throw new Error("OCR model is already processing another image")
+    }
+
     try {
-        const rawDetections = await ocrModel.forward(imagePath)
+        console.log("🔍 [OCR] Processing image:", imagePath)
+
+        // Ensure the path is properly formatted
+        const cleanPath = imagePath.startsWith("file://") ? imagePath : `file://${imagePath}`
+
+        const rawDetections = await ocrModel.forward(cleanPath)
 
         if (!Array.isArray(rawDetections) || rawDetections.length === 0) {
+            console.warn("⚠️ [OCR] No text detected in image")
             return emptyScanResult()
         }
 
+        console.log(`✅ [OCR] Detected ${rawDetections.length} text regions`)
         return parseOCRDetections(rawDetections)
     } catch (error) {
-        console.error("OCR inference failed:", error)
-        return emptyScanResult()
+        console.error("❌ [OCR] Inference failed:", error)
+        // Re-throw with more context
+        if (error instanceof Error) {
+            throw new Error(`OCR processing failed: ${error.message}`)
+        }
+        throw error
     }
 }
 

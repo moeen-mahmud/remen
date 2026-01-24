@@ -9,13 +9,12 @@ import { Image } from "expo-image"
 import { useRouter } from "expo-router"
 import { CheckIcon, RefreshCwIcon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ActivityIndicator, Alert, Pressable, StyleSheet, TextInput, View } from "react-native"
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-// import { Camera, useCameraDevice, useCameraPermission } from "react-native-vision-camera"
 
-type ScanState = "camera" | "processing" | "review" | "model-loading"
+type ScanState = "camera" | "processing" | "review" | "model-loading" | "saving-image"
 
 export default function ScanCaptureScreen() {
     const { top, bottom } = useSafeAreaInsets()
@@ -28,9 +27,6 @@ export default function ScanCaptureScreen() {
 
     const [hasPermission, requestPermission] = useCameraPermissions()
     const cameraRef = useRef<CameraView>(null)
-    // const { hasPermission, requestPermission } = useCameraPermission()
-    // const device = useCameraDevice("back")
-    // const cameraRef = useRef<Camera>(null)
 
     const [scanState, setScanState] = useState<ScanState>("camera")
     const [capturedImagePath, setCapturedImagePath] = useState<string | null>(null)
@@ -39,57 +35,159 @@ export default function ScanCaptureScreen() {
     const [error, setError] = useState<string | null>(null)
     const [isSaving, setIsSaving] = useState(false)
 
-    // Request permission on mount
-    // useEffect(() => {
-    //     if (!hasPermission) {
-    //         requestPermission()
-    //     }
-    // }, [hasPermission])
+    // Add processing lock to prevent concurrent operations
+    const isProcessingRef = useRef(false)
+    const isMountedRef = useRef(true)
 
-    // Take photo and process
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false
+            isProcessingRef.current = false
+        }
+    }, [])
+
+    // Take photo and process with better error handling
     const handleCapture = useCallback(async () => {
-        if (!hasPermission) return
+        // Prevent concurrent operations
+        if (isProcessingRef.current) {
+            console.warn("⚠️ [Scan] Already processing, ignoring capture request")
+            return
+        }
+
+        if (!hasPermission) {
+            Alert.alert("Permission Required", "Camera permission is required to scan documents")
+            return
+        }
 
         // Check if OCR model is ready
         if (!ocr?.isReady) {
+            console.warn("⚠️ [Scan] OCR model not ready")
             setScanState("model-loading")
             return
         }
 
+        // Check if OCR is already processing
+        if (ocr?.isGenerating) {
+            console.warn("⚠️ [Scan] OCR is currently processing another image")
+            Alert.alert("Please Wait", "OCR is currently processing. Please wait a moment.")
+            return
+        }
+
         try {
+            isProcessingRef.current = true
             setError(null)
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
-            // Take photo
-            const photo = await cameraRef.current?.takePictureAsync()
-            if (!photo?.uri) {
-                Alert.alert("No photo", "No photo was captured. Please try again.")
-                setScanState("camera")
+            console.log("📷 [Scan] Taking picture...")
+            if (!cameraRef.current) {
+                isProcessingRef.current = false
+                console.error("📷 [Scan] Camera ref is not initialized")
                 return
             }
+
+            // Take photo with quality settings to reduce memory usage
+            const photo = await cameraRef.current?.takePictureAsync({
+                quality: 0.1,
+            })
+
+            console.log("no error till now")
+
+            if (!photo?.uri) {
+                throw new Error("No photo was captured")
+            }
+
+            console.log("📷 [Scan] Photo captured:", photo.uri)
+
+            // Update state before async operations
+            if (!isMountedRef.current) {
+                isProcessingRef.current = false
+                console.warn("⚠️ [Scan] Not mounted, ignoring capture request")
+                return
+            }
+            setScanState("saving-image")
+
+            // Save image permanently first (this is fast)
+            console.log("💾 [Scan] Saving image...")
+            const savedPath = await saveScannedImage(photo.uri)
+            console.log("✅ [Scan] Image saved:", savedPath)
+
+            if (!isMountedRef.current) {
+                isProcessingRef.current = false
+                console.warn("⚠️ [Scan] Not mounted, ignoring save request")
+                return
+            }
+            setCapturedImagePath(savedPath)
             setScanState("processing")
 
-            // Save image permanently
-            const savedPath = await saveScannedImage(photo.uri)
-            setCapturedImagePath(savedPath)
+            // Small delay to ensure UI updates
+            await new Promise((resolve) => setTimeout(resolve, 100))
 
-            // Process OCR using ExecutorTorch
-            const result = await processImageOCR(photo.uri, ocr)
-            setExtractedText(formatOCRText(result))
-            setConfidence(result.confidence)
+            // Process OCR with timeout protection
+            console.log("🔍 [Scan] Starting OCR processing...")
+
+            const ocrPromise = processImageOCR(savedPath, ocr)
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("OCR timeout after 30 seconds")), 30000),
+            )
+
+            const result = (await Promise.race([ocrPromise, timeoutPromise])) as Awaited<
+                ReturnType<typeof processImageOCR>
+            >
+
+            console.log(`✅ [Scan] OCR complete. Confidence: ${Math.round(result.confidence * 100)}%`)
+
+            if (!isMountedRef.current) {
+                isProcessingRef.current = false
+                console.warn("⚠️ [Scan] Not mounted, ignoring OCR completion")
+                return
+            }
+
+            const formattedText = formatOCRText(result)
+
+            if (!formattedText || formattedText.trim().length === 0) {
+                console.warn("⚠️ [Scan] No text extracted from image")
+                setExtractedText("")
+                setConfidence(0)
+            } else {
+                setExtractedText(formattedText)
+                setConfidence(result.confidence)
+            }
 
             setScanState("review")
+            isProcessingRef.current = false
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
         } catch (err) {
-            console.error("Failed to capture/process:", err)
-            setError("Failed to process image. Please try again.")
+            console.error("❌ [Scan] Capture/process failed:", err)
+
+            const errorMessage = err instanceof Error ? err.message : "Unknown error occurred"
+
+            if (!isMountedRef.current) return
+
+            setError(`Failed to process image: ${errorMessage}`)
             setScanState("camera")
+
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+
+            // Show user-friendly error
+            Alert.alert(
+                "Scan Failed",
+                "Failed to process the image. This might be unknown error." +
+                    "Try restarting the app or scanning a smaller area.",
+                [{ text: "OK" }],
+            )
+        } finally {
+            isProcessingRef.current = false
         }
     }, [ocr, hasPermission])
 
     // Retake photo
     const handleRetake = useCallback(() => {
+        if (isProcessingRef.current) {
+            console.warn("⚠️ [Scan] Cannot retake while processing")
+            return
+        }
+
         setScanState("camera")
         setCapturedImagePath(null)
         setExtractedText("")
@@ -97,10 +195,15 @@ export default function ScanCaptureScreen() {
         setError(null)
     }, [])
 
-    // Save and navigate to note detail
+    // Save and navigate to note detail with better error handling
     const handleSave = useCallback(async () => {
         if (!extractedText || extractedText?.trim()?.length === 0) {
             Alert.alert("No Text", "No text was extracted from the image.")
+            return
+        }
+
+        if (isSaving) {
+            console.warn("⚠️ [Scan] Already saving")
             return
         }
 
@@ -109,27 +212,63 @@ export default function ScanCaptureScreen() {
         try {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
 
+            console.log("💾 [Scan] Creating note...")
             const note = await createNote({
                 content: extractedText,
                 type: "scan",
                 original_image: capturedImagePath,
             })
+            console.log("✅ [Scan] Note created:", note.id)
 
-            // Queue for AI processing (pass models)
-            aiQueue.setModels({ llm, embeddings })
-            aiQueue.add({ noteId: note.id, content: extractedText })
+            // Queue for AI processing (pass models) - but don't block navigation
+            if (llm?.isReady && embeddings?.isReady) {
+                try {
+                    aiQueue.setModels({ llm, embeddings })
+                    aiQueue.add({ noteId: note.id, content: extractedText })
+                    console.log("📋 [Scan] Note queued for AI processing")
+                } catch (queueError) {
+                    console.error("⚠️ [Scan] Failed to queue for AI processing:", queueError)
+                    // Don't block navigation on queue failure
+                }
+            }
+
+            setScanState("camera")
+            setCapturedImagePath(null)
+            setExtractedText("")
+            setConfidence(0)
+            setError(null)
 
             // Navigate to note detail
-            router.replace(`/notes/${note.id}` as any)
+            router.dismissAll()
+            router.navigate(`/notes/${note.id}` as any)
         } catch (err) {
-            console.error("Failed to save scanned note:", err)
-            Alert.alert("Error", "Failed to save note. Please try again.")
+            setScanState("camera")
+            setCapturedImagePath(null)
+            setExtractedText("")
+            setConfidence(0)
+            setError(null)
+            console.error("❌ [Scan] Failed to save note:", err)
+            Alert.alert("Error", "Failed to save note. Please try again.", [{ text: "OK" }])
             setIsSaving(false)
         }
-    }, [extractedText, capturedImagePath, router, llm, embeddings])
+    }, [extractedText, capturedImagePath, router, llm, embeddings, isSaving])
 
     // Close without saving
     const handleClose = useCallback(() => {
+        if (isProcessingRef.current) {
+            Alert.alert("Processing", "OCR is still processing. Are you sure you want to cancel?", [
+                { text: "Wait", style: "cancel" },
+                {
+                    text: "Cancel",
+                    style: "destructive",
+                    onPress: () => {
+                        isProcessingRef.current = false
+                        router.back()
+                    },
+                },
+            ])
+            return
+        }
         router.back()
     }, [router])
 
@@ -167,17 +306,7 @@ export default function ScanCaptureScreen() {
 
         return (
             <View style={styles.cameraContainer}>
-                <CameraView
-                    ref={cameraRef}
-                    style={StyleSheet.absoluteFill}
-                    mode="picture"
-                    facing="back"
-                    animateShutter
-                    barcodeScannerSettings={{
-                        barcodeTypes: ["qr"],
-                    }}
-                    responsiveOrientationWhenOrientationLocked
-                />
+                <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} mode="picture" facing="back" />
 
                 {/* Camera overlay with guide */}
                 <View style={styles.mask}>
@@ -189,40 +318,35 @@ export default function ScanCaptureScreen() {
                     </View>
                     <View style={styles.maskBottom} />
                 </View>
-                {/* <View style={styles.cameraOverlay}>
-                    <View style={styles.guideBox}>
-                        <View style={[styles.guideCorner, styles.guideTopLeft]} />
-                        <View style={[styles.guideCorner, styles.guideTopRight]} />
-                        <View style={[styles.guideCorner, styles.guideBottomLeft]} />
-                        <View style={[styles.guideCorner, styles.guideBottomRight]} />
-                    </View>
-                    <Text style={styles.guideText}>Position document within frame</Text>
-                </View> */}
 
                 {/* OCR Model Status */}
-                {!ocr?.isReady ? (
+                {!ocr?.isReady && (
                     <View style={styles.modelStatusBanner}>
                         <Text style={styles.modelStatusText}>
                             OCR model loading: {Math.round((ocr?.downloadProgress || 0) * 100)}%
                         </Text>
                     </View>
-                ) : null}
+                )}
 
                 {/* Capture button */}
                 <View style={[styles.captureButtonContainer, { paddingBottom: bottom + 20 }]}>
                     <Pressable
                         onPress={handleCapture}
-                        style={[styles.captureButton, !ocr?.isReady && styles.captureButtonDisabled]}
+                        disabled={!ocr?.isReady || ocr?.isGenerating}
+                        style={[
+                            styles.captureButton,
+                            (!ocr?.isReady || ocr?.isGenerating) && styles.captureButtonDisabled,
+                        ]}
                     >
-                        {/* <CameraIcon size={32} color="#fff" /> */}
+                        {/* Camera icon or indicator */}
                     </Pressable>
                 </View>
 
-                {error ? (
+                {error && (
                     <View style={styles.errorBanner}>
                         <Text style={styles.errorText}>{error}</Text>
                     </View>
-                ) : null}
+                )}
             </View>
         )
     }
@@ -231,7 +355,10 @@ export default function ScanCaptureScreen() {
     const renderProcessing = () => (
         <View style={[styles.centeredContainer, { backgroundColor: isDark ? "#000" : "#fff" }]}>
             <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
-            <Text style={[styles.processingText, { color: isDark ? "#fff" : "#000" }]}>Processing document...</Text>
+            <Text style={[styles.processingText, { color: isDark ? "#fff" : "#000" }]}>
+                {scanState === "saving-image" ? "Saving image..." : "Processing document..."}
+            </Text>
+            <Text style={[styles.subText, { color: isDark ? "#888" : "#666" }]}>This may take a moment</Text>
         </View>
     )
 
@@ -242,14 +369,19 @@ export default function ScanCaptureScreen() {
             contentContainerStyle={styles.reviewContent}
         >
             {/* Scanned image preview */}
-            {capturedImagePath ? (
+            {capturedImagePath && (
                 <View className="dark:bg-neutral-900 bg-neutral-200" style={styles.imagePreviewContainer}>
-                    <Image source={{ uri: capturedImagePath }} style={styles.imagePreview} />
+                    <Image
+                        source={{ uri: capturedImagePath }}
+                        style={styles.imagePreview}
+                        contentFit="contain"
+                        transition={200}
+                    />
                     <View style={styles.confidenceBadge}>
                         <Text style={styles.confidenceText}>{Math.round(confidence * 100)}% confidence</Text>
                     </View>
                 </View>
-            ) : null}
+            )}
 
             {/* Extracted text */}
             <View style={styles.textSection}>
@@ -276,18 +408,28 @@ export default function ScanCaptureScreen() {
             <View style={[styles.actionButtons, { paddingBottom: bottom + 20 }]}>
                 <Pressable
                     onPress={handleRetake}
-                    style={[styles.actionButton, styles.secondaryButton, { borderColor: isDark ? "#333" : "#ddd" }]}
+                    disabled={isProcessingRef.current}
+                    style={[
+                        styles.actionButton,
+                        styles.secondaryButton,
+                        {
+                            borderColor: isDark ? "#333" : "#ddd",
+                            opacity: isProcessingRef.current ? 0.5 : 1,
+                        },
+                    ]}
                 >
                     <RefreshCwIcon size={20} color={isDark ? "#fff" : "#000"} />
                     <Text style={[styles.actionButtonText, { color: isDark ? "#fff" : "#000" }]}>Retake</Text>
                 </Pressable>
                 <Pressable
                     onPress={handleSave}
-                    disabled={isSaving || extractedText.trim().length === 0}
+                    disabled={isSaving}
                     style={[
                         styles.actionButton,
                         styles.primaryButton,
-                        { opacity: isSaving || extractedText.trim().length === 0 ? 0.5 : 1 },
+                        {
+                            opacity: isSaving || isProcessingRef.current ? 0.5 : 1,
+                        },
                     ]}
                 >
                     {isSaving ? (
@@ -327,18 +469,17 @@ export default function ScanCaptureScreen() {
             </View>
 
             {/* Content based on state */}
-            {scanState === "camera" ? renderCamera() : null}
-            {scanState === "processing" ? renderProcessing() : null}
-            {scanState === "review" ? renderReview() : null}
-            {scanState === "model-loading" ? renderModelLoading() : null}
+            {scanState === "camera" && renderCamera()}
+            {(scanState === "processing" || scanState === "saving-image") && renderProcessing()}
+            {scanState === "review" && renderReview()}
+            {scanState === "model-loading" && renderModelLoading()}
         </View>
     )
 }
 
+// Styles remain the same
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+    container: { flex: 1 },
     header: {
         flexDirection: "row",
         alignItems: "center",
@@ -388,63 +529,7 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: "600",
     },
-    cameraContainer: {
-        flex: 1,
-    },
-    cameraOverlay: {
-        ...StyleSheet.absoluteFillObject,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingTop: 100,
-    },
-    guideBox: {
-        width: "85%",
-        aspectRatio: 0.75,
-        position: "relative",
-    },
-    guideCorner: {
-        position: "absolute",
-        width: 48,
-        height: 48,
-        borderColor: "#fff",
-    },
-    guideTopLeft: {
-        top: 0,
-        left: 0,
-        borderTopWidth: 3,
-        borderLeftWidth: 3,
-        borderTopLeftRadius: 12,
-    },
-    guideTopRight: {
-        top: 0,
-        right: 0,
-        borderTopWidth: 3,
-        borderRightWidth: 3,
-        borderTopRightRadius: 12,
-    },
-    guideBottomLeft: {
-        bottom: 0,
-        left: 0,
-        borderBottomWidth: 3,
-        borderLeftWidth: 3,
-        borderBottomLeftRadius: 12,
-    },
-    guideBottomRight: {
-        bottom: 0,
-        right: 0,
-        borderBottomWidth: 3,
-        borderRightWidth: 3,
-        borderBottomRightRadius: 12,
-    },
-    guideText: {
-        marginTop: 28,
-        color: "#fff",
-        fontSize: 15,
-        fontWeight: "500",
-        textShadowColor: "rgba(0,0,0,0.6)",
-        textShadowOffset: { width: 1, height: 1 },
-        textShadowRadius: 3,
-    },
+    cameraContainer: { flex: 1 },
     modelStatusBanner: {
         position: "absolute",
         top: 120,
@@ -481,9 +566,7 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 12,
     },
-    captureButtonDisabled: {
-        opacity: 0.5,
-    },
+    captureButtonDisabled: { opacity: 0.5 },
     errorBanner: {
         position: "absolute",
         bottom: 160,
@@ -524,9 +607,7 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingTop: 80,
     },
-    reviewContent: {
-        padding: 16,
-    },
+    reviewContent: { padding: 16 },
     imagePreviewContainer: {
         marginVertical: 24,
         borderRadius: 16,
@@ -539,9 +620,7 @@ const styles = StyleSheet.create({
     },
     imagePreview: {
         width: "100%",
-        height: "auto",
-        resizeMode: "contain",
-        aspectRatio: 16 / 9,
+        height: 300,
         borderRadius: 16,
     },
     confidenceBadge: {
@@ -558,9 +637,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: "600",
     },
-    textSection: {
-        marginBottom: 24,
-    },
+    textSection: { marginBottom: 24 },
     sectionTitle: {
         fontSize: 14,
         fontWeight: "600",
@@ -590,12 +667,8 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         gap: 8,
     },
-    primaryButton: {
-        backgroundColor: "#3B82F6",
-    },
-    secondaryButton: {
-        borderWidth: 1,
-    },
+    primaryButton: { backgroundColor: "#3B82F6" },
+    secondaryButton: { borderWidth: 1 },
     actionButtonText: {
         fontSize: 17,
         fontWeight: "600",

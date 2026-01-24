@@ -32,7 +32,7 @@ export default function SettingsScreen() {
     const router = useRouter()
     const isDark = colorScheme === "dark"
 
-    const { llm, embeddings, ocr, classification, overallProgress, isInitializing } = useAI()
+    const { llm, embeddings, ocr, overallProgress, isInitializing } = useAI()
 
     const [preferences, setPreferences] = useState<Preferences | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -588,7 +588,6 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: 16,
         marginTop: 16,
-        marginHorizontal: 16,
     },
     progressHeader: {
         flexDirection: "row",
