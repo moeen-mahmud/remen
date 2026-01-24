@@ -35,7 +35,7 @@ export const NotesSearch: React.FC<NotesSearchProps> = ({
         <Box className="flex-row gap-2 items-center p-4 mx-4 rounded-lg bg-background-0">
             <Icon as={SearchIcon} />
             <TextInput
-                className="flex-1 font-semibold"
+                className="flex-1 font-semibold text-typography-900 dark:text-typography-0"
                 placeholder="Ask me anything..."
                 placeholderTextColor={isDark ? "#888" : "#999"}
                 value={searchQuery}
