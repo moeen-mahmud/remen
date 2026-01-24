@@ -25,16 +25,16 @@ export default function Index() {
             label: "Scan",
             icon: CameraIcon,
             onPress: handleScanCapture,
-            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-            color: isDark ? "#F8F8F8" : "#1a1b1c",
+            backgroundColor: isDark ? "#000000" : "#fff",
+            color: isDark ? "#fff" : "#000",
         },
         {
             id: "voice",
             label: "Voice",
             icon: MicIcon,
             onPress: handleVoiceCapture,
-            backgroundColor: isDark ? "#E7000B" : "#F9423C",
-            color: "#fff",
+            backgroundColor: isDark ? "#000000" : "#fff",
+            color: isDark ? "#fff" : "#000",
         },
     ]
 

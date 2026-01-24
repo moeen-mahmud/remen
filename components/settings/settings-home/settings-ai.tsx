@@ -91,7 +91,7 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
                 ))}
             </Box>
 
-            {isInitializing && (
+            {!isInitializing && (
                 <Box className="p-4 mt-4 rounded-lg bg-brand/10">
                     <Box className="flex-row justify-between items-center">
                         <Box className="flex-row gap-2 items-center">

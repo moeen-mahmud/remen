@@ -33,14 +33,6 @@ export const FabItem: FC<FabItemProps> = ({ action, index, isOpen, totalItems, o
                 { opacity: pressed ? 0.8 : 1 },
             ]}
         >
-            {/* Label */}
-            {/* <Animated.View
-                entering={FadeIn.delay(delay + 100).duration(200)}
-                exiting={FadeOut.duration(100)}
-                style={[styles.labelContainer, { backgroundColor: isDark ? "#1a1a1a" : "#ffffff" }]}
-            >
-            </Animated.View> */}
-
             {/* Icon Button */}
             <View
                 style={[
