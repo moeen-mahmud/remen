@@ -370,7 +370,7 @@ export default function RichEditor({
             {/* Bottom Bar */}
             <KeyboardAvoidingView behavior="padding" style={editorStyles.bottomBarContainer}>
                 <Box
-                    className="pt-2 border-t border-background-300 bg-background"
+                    className="pt-2 border-t bg-background-50 border-background-300"
                     style={{ paddingBottom: isKeyboardVisible ? 0 : bottom + 8 }}
                 >
                     {/* Formatting toolbar (only when keyboard is visible) */}

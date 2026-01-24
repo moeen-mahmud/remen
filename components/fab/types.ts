@@ -11,7 +11,8 @@ export interface FabAction {
 }
 
 export interface SpeedDialProps {
-    actions: FabAction[]
+    actions: FabAction[] | null
+    actionRoute?: string
     mainButtonColor?: string
     position?: "bottom-right" | "bottom-left" | "bottom-center"
     offsetBottom?: number

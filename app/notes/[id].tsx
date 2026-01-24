@@ -1,5 +1,6 @@
 import { Heading } from "@/components/ui/heading"
 import { Icon } from "@/components/ui/icon"
+import { PageLoader } from "@/components/ui/page-loader"
 import { Text } from "@/components/ui/text"
 import { getNoteTypeBadge } from "@/lib/ai/classify"
 import { useAI } from "@/lib/ai/provider"
@@ -205,11 +206,7 @@ export default function NoteDetailScreen() {
     }, [note?.title])
 
     if (isLoading) {
-        return (
-            <View style={[styles.loadingContainer, { backgroundColor: isDark ? "#000" : "#fff" }]}>
-                <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
-            </View>
-        )
+        return <PageLoader />
     }
 
     if (!note) {

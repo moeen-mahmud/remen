@@ -1,6 +1,7 @@
 import { SwipeableNoteCard } from "@/components/swipeable-note-card"
 import { Box } from "@/components/ui/box"
 import { Heading } from "@/components/ui/heading"
+import { PageLoader } from "@/components/ui/page-loader"
 import { Text } from "@/components/ui/text"
 import {
     deleteNote,
@@ -16,7 +17,7 @@ import { useRouter } from "expo-router"
 import { ArrowLeftIcon, Trash2Icon, TrashIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native"
+import { Alert, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 interface NoteWithTags extends Note {
@@ -127,11 +128,7 @@ export default function TrashScreen() {
     )
 
     if (isLoading) {
-        return (
-            <Box className="flex-1 bg-background-50">
-                <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
-            </Box>
-        )
+        return <PageLoader />
     }
 
     return (

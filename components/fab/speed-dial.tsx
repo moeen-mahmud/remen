@@ -8,12 +8,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { FabItem } from "@/components/fab/fab-item"
 import { springConfigs } from "@/lib/animation-config"
+import { router } from "expo-router"
 import type { SpeedDialProps } from "./types"
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
 
 export const SpeedDial: FC<SpeedDialProps> = ({
-    actions,
+    actions = [],
+    actionRoute = "/notes",
     mainButtonColor,
     position = "bottom-right",
     offsetBottom = 24,
@@ -29,6 +31,8 @@ export const SpeedDial: FC<SpeedDialProps> = ({
 
     const toggleOpen = async () => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        if (!actions?.length) return router.push(actionRoute as any)
+
         setIsOpen((prev) => {
             const newState = !prev
             rotation.value = withSpring(newState ? 90 : 0, { ...springConfigs.stiff })
@@ -73,17 +77,19 @@ export const SpeedDial: FC<SpeedDialProps> = ({
             <View style={[styles.container, positionStyle as any]}>
                 {/* Action Items */}
                 <View style={styles.actionsContainer}>
-                    {actions.map((action, index) => (
-                        <FabItem
-                            key={action.id}
-                            action={action}
-                            index={index}
-                            isOpen={isOpen}
-                            totalItems={actions.length}
-                            onPress={closeMenu}
-                            isDark={isDark}
-                        />
-                    ))}
+                    {!actions?.length
+                        ? null
+                        : actions?.map((action, index) => (
+                              <FabItem
+                                  key={action.id}
+                                  action={action}
+                                  index={index}
+                                  isOpen={isOpen}
+                                  totalItems={actions.length}
+                                  onPress={closeMenu}
+                                  isDark={isDark}
+                              />
+                          ))}
                 </View>
 
                 {/* Main FAB Button */}

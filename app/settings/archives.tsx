@@ -1,13 +1,14 @@
 import { SwipeableNoteCard } from "@/components/swipeable-note-card"
 import { Box } from "@/components/ui/box"
 import { Heading } from "@/components/ui/heading"
+import { PageLoader } from "@/components/ui/page-loader"
 import { Text } from "@/components/ui/text"
 import { getArchivedNotes, getTagsForNote, moveToTrash, unarchiveNote, type Note, type Tag } from "@/lib/database"
 import { useRouter } from "expo-router"
 import { ArchiveIcon, ArrowLeftIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useState } from "react"
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native"
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 interface NoteWithTags extends Note {
@@ -103,11 +104,7 @@ export default function ArchivesScreen() {
     )
 
     if (isLoading) {
-        return (
-            <Box className="flex-1 bg-background-50">
-                <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
-            </Box>
-        )
+        return <PageLoader />
     }
 
     return (

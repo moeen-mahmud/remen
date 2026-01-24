@@ -1,7 +1,8 @@
 import { RemenLogo } from "@/components/brand/logo"
 import { EmptyState } from "@/components/empty-state"
-import { SpeedDial, type FabAction } from "@/components/fab"
+import { SpeedDial } from "@/components/fab"
 import { SwipeableNoteCard } from "@/components/swipeable-note-card"
+import { PageLoader } from "@/components/ui/page-loader"
 import { Text } from "@/components/ui/text"
 import { useSelectionMode } from "@/hooks/use-selection-mode"
 import { aiQueue } from "@/lib/ai"
@@ -10,7 +11,7 @@ import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type 
 import { askNotesSearch } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { useFocusEffect, useRouter } from "expo-router"
-import { Archive, Bolt, ListIcon, PlusIcon, Recycle, SearchIcon, Share2Icon, XIcon } from "lucide-react-native"
+import { Bolt, ListIcon, Recycle, SearchIcon, Share2Icon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
 import {
@@ -366,33 +367,33 @@ export default function NotesListScreen() {
         }
     }, [selectedCount, selectedIds, filteredNotes, exitSelectionMode])
 
-    // FAB actions for list screen
-    const fabActions: FabAction[] = [
-        {
-            id: "trash",
-            label: "Recycle Bin",
-            icon: Recycle,
-            onPress: handleTrash,
-            backgroundColor: isDark ? "#f7d512" : "#f7d512",
-            color: "#1a1b1c",
-        },
-        {
-            id: "archives",
-            label: "Archives",
-            icon: Archive,
-            onPress: handleArchives,
-            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-            color: isDark ? "#F8F8F8" : "#1a1b1c",
-        },
-        {
-            id: "new-note",
-            label: "New Note",
-            icon: PlusIcon,
-            onPress: handleNewNote,
-            backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-            color: isDark ? "#F8F8F8" : "#1a1b1c",
-        },
-    ]
+    // // FAB actions for list screen
+    // const fabActions: FabAction[] = [
+    //     {
+    //         id: "trash",
+    //         label: "Recycle Bin",
+    //         icon: Recycle,
+    //         onPress: handleTrash,
+    //         backgroundColor: isDark ? "#f7d512" : "#f7d512",
+    //         color: "#1a1b1c",
+    //     },
+    //     {
+    //         id: "archives",
+    //         label: "Archives",
+    //         icon: Archive,
+    //         onPress: handleArchives,
+    //         backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
+    //         color: isDark ? "#F8F8F8" : "#1a1b1c",
+    //     },
+    //     {
+    //         id: "new-note",
+    //         label: "New Note",
+    //         icon: PlusIcon,
+    //         onPress: handleNewNote,
+    //         backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
+    //         color: isDark ? "#F8F8F8" : "#1a1b1c",
+    //     },
+    // ]
 
     // Render note item
     const renderNote = useCallback(
@@ -460,11 +461,7 @@ export default function NotesListScreen() {
     }, [getEmptyStateProps])
 
     if (isLoading) {
-        return (
-            <View style={[styles.loadingContainer, { backgroundColor: isDark ? "#000" : "#fff" }]}>
-                <ActivityIndicator size="large" color={isDark ? "#fff" : "#000"} />
-            </View>
-        )
+        return <PageLoader />
     }
 
     return (
@@ -590,7 +587,7 @@ export default function NotesListScreen() {
             />
 
             {/* Speed Dial FAB */}
-            <SpeedDial actions={fabActions} position="bottom-right" />
+            <SpeedDial actions={[]} actionRoute="/" position="bottom-right" />
         </View>
     )
 }
