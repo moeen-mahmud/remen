@@ -194,68 +194,6 @@ export default function NotesListScreen() {
             setIsSearching(false)
         }
     }, [searchQuery, notes])
-    // useEffect(() => {
-    //     if (searchQuery.trim() === "") {
-    //         setFilteredNotes(notes)
-    //         setTemporalFilterDescription(null)
-    //         setIsSearching(false)
-    //         setIsUsingLLM(false)
-    //         setInterpretedQuery(null)
-    //         return
-    //     }
-
-    //     setIsSearching(true)
-    //     setIsUsingLLM(false)
-    //     setInterpretedQuery(null)
-
-    //     // Debounce search
-    //     const timeoutId = setTimeout(async () => {
-    //         try {
-    //             console.log("🔍 [Search] Searching for:", searchQuery)
-
-    //             // Use LLM-powered search if LLM is available
-    //             const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current, llmRef.current)
-    //             const { results, temporalFilter, interpretedQuery: llmInterpretedQuery } = searchResult
-
-    //             console.log(`🔍 [Search] Found ${results.length} results`)
-    //             console.log(`🤖 [Search] Interpreted query:`, llmInterpretedQuery)
-
-    //             // Update UI state
-    //             setTemporalFilterDescription(temporalFilter?.description || null)
-    //             setIsUsingLLM(!!llmInterpretedQuery)
-    //             setInterpretedQuery(llmInterpretedQuery || null)
-
-    //             // Match results with notes to get tags
-    //             const resultIds = new Set(results.map((r) => r.id))
-    //             const filtered = notes.filter((note) => resultIds.has(note.id))
-    //             // Sort by the search results order
-    //             filtered.sort((a, b) => {
-    //                 const aIndex = results.findIndex((r) => r.id === a.id)
-    //                 const bIndex = results.findIndex((r) => r.id === b.id)
-    //                 return aIndex - bIndex
-    //             })
-    //             setFilteredNotes(filtered)
-    //         } catch (error) {
-    //             console.error("❌ [Search] Search failed:", error)
-    //             setTemporalFilterDescription(null)
-    //             setIsUsingLLM(false)
-    //             setInterpretedQuery(null)
-    //             // Fallback to simple filtering
-    //             const query = searchQuery.toLowerCase()
-    //             const filtered = notes.filter(
-    //                 (note) =>
-    //                     note.content.toLowerCase().includes(query) ||
-    //                     (note.title && note.title.toLowerCase().includes(query)) ||
-    //                     note.tags.some((tag) => tag.name.toLowerCase().includes(query)),
-    //             )
-    //             setFilteredNotes(filtered)
-    //         } finally {
-    //             setIsSearching(false)
-    //         }
-    //     }, 300) // 300ms debounce
-
-    //     return () => clearTimeout(timeoutId)
-    // }, [searchQuery, notes])
 
     // Handle refresh
     const handleRefresh = useCallback(() => {
@@ -287,24 +225,9 @@ export default function NotesListScreen() {
         setFilteredNotes((prev) => prev.filter((n) => n.id !== noteId))
     }, [])
 
-    // Handle new note
-    const handleNewNote = useCallback(() => {
-        router.push("/")
-    }, [router])
-
     // Handle settings
     const handleSettings = useCallback(() => {
         router.push("/settings")
-    }, [router])
-
-    // Handle archives
-    const handleArchives = useCallback(() => {
-        router.push("/settings/archives")
-    }, [router])
-
-    // Handle trash
-    const handleTrash = useCallback(() => {
-        router.push("/settings/trash")
     }, [router])
 
     // Handle long press to enter selection mode
@@ -367,35 +290,6 @@ export default function NotesListScreen() {
         }
     }, [selectedCount, selectedIds, filteredNotes, exitSelectionMode])
 
-    // // FAB actions for list screen
-    // const fabActions: FabAction[] = [
-    //     {
-    //         id: "trash",
-    //         label: "Recycle Bin",
-    //         icon: Recycle,
-    //         onPress: handleTrash,
-    //         backgroundColor: isDark ? "#f7d512" : "#f7d512",
-    //         color: "#1a1b1c",
-    //     },
-    //     {
-    //         id: "archives",
-    //         label: "Archives",
-    //         icon: Archive,
-    //         onPress: handleArchives,
-    //         backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-    //         color: isDark ? "#F8F8F8" : "#1a1b1c",
-    //     },
-    //     {
-    //         id: "new-note",
-    //         label: "New Note",
-    //         icon: PlusIcon,
-    //         onPress: handleNewNote,
-    //         backgroundColor: isDark ? "#1a1b1c" : "#F8F8F8",
-    //         color: isDark ? "#F8F8F8" : "#1a1b1c",
-    //     },
-    // ]
-
-    // Render note item
     const renderNote = useCallback(
         ({ item }: { item: NoteWithTags }) => (
             <SwipeableNoteCard

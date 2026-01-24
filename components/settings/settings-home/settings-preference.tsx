@@ -2,13 +2,17 @@ import { settingsStyle } from "@/components/settings/settings-home/settings-styl
 import { Box } from "@/components/ui/box"
 import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
-import { useSettingsActions } from "@/hooks/use-settings-actions"
+import { Preferences } from "@/lib/preferences"
 import { VibrateIcon, VibrateOffIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { Switch } from "react-native"
 
-export const SettingsPreference: React.FC = () => {
-    const { preferences, handleHapticToggle } = useSettingsActions()
+type SettingsPreferenceProps = {
+    handleHapticToggle: (hapticFeedback: boolean) => void
+    preferences: Preferences | null
+}
+
+export const SettingsPreference: React.FC<SettingsPreferenceProps> = ({ handleHapticToggle, preferences }) => {
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
     return (

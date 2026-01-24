@@ -3,13 +3,26 @@ import { Box } from "@/components/ui/box"
 import { Divider } from "@/components/ui/divider"
 import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
-import { useSettingsActions } from "@/hooks/use-settings-actions"
+
 import { AlertCircle, Archive, ChevronRightIcon, Recycle } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { Pressable } from "react-native"
 
-export const SettingsData: React.FC = () => {
-    const { handleArchives, archivedCount, handleTrash, trashedCount, handleEmptyTrash } = useSettingsActions()
+type SettingsDataProps = {
+    handleArchives: () => void
+    archivedCount: number
+    handleTrash: () => void
+    trashedCount: number
+    handleEmptyTrash: () => void
+}
+
+export const SettingsData: React.FC<SettingsDataProps> = ({
+    handleArchives,
+    archivedCount,
+    handleTrash,
+    trashedCount,
+    handleEmptyTrash,
+}) => {
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
     return (

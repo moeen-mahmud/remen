@@ -1,12 +1,15 @@
 import { SettingsAppearanceActions } from "@/components/settings/settings-home/settings-appearance-actions"
 import { Box } from "@/components/ui/box"
 import { Text } from "@/components/ui/text"
-import { useSettingsActions } from "@/hooks/use-settings-actions"
 import { Preferences } from "@/lib/preferences"
 import { useColorScheme } from "nativewind"
 
-export const SettingsAppearance: React.FC = () => {
-    const { preferences, handleThemeChange } = useSettingsActions()
+type SettingAppearanceProps = {
+    handleThemeChange: (theme: Preferences["theme"]) => Promise<void>
+    preferences: Preferences | null
+}
+
+export const SettingsAppearance: React.FC<SettingAppearanceProps> = ({ handleThemeChange, preferences }) => {
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
 

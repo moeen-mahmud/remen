@@ -4,12 +4,101 @@ import { SettingsAppearance } from "@/components/settings/settings-home/settings
 import { SettingsData } from "@/components/settings/settings-home/settings-data"
 import { SettingsPreference } from "@/components/settings/settings-home/settings-preference"
 import { PageLoader } from "@/components/ui/page-loader"
-import { useSettingsActions } from "@/hooks/use-settings-actions"
-import { Box } from "lucide-react-native"
-import { ScrollView } from "react-native"
+
+import { useAI } from "@/lib/ai/provider"
+import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database"
+import { Alert, ScrollView } from "react-native"
+
+import { Box } from "@/components/ui/box"
+import { Preferences, getPreferences, savePreferences } from "@/lib/preferences"
+import * as Haptics from "expo-haptics"
+import { router, usePathname } from "expo-router"
+import { useColorScheme } from "nativewind"
+import { useCallback, useEffect, useState } from "react"
 
 export const SettingsHome: React.FC = () => {
-    const { preferences, isLoading } = useSettingsActions()
+    const pathname = usePathname()
+    const { llm, embeddings, ocr, overallProgress, isInitializing } = useAI()
+    const { setColorScheme } = useColorScheme()
+    const [preferences, setPreferences] = useState<Preferences | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [archivedCount, setArchivedCount] = useState(0)
+    const [trashedCount, setTrashedCount] = useState(0)
+
+    // Load preferences and counts
+    useEffect(() => {
+        async function load() {
+            const prefs = await getPreferences()
+            setPreferences(prefs)
+
+            const archived = await getArchivedNotesCount()
+            const trashed = await getTrashedNotesCount()
+            setArchivedCount(archived)
+            setTrashedCount(trashed)
+            setIsLoading(false)
+        }
+
+        load()
+
+        return () => {
+            setIsLoading(true)
+            setPreferences(null)
+            setArchivedCount(0)
+            setTrashedCount(0)
+        }
+    }, [pathname])
+
+    const handleThemeChange = useCallback(
+        async (theme: Preferences["theme"]) => {
+            if (!preferences) return
+            await savePreferences({ theme })
+            setPreferences({ ...preferences, theme })
+            setColorScheme(theme)
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+        },
+        [preferences, setColorScheme],
+    )
+
+    const handleHapticToggle = useCallback(
+        async (value: boolean) => {
+            if (!preferences) return
+            await savePreferences({ hapticFeedback: value })
+            setPreferences({ ...preferences, hapticFeedback: value })
+            if (value) {
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            }
+        },
+        [preferences],
+    )
+    const handleArchives = useCallback(() => {
+        router.push("/settings/archives" as any)
+    }, [])
+
+    const handleTrash = useCallback(() => {
+        router.push("/settings/trash" as any)
+    }, [])
+
+    const handleEmptyAction = useCallback(async () => {
+        const deleted = await emptyTrash()
+        setTrashedCount(0)
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        Alert.alert("Done", `${deleted} note${deleted !== 1 ? "s" : ""} permanently deleted.`)
+    }, [])
+
+    const handleEmptyTrash = useCallback(async () => {
+        Alert.alert(
+            "Empty Recycle Bin",
+            "This will permanently delete all notes in the recycle bin. This cannot be undone.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Empty",
+                    style: "destructive",
+                    onPress: handleEmptyAction,
+                },
+            ],
+        )
+    }, [handleEmptyAction])
 
     if (!preferences) {
         return <Box className="flex-1 bg-background-50" />
@@ -22,16 +111,28 @@ export const SettingsHome: React.FC = () => {
     return (
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
             {/* Appearance Section */}
-            <SettingsAppearance />
+            <SettingsAppearance handleThemeChange={handleThemeChange} preferences={preferences} />
 
             {/* Preferences Section */}
-            <SettingsPreference />
+            <SettingsPreference handleHapticToggle={handleHapticToggle} preferences={preferences} />
 
             {/* Data Section */}
-            <SettingsData />
+            <SettingsData
+                handleArchives={handleArchives}
+                archivedCount={archivedCount}
+                handleTrash={handleTrash}
+                trashedCount={trashedCount}
+                handleEmptyTrash={handleEmptyTrash}
+            />
 
             {/* AI Section */}
-            <SettingsAI />
+            <SettingsAI
+                llm={llm}
+                embeddings={embeddings}
+                ocr={ocr}
+                overallProgress={overallProgress}
+                isInitializing={isInitializing}
+            />
 
             {/* About Section */}
             <SettingsAbout />

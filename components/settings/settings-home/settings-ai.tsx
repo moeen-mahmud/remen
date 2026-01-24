@@ -3,13 +3,26 @@ import { Box } from "@/components/ui/box"
 import { Divider } from "@/components/ui/divider"
 import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
-import { useAI } from "@/lib/ai/provider"
+import { EmbeddingsModel, LLMModel, OCRModel } from "@/lib/ai/provider"
 import { CheckCircle, Download, XCircle, Zap } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useMemo } from "react"
 
-export const SettingsAI: React.FC = () => {
-    const { llm, embeddings, ocr, overallProgress, isInitializing } = useAI()
+type SettingsAIProps = {
+    llm: LLMModel | null
+    embeddings: EmbeddingsModel | null
+    ocr: OCRModel | null
+    overallProgress: number
+    isInitializing: boolean
+}
+
+export const SettingsAI: React.FC<SettingsAIProps> = ({
+    llm,
+    embeddings,
+    ocr,
+    overallProgress = 0,
+    isInitializing = false,
+}) => {
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
 
