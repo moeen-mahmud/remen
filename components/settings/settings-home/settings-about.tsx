@@ -10,7 +10,7 @@ export const SettingsAbout: React.FC = () => {
             <Box className="rounded-lg bg-background-0">
                 <Box className="flex-row justify-between items-center p-4">
                     <RemenLogo size="sm" showIcon={true} />
-                    <Text className="text-sm text-typography-500">Version 1.0.0</Text>
+                    <Text className="text-typography-500">Version 1.0.0</Text>
                 </Box>
             </Box>
         </Box>

@@ -11,7 +11,7 @@ export const SettingsAppearance: React.FC = () => {
     const isDark = colorScheme === "dark"
 
     return (
-        <Box className="px-4 mt-6">
+        <Box className="px-4">
             <Text className="mb-2 ml-1 text-sm font-medium text-typography-500">APPEARANCE</Text>
 
             <Box className="rounded-lg bg-background-0">

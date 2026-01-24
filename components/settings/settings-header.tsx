@@ -6,20 +6,29 @@ import { ArrowLeftIcon } from "lucide-react-native"
 import { Pressable, StyleSheet, View } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-export const SettingsHeader: React.FC = () => {
+type SettingsHeaderProps = {
+    title: string
+    showBackButton: boolean
+}
+
+export const SettingsHeader: React.FC<SettingsHeaderProps> = ({ showBackButton, title }) => {
     const { top } = useSafeAreaInsets()
     const handleBack = () => {
         router.back()
     }
     return (
         <Box
-            className="flex-row justify-between items-center p-4 bg-background-0"
+            className="flex-row justify-between items-center p-4 mb-6 bg-background-0"
             style={[styles.header, { paddingTop: top }]}
         >
-            <Pressable onPress={handleBack} style={styles.backButton}>
-                <Icon as={ArrowLeftIcon} size="xl" />
-            </Pressable>
-            <Text className="text-xl font-bold text-typography-0">Settings</Text>
+            {showBackButton ? (
+                <Pressable onPress={handleBack} style={styles.backButton}>
+                    <Icon as={ArrowLeftIcon} size="xl" />
+                </Pressable>
+            ) : (
+                <View style={styles.backButton} />
+            )}
+            <Text className="text-xl font-bold text-typography-0">{title}</Text>
             <View style={styles.backButton} />
         </Box>
     )
