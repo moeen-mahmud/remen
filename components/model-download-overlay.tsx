@@ -90,11 +90,6 @@ export function ModelDownloadOverlay({
         onMinimize?.()
     }, [onMinimize])
 
-    // Handle close
-    const handleClose = useCallback(() => {
-        onClose?.()
-    }, [onClose])
-
     // Update internal minimized state when prop changes
     useEffect(() => {
         setInternalMinimized(isMinimized)

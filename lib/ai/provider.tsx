@@ -160,9 +160,9 @@ export function AIProvider({ children }: AIProviderProps) {
         // Log LLM status changes
         if (llmHook && llmHook.isReady !== prev.llmReady) {
             if (llmHook.isReady) {
-                console.log("✅ [AI] LLM (Llama 3.2 1B) is READY")
+                console.log("[AI] LLM (Llama 3.2 1B) is READY")
             } else {
-                console.log(`⏳ [AI] LLM downloading: ${Math.round((llmHook.downloadProgress || 0) * 100)}%`)
+                console.log(`[AI] LLM downloading: ${Math.round((llmHook.downloadProgress || 0) * 100)}%`)
             }
             prev.llmReady = llmHook.isReady
         }
@@ -170,11 +170,9 @@ export function AIProvider({ children }: AIProviderProps) {
         // Log Embeddings status changes
         if (embeddingsHook && embeddingsHook.isReady !== prev.embeddingsReady) {
             if (embeddingsHook.isReady) {
-                console.log("✅ [AI] Embeddings (MiniLM) is READY")
+                console.log("[AI] Embeddings (MiniLM) is READY")
             } else {
-                console.log(
-                    `⏳ [AI] Embeddings downloading: ${Math.round((embeddingsHook.downloadProgress || 0) * 100)}%`,
-                )
+                console.log(`[AI] Embeddings downloading: ${Math.round((embeddingsHook.downloadProgress || 0) * 100)}%`)
             }
             prev.embeddingsReady = embeddingsHook.isReady
         }
@@ -182,9 +180,9 @@ export function AIProvider({ children }: AIProviderProps) {
         // Log OCR status changes
         if (ocrHook && ocrHook.isReady !== prev.ocrReady) {
             if (ocrHook.isReady) {
-                console.log("✅ [AI] OCR (English) is READY")
+                console.log("[AI] OCR (English) is READY")
             } else {
-                console.log(`⏳ [AI] OCR downloading: ${Math.round((ocrHook.downloadProgress || 0) * 100)}%`)
+                console.log(`[AI] OCR downloading: ${Math.round((ocrHook.downloadProgress || 0) * 100)}%`)
             }
             prev.ocrReady = ocrHook.isReady
         }
@@ -203,7 +201,7 @@ export function AIProvider({ children }: AIProviderProps) {
 
         if (allReady && isInitializing) {
             setIsInitializing(false)
-            console.log("🎉 [AI] All models loaded successfully!")
+            console.log("[AI] All models loaded successfully!")
         }
 
         // Check for errors
@@ -211,13 +209,13 @@ export function AIProvider({ children }: AIProviderProps) {
         if (errors.length > 0) {
             const errorMessages = errors.map((error) => (error as unknown as Error).message)
             setError(errorMessages.join("; "))
-            console.error("❌ [AI] Model loading errors:", errors)
+            console.error("[AI] Model loading errors:", errors)
 
             // Check for memory errors
             const hasBadAlloc = errorMessages.some((message) => message.includes("bad_alloc"))
             if (hasBadAlloc && !hasMemoryError) {
                 setHasMemoryError(true)
-                console.error("🚨 [AI] Memory allocation error detected - models require too much RAM")
+                console.error("[AI] Memory allocation error detected - models require too much RAM")
             }
         }
     }, [
