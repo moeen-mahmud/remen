@@ -30,57 +30,33 @@ import {
     type OnLinkDetected,
 } from "react-native-enriched"
 import { KeyboardGestureArea, useKeyboardHandler } from "react-native-keyboard-controller"
-import Reanimated, { useAnimatedProps, useAnimatedStyle, useSharedValue } from "react-native-reanimated"
+import Reanimated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 const useKeyboardAnimation = () => {
     const progress = useSharedValue(0)
     const height = useSharedValue(0)
     const inset = useSharedValue(0)
-    const shouldUseOnMoveHandler = useSharedValue(false)
 
     useKeyboardHandler({
         onStart: (e) => {
             "worklet"
-
-            // i. e. the keyboard was under interactive gesture, and will be showed
-            // again. Since iOS will not schedule layout animation for that we can't
-            // simply update `height` to destination and we need to listen to `onMove`
-            // handler to have a smooth animation
-            if (progress.value !== 1 && progress.value !== 0 && e.height !== 0) {
-                shouldUseOnMoveHandler.value = true
-
-                return
-            }
-
-            progress.value = e.progress
-            height.value = e.height
-
-            inset.value = e.height
-        },
-        onInteractive: (e) => {
-            "worklet"
-
             progress.value = e.progress
             height.value = e.height
             inset.value = e.height
         },
         onMove: (e) => {
             "worklet"
-
-            if (shouldUseOnMoveHandler.value) {
-                progress.value = e.progress
-                height.value = e.height
-                inset.value = e.height
-            }
+            progress.value = e.progress
+            height.value = e.height
+            inset.value = e.height
         },
         onEnd: (e) => {
             "worklet"
-
-            height.value = e.height
+            // Use withTiming for smoother final positioning
+            height.value = withTiming(e.height, { duration: 250 })
             progress.value = e.progress
             inset.value = e.height
-            shouldUseOnMoveHandler.value = false
         },
     })
 
@@ -88,19 +64,8 @@ const useKeyboardAnimation = () => {
 }
 
 interface RichEditorProps {
-    /**
-     * Optional note ID to edit an existing note.
-     * If provided, the editor will load and edit that note.
-     * If not provided, creates a new note.
-     */
     noteId?: string | null
-    /**
-     * Callback when the editor should close (e.g., back button pressed)
-     */
     onClose?: () => void
-    /**
-     * Custom placeholder text
-     */
     placeholder?: string
 }
 
@@ -120,19 +85,16 @@ export default function RichEditor({
         },
     }))
 
-    // Get AI models for processing queue
     const { llm, embeddings } = useAI()
 
     const [isLoading, setIsLoading] = useState(!!initialNoteId)
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
     const [bottomBarHeight, setBottomBarHeight] = useState(0)
 
-    // Autosave state
     const [currentNoteId, setCurrentNoteId] = useState<string | null>(initialNoteId)
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const lastSavedContentRef = useRef<string>("")
 
-    // Content state
     const [content, setContent] = useState("")
     const [html, setHtml] = useState("")
     const [initialContent, setInitialContent] = useState("")
@@ -143,8 +105,8 @@ export default function RichEditor({
 
     const animatedScrollViewRef = useRef<Reanimated.ScrollView>(null)
     const ref = useRef<EnrichedTextInputInstance>(null)
+    const scrollViewContentHeight = useRef(0)
 
-    // Load existing note if noteId is provided
     useEffect(() => {
         async function loadNote() {
             if (!initialNoteId) {
@@ -161,7 +123,6 @@ export default function RichEditor({
                     setCurrentNoteId(note.id)
                     lastSavedContentRef.current = note.content
                 } else {
-                    // Note not found, treat as new note
                     setCurrentNoteId(null)
                 }
             } catch (error) {
@@ -175,39 +136,33 @@ export default function RichEditor({
         loadNote()
     }, [initialNoteId])
 
-    // Save note to database
     const saveNote = useCallback(
         async (noteContent: string, noteHtml: string, noteId: string | null) => {
             if (noteContent.trim().length === 0) return null
 
-            // Skip if content hasn't changed
             if (noteContent === lastSavedContentRef.current && noteId) {
                 return noteId
             }
 
             try {
                 if (noteId) {
-                    // Update existing note
                     await updateNote(noteId, {
                         content: noteContent,
                         html: noteHtml,
                     })
                     lastSavedContentRef.current = noteContent
 
-                    // Queue for AI processing (re-process on update)
                     aiQueue.setModels({ llm, embeddings })
                     aiQueue.add({ noteId, content: noteContent }, true)
 
                     return noteId
                 } else {
-                    // Create new note
                     const note = await createNote({
                         content: noteContent,
                         html: noteHtml,
                     })
                     lastSavedContentRef.current = noteContent
 
-                    // Queue for AI processing
                     aiQueue.setModels({ llm, embeddings })
                     aiQueue.add({ noteId: note.id, content: noteContent }, true)
 
@@ -222,20 +177,16 @@ export default function RichEditor({
         [llm, embeddings],
     )
 
-    // Debounced autosave
     const scheduleAutosave = useCallback(
         (noteContent: string, noteHtml: string) => {
-            // Clear existing timeout
             if (saveTimeoutRef.current) {
                 clearTimeout(saveTimeoutRef.current)
             }
 
-            // Don't save empty content
             if (noteContent.trim().length === 0) {
                 return
             }
 
-            // Schedule new save
             saveTimeoutRef.current = setTimeout(async () => {
                 const savedId = await saveNote(noteContent, noteHtml, currentNoteId)
                 if (savedId && !currentNoteId) {
@@ -246,7 +197,6 @@ export default function RichEditor({
         [currentNoteId, saveNote],
     )
 
-    // Immediate save (for blur/navigate)
     const immediateSave = useCallback(async () => {
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current)
@@ -260,7 +210,6 @@ export default function RichEditor({
         }
     }, [content, html, currentNoteId, saveNote])
 
-    // Save on app background
     useEffect(() => {
         const subscription = AppState.addEventListener("change", (nextState) => {
             if (nextState === "background" || nextState === "inactive") {
@@ -271,7 +220,6 @@ export default function RichEditor({
         return () => subscription.remove()
     }, [immediateSave])
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (saveTimeoutRef.current) {
@@ -280,7 +228,7 @@ export default function RichEditor({
         }
     }, [])
 
-    // Smooth, native-driven bottom bar movement + safe-area spacer (Google Keep-like)
+    // Smooth toolbar animation that stays flush to keyboard
     const bottomBarAnimatedStyle = useAnimatedStyle(() => {
         return {
             transform: [{ translateY: -height.value }],
@@ -289,14 +237,12 @@ export default function RichEditor({
 
     const bottomSafeAreaSpacerStyle = useAnimatedStyle(() => {
         const maxPadding = bottom + 8
-        // Don't animate this while the keyboard opens; otherwise the toolbar "drifts".
-        // As soon as the keyboard starts appearing, remove safe-area spacer so the toolbar
-        // stays flush to the keyboard edge.
         const isKeyboardActive = height.value > 1
-        return { height: isKeyboardActive ? 0 : maxPadding }
+        return {
+            height: withTiming(isKeyboardActive ? 0 : maxPadding, { duration: 0 }),
+        }
     }, [bottom, height])
 
-    // Handle text changes - trigger autosave
     const handleChangeText = (e: OnChangeTextEvent) => {
         const newContent = e.value
         setContent(newContent)
@@ -348,34 +294,56 @@ export default function RichEditor({
         setCurrentLink(state)
     }
 
+    // Auto-scroll to cursor position when selection changes
     const handleSelectionChangeEvent = (sel: OnChangeSelectionEvent) => {
         setSelection(sel)
+
+        // Auto-scroll to cursor position when it's at the bottom
+        // This ensures the cursor is visible when typing in long documents
+        if (animatedScrollViewRef.current) {
+            // Use requestAnimationFrame to ensure layout is complete
+            requestAnimationFrame(() => {
+                // Estimate cursor position based on line height
+                const lineHeight = 28 // matches editorInput lineHeight
+                const estimatedLines = content.split("\n").slice(0, Math.floor(sel.start / 50)).length
+                const estimatedCursorY = estimatedLines * lineHeight
+
+                // Scroll if cursor is likely below viewport
+                if (estimatedCursorY > 300) {
+                    animatedScrollViewRef.current?.scrollTo({
+                        y: estimatedCursorY - 200,
+                        animated: true,
+                    })
+                }
+            })
+        }
+    }
+
+    const handleContentSizeChange = (w: number, h: number) => {
+        scrollViewContentHeight.current = h
     }
 
     if (isLoading) return <PageLoader />
 
     const handleBottomBarLayout = (e: LayoutChangeEvent) => {
         const next = e.nativeEvent.layout.height
-        // Keep the max height so scroll padding doesn't "shrink" mid-animation.
         setBottomBarHeight((prev) => (next > prev ? next : prev))
     }
 
     return (
         <KeyboardGestureArea offset={bottomBarHeight} style={editorStyles.container} textInputNativeID="rich-editor">
-            {/* Editor */}
             <Reanimated.ScrollView
                 ref={animatedScrollViewRef}
-                // simulation of `automaticallyAdjustKeyboardInsets` behavior on RN < 0.73
                 animatedProps={props}
                 automaticallyAdjustContentInsets={false}
-                // contentContainerStyle={contentContainerStyle}
                 contentInsetAdjustmentBehavior="never"
                 keyboardDismissMode="interactive"
-                // onContentSizeChange={scrollToBottom}
-                // className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: Math.max(bottomBarHeight, bottom + 16) }}
-                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{
+                    paddingBottom: Math.max(bottomBarHeight, bottom + 16),
+                }}
+                keyboardShouldPersistTaps="never"
+                onContentSizeChange={handleContentSizeChange}
             >
                 <EnrichedTextInput
                     ref={ref}
@@ -397,20 +365,16 @@ export default function RichEditor({
                 />
             </Reanimated.ScrollView>
 
-            {/* Bottom Bar */}
             <Reanimated.View style={bottomBarAnimatedStyle}>
                 <Box onLayout={handleBottomBarLayout} className="pt-2 border-t bg-background-0 border-background-300">
-                    {/* Formatting toolbar (always visible) */}
                     <Box className="mt-2">
                         <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
                     </Box>
 
-                    {/* Smoothly animates away when keyboard opens (keeps bar flush to keyboard) */}
                     <Reanimated.View style={bottomSafeAreaSpacerStyle} />
                 </Box>
             </Reanimated.View>
 
-            {/* Modals */}
             <LinkModal
                 isOpen={isLinkModalOpen}
                 editedText={insideCurrentLink ? currentLink.text : (selection?.text ?? "")}

@@ -13,7 +13,8 @@ export default function EditNoteScreen() {
         router.back()
     }
 
-    const handleViewNotes = () => {
+    const handleViewNotes = async () => {
+        await KeyboardController.dismiss()
         router.push("/notes" as any)
     }
 
