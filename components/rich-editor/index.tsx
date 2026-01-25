@@ -16,10 +16,11 @@ import { PageLoader } from "@/components/ui/page-loader"
 import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
 import { createNote, getNoteById, updateNote } from "@/lib/database"
+import { useFocusEffect } from "@react-navigation/native"
 import * as Haptics from "expo-haptics"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AppState, type LayoutChangeEvent } from "react-native"
+import { AppState, Keyboard, type LayoutChangeEvent } from "react-native"
 import {
     EnrichedTextInput,
     type EnrichedTextInputInstance,
@@ -30,7 +31,7 @@ import {
     type OnLinkDetected,
 } from "react-native-enriched"
 import { KeyboardGestureArea, useKeyboardHandler } from "react-native-keyboard-controller"
-import Reanimated, { useAnimatedProps, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated"
+import Reanimated, { useAnimatedProps, useAnimatedStyle, useSharedValue } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 const useKeyboardAnimation = () => {
@@ -53,8 +54,8 @@ const useKeyboardAnimation = () => {
         },
         onEnd: (e) => {
             "worklet"
-            // Use withTiming for smoother final positioning
-            height.value = withTiming(e.height, { duration: 250 })
+            // Keep everything in sync without additional animation
+            height.value = e.height
             progress.value = e.progress
             inset.value = e.height
         },
@@ -65,11 +66,13 @@ const useKeyboardAnimation = () => {
 
 interface RichEditorProps {
     noteId?: string | null
+    onClose?: () => void
     placeholder?: string
 }
 
 export default function RichEditor({
     noteId: initialNoteId = null,
+    onClose,
     placeholder = "What's on your mind?",
 }: RichEditorProps) {
     const { height, inset } = useKeyboardAnimation()
@@ -77,7 +80,7 @@ export default function RichEditor({
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
 
-    const props = useAnimatedProps(() => ({
+    const animatedProps = useAnimatedProps(() => ({
         contentInset: {
             bottom: inset.value,
         },
@@ -104,6 +107,15 @@ export default function RichEditor({
     const animatedScrollViewRef = useRef<Reanimated.ScrollView>(null)
     const ref = useRef<EnrichedTextInputInstance>(null)
     const scrollViewContentHeight = useRef(0)
+
+    // Dismiss keyboard when route loses focus
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                Keyboard.dismiss()
+            }
+        }, []),
+    )
 
     useEffect(() => {
         async function loadNote() {
@@ -226,18 +238,20 @@ export default function RichEditor({
         }
     }, [])
 
-    // Smooth toolbar animation that stays flush to keyboard
+    // Smooth toolbar animation - moves up with keyboard, accounts for safe area when keyboard is hidden
     const bottomBarAnimatedStyle = useAnimatedStyle(() => {
+        const safeAreaOffset = height.value > 0 ? 0 : bottom + 8
         return {
-            transform: [{ translateY: -height.value }],
+            transform: [{ translateY: -(height.value + safeAreaOffset) }],
         }
-    }, [height])
+    }, [height, bottom])
 
     const bottomSafeAreaSpacerStyle = useAnimatedStyle(() => {
         const maxPadding = bottom + 8
-        const isKeyboardActive = height.value > 1
+        // Remove spacer as soon as keyboard starts moving (not just when > 1)
+        const isKeyboardActive = height.value > 0
         return {
-            height: withTiming(isKeyboardActive ? 0 : maxPadding, { duration: 0 }),
+            height: isKeyboardActive ? 0 : maxPadding,
         }
     }, [bottom, height])
 
@@ -306,10 +320,17 @@ export default function RichEditor({
                 const estimatedLines = content.split("\n").slice(0, Math.floor(sel.start / 50)).length
                 const estimatedCursorY = estimatedLines * lineHeight
 
-                // Scroll if cursor is likely below viewport
-                if (estimatedCursorY > 300) {
+                // Get current keyboard height from shared value
+                const keyboardHeight = height.value
+
+                // Calculate visible area (viewport height minus keyboard and toolbar)
+                const visibleAreaHeight = 600 // approximate screen height, adjust as needed
+                const availableSpace = visibleAreaHeight - keyboardHeight - bottomBarHeight - 100 // 100px padding
+
+                // Scroll if cursor is likely below visible area
+                if (estimatedCursorY > availableSpace) {
                     animatedScrollViewRef.current?.scrollTo({
-                        y: estimatedCursorY - 200,
+                        y: estimatedCursorY - availableSpace + 150, // extra padding to keep cursor well visible
                         animated: true,
                     })
                 }
@@ -329,18 +350,22 @@ export default function RichEditor({
     }
 
     return (
-        <KeyboardGestureArea offset={bottomBarHeight} style={editorStyles.container} textInputNativeID="rich-editor">
+        <KeyboardGestureArea
+            // offset={bottomBarHeight}
+            style={editorStyles.container}
+            textInputNativeID="rich-editor"
+        >
             <Reanimated.ScrollView
                 ref={animatedScrollViewRef}
-                animatedProps={props}
+                animatedProps={animatedProps}
                 automaticallyAdjustContentInsets={false}
-                contentInsetAdjustmentBehavior="never"
+                contentInsetAdjustmentBehavior="automatic"
                 keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{
-                    paddingBottom: Math.max(bottomBarHeight, bottom + 16),
-                }}
-                keyboardShouldPersistTaps="never"
+                // contentContainerStyle={{
+                //     paddingBottom: Math.max(bottomBarHeight, bottom + 16),
+                // }}
+                keyboardShouldPersistTaps="handled"
                 onContentSizeChange={handleContentSizeChange}
             >
                 <EnrichedTextInput
@@ -364,12 +389,8 @@ export default function RichEditor({
             </Reanimated.ScrollView>
 
             <Reanimated.View style={bottomBarAnimatedStyle}>
-                <Box onLayout={handleBottomBarLayout} className="pt-2 border-t bg-background-0 border-background-300">
-                    <Box className="mt-2">
-                        <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
-                    </Box>
-
-                    <Reanimated.View style={bottomSafeAreaSpacerStyle} />
+                <Box onLayout={handleBottomBarLayout} className="pt-2 mt-2 bg-background-50">
+                    <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
                 </Box>
             </Reanimated.View>
 

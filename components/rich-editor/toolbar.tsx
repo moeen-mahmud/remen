@@ -224,11 +224,6 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
                 return false
         }
     }
-
-    // const handleHideKeyboard = async () => {
-    //     await KeyboardController.dismiss()
-    // }
-
     const renderItem = ({ item }: ListRenderItemInfo<Item>) => {
         return (
             <ToolbarButton

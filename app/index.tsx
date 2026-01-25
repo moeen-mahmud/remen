@@ -41,12 +41,12 @@ export default function Index() {
     ]
 
     const handleViewNotes = async () => {
-        await KeyboardController.dismiss()
         router.push("/notes" as any)
+        KeyboardController.dismiss()
     }
     const handleBack = async () => {
-        await KeyboardController.dismiss()
         router.back()
+        KeyboardController.dismiss()
     }
 
     return (
