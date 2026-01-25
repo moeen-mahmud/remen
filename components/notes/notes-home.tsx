@@ -18,6 +18,7 @@ import { ListIcon, SearchIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Alert, FlatList, RefreshControl, Share } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 interface NoteWithTags extends Note {
     tags: Tag[]
@@ -25,6 +26,7 @@ interface NoteWithTags extends Note {
 
 export const NotesHome: React.FC = () => {
     const { colorScheme } = useColorScheme()
+    const { bottom } = useSafeAreaInsets()
     const router = useRouter()
     const isDark = colorScheme === "dark"
 
@@ -386,7 +388,7 @@ export const NotesHome: React.FC = () => {
                 data={filteredNotes}
                 renderItem={renderNote}
                 keyExtractor={keyExtractor}
-                contentContainerClassName="flex-1"
+                contentContainerClassName="flex-grow"
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={renderEmptyState}
                 ListFooterComponent={filteredNotes.length > 0 ? <NotesFooter /> : undefined}

@@ -99,7 +99,7 @@ export const NoteCard: FC<NoteCardProps> = ({
     }))
 
     const borderStyle = useAnimatedStyle(() => ({
-        borderWidth: isProcessing ? 2 : isSelected ? 2 : StyleSheet.hairlineWidth,
+        borderWidth: isProcessing ? 2 : isSelected ? 2 : 0,
         borderColor: isProcessing
             ? `rgba(57, 255, 20, ${borderAnim.value})`
             : isSelected
@@ -157,17 +157,18 @@ export const NoteCard: FC<NoteCardProps> = ({
             onPressOut={handlePressOut}
             onLongPress={handleLongPress}
             delayLongPress={400}
+            className="rounded-lg bg-background-0"
             style={[
                 animatedStyle,
                 borderStyle,
                 styles.container,
-                {
-                    backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
-                    shadowColor: isDark ? "#39FF14" : "#000",
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowRadius: 8,
-                    elevation: 3,
-                },
+                // {
+                //     // backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
+                //     shadowColor: isDark ? "#39FF14" : "#000",
+                //     shadowOffset: { width: 0, height: 2 },
+                //     shadowRadius: 8,
+                //     elevation: 3,
+                // },
             ]}
         >
             {/* Header with selection indicator and timestamp */}
@@ -227,7 +228,7 @@ const styles = StyleSheet.create({
         padding: 16,
         marginHorizontal: 16,
         marginVertical: 6,
-        borderRadius: 16,
+        // borderRadius: 16,
         borderWidth: StyleSheet.hairlineWidth,
     },
     header: {

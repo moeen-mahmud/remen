@@ -75,14 +75,18 @@ export default function RichEditor({
     onClose,
     placeholder = "What's on your mind?",
 }: RichEditorProps) {
-    const { height, inset } = useKeyboardAnimation()
+    const { height, inset, progress } = useKeyboardAnimation()
     const { bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
 
+    const bottomBarHeightSV = useSharedValue(64)
+
     const animatedProps = useAnimatedProps(() => ({
         contentInset: {
-            bottom: inset.value,
+            // Keep caret/content above both the keyboard and the toolbar.
+            // Toolbar is only visible while the keyboard is visible (progress 0..1).
+            bottom: inset.value + bottomBarHeightSV.value * progress.value,
         },
     }))
 
@@ -238,13 +242,16 @@ export default function RichEditor({
         }
     }, [])
 
-    // Smooth toolbar animation - moves up with keyboard, accounts for safe area when keyboard is hidden
+    // Toolbar:
+    // - Visible only while keyboard is visible (progress > 0)
+    // - Slides with keyboard, then continues sliding down off-screen while hiding
     const bottomBarAnimatedStyle = useAnimatedStyle(() => {
-        const safeAreaOffset = height.value > 0 ? 0 : bottom + 8
+        const hiddenOffset = bottomBarHeightSV.value + bottom + 16
         return {
-            transform: [{ translateY: -(height.value + safeAreaOffset) }],
+            opacity: progress.value,
+            transform: [{ translateY: (1 - progress.value) * hiddenOffset - height.value }],
         }
-    }, [height, bottom])
+    }, [bottom])
 
     const bottomSafeAreaSpacerStyle = useAnimatedStyle(() => {
         const maxPadding = bottom + 8
@@ -346,7 +353,11 @@ export default function RichEditor({
 
     const handleBottomBarLayout = (e: LayoutChangeEvent) => {
         const next = e.nativeEvent.layout.height
-        setBottomBarHeight((prev) => (next > prev ? next : prev))
+        setBottomBarHeight((prev) => {
+            const v = next > prev ? next : prev
+            bottomBarHeightSV.value = v
+            return v
+        })
     }
 
     return (
@@ -386,10 +397,25 @@ export default function RichEditor({
                     onLinkDetected={handleLinkDetected}
                     onChangeSelection={(e) => handleSelectionChangeEvent(e.nativeEvent)}
                 />
+
+                <Reanimated.View style={bottomSafeAreaSpacerStyle} />
             </Reanimated.ScrollView>
 
-            <Reanimated.View style={bottomBarAnimatedStyle}>
-                <Box onLayout={handleBottomBarLayout} className="py-2 mt-2 bg-background-50">
+            <Reanimated.View
+                style={[
+                    {
+                        position: "absolute",
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 10,
+                        elevation: 10,
+                    },
+                    bottomBarAnimatedStyle,
+                ]}
+                pointerEvents="box-none"
+            >
+                <Box onLayout={handleBottomBarLayout} className="py-2 bg-background-50">
                     <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
                 </Box>
             </Reanimated.View>
