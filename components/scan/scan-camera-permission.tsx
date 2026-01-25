@@ -1,6 +1,6 @@
 import { Box } from "@/components/ui/box"
+import { Button, ButtonText } from "@/components/ui/button"
 import { Text } from "@/components/ui/text"
-import { Pressable } from "react-native"
 
 type ScanCameraPermissionProps = {
     requestPermission: () => void
@@ -12,9 +12,9 @@ export const ScanCameraPermission: React.FC<ScanCameraPermissionProps> = ({ requ
             <Text className="mb-6 text-lg text-center text-typography-600">
                 Camera permission is required to scan documents
             </Text>
-            <Pressable onPress={requestPermission} className="px-4 py-2 rounded-md bg-primary-500">
-                <Text>Grant Permission</Text>
-            </Pressable>
+            <Button variant="outline" action="secondary" onPress={requestPermission} className="px-4 py-2 rounded-md">
+                <ButtonText>Grant Permission</ButtonText>
+            </Button>
         </Box>
     )
 }

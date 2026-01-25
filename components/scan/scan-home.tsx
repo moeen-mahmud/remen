@@ -4,33 +4,29 @@ import { ScanState } from "@/components/scan/scan-types"
 import { Text } from "@/components/ui/text"
 import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
+import { consumePendingScanPhotoUri } from "@/lib/capture/pending-scan-photo"
 import { formatOCRText, processImageOCR, saveScannedImage } from "@/lib/capture/scan"
 import { createNote } from "@/lib/database"
-import { CameraView, useCameraPermissions } from "expo-camera"
 import * as Haptics from "expo-haptics"
-import { useRouter } from "expo-router"
+import { useFocusEffect, useRouter } from "expo-router"
 import { XIcon } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Alert, Pressable, StyleSheet } from "react-native"
+import { Alert, Pressable } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { ScanCameraPermission } from "@/components/scan/scan-camera-permission"
 import { ScanReview } from "@/components/scan/scan-review"
 import { Box } from "@/components/ui/box"
 import { Icon } from "@/components/ui/icon"
-import { scanStyles as styles } from "./scan-styles"
 export const ScanHome: React.FC = () => {
-    const { top, bottom } = useSafeAreaInsets()
-    const { colorScheme } = useColorScheme()
+    const { top } = useSafeAreaInsets()
     const router = useRouter()
-    const isDark = colorScheme === "dark"
 
     // Get OCR model from AI provider
     const { ocr, llm, embeddings } = useAI()
 
-    const [hasPermission, requestPermission] = useCameraPermissions()
-    const cameraRef = useRef<CameraView>(null)
+    const didAutoOpenCameraRef = useRef(false)
+    const isProcessingRef = useRef(false)
+    const pendingPhotoUriRef = useRef<string | null>(null)
 
     const [scanState, setScanState] = useState<ScanState>("camera")
     const [capturedImagePath, setCapturedImagePath] = useState<string | null>(null)
@@ -39,165 +35,120 @@ export const ScanHome: React.FC = () => {
     const [error, setError] = useState<string | null>(null)
     const [isSaving, setIsSaving] = useState(false)
 
-    // Add processing lock to prevent concurrent operations
-    const isProcessingRef = useRef(false)
-    const isMountedRef = useRef(true)
+    const handleOpenCamera = useCallback(() => {
+        router.push("/scan/camera" as any)
+    }, [router])
 
-    // Cleanup on unmount
+    const handleProcessCapturedPhoto = useCallback(
+        async (photoUri: string) => {
+            if (!photoUri) return
+            if (isProcessingRef.current) return
+
+            // Check if OCR model is ready
+            if (!ocr?.isReady) {
+                pendingPhotoUriRef.current = photoUri
+                setScanState("model-loading")
+                return
+            }
+
+            // Check if OCR is already processing
+            if (ocr?.isGenerating) {
+                Alert.alert("Please Wait", "OCR is currently processing. Please wait a moment.")
+                return
+            }
+
+            try {
+                isProcessingRef.current = true
+                setError(null)
+
+                setScanState("saving-image")
+
+                // Save image permanently first (this is fast)
+                const savedPath = await saveScannedImage(photoUri)
+                setCapturedImagePath(savedPath)
+
+                setScanState("processing")
+
+                // Small delay to ensure UI updates
+                await new Promise((resolve) => setTimeout(resolve, 100))
+
+                const ocrPromise = processImageOCR(savedPath, ocr)
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error("OCR timeout after 30 seconds")), 30000),
+                )
+
+                const result = (await Promise.race([ocrPromise, timeoutPromise])) as Awaited<
+                    ReturnType<typeof processImageOCR>
+                >
+
+                const formattedText = formatOCRText(result)
+
+                if (!formattedText || formattedText.trim().length === 0) {
+                    setExtractedText("")
+                    setConfidence(0)
+                } else {
+                    setExtractedText(formattedText)
+                    setConfidence(result.confidence)
+                }
+
+                setScanState("review")
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+            } catch (err) {
+                console.error("❌ [Scan] Processing failed:", err)
+
+                const errorMessage = err instanceof Error ? err.message : "Unknown error occurred"
+                setError(`Failed to process image: ${errorMessage}`)
+                setScanState("camera")
+
+                Alert.alert(
+                    "Scan Failed",
+                    "Failed to process the image. This might be an unknown error. Try restarting the app or scanning a smaller area.",
+                    [{ text: "OK" }],
+                )
+            } finally {
+                isProcessingRef.current = false
+            }
+        },
+        [ocr],
+    )
+
+    // When `/scan` regains focus (after `/scan/camera`), consume the captured photo and process it.
+    // Also auto-opens the camera once on initial entry to preserve the old UX.
+    useFocusEffect(
+        useCallback(() => {
+            const pending = consumePendingScanPhotoUri()
+            if (pending) {
+                handleProcessCapturedPhoto(pending)
+                return
+            }
+
+            if (!didAutoOpenCameraRef.current && scanState === "camera" && !capturedImagePath && !extractedText) {
+                didAutoOpenCameraRef.current = true
+                router.push("/scan/camera" as any)
+            }
+        }, [capturedImagePath, extractedText, handleProcessCapturedPhoto, router, scanState]),
+    )
+
+    // If we captured a photo while the OCR model wasn't ready, resume once it becomes ready.
     useEffect(() => {
-        return () => {
-            isMountedRef.current = false
-            isProcessingRef.current = false
-        }
-    }, [])
+        if (scanState !== "model-loading") return
+        if (!ocr?.isReady) return
+        if (!pendingPhotoUriRef.current) return
 
-    // Take photo and process with better error handling
-    const handleCapture = useCallback(async () => {
-        // Prevent concurrent operations
-        if (isProcessingRef.current) {
-            console.warn("⚠️ [Scan] Already processing, ignoring capture request")
-            return
-        }
-
-        if (!hasPermission) {
-            Alert.alert("Permission Required", "Camera permission is required to scan documents")
-            return
-        }
-
-        // Check if OCR model is ready
-        if (!ocr?.isReady) {
-            console.warn("⚠️ [Scan] OCR model not ready")
-            setScanState("model-loading")
-            return
-        }
-
-        // Check if OCR is already processing
-        if (ocr?.isGenerating) {
-            console.warn("⚠️ [Scan] OCR is currently processing another image")
-            Alert.alert("Please Wait", "OCR is currently processing. Please wait a moment.")
-            return
-        }
-
-        try {
-            isProcessingRef.current = true
-            setError(null)
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-
-            console.log("📷 [Scan] Taking picture...")
-            if (!cameraRef.current) {
-                isProcessingRef.current = false
-                console.error("📷 [Scan] Camera ref is not initialized")
-                return
-            }
-
-            // Take photo with quality settings to reduce memory usage
-            const photo = await cameraRef.current?.takePictureAsync({
-                quality: 0.1,
-            })
-
-            console.log("no error till now")
-
-            if (!photo?.uri) {
-                throw new Error("No photo was captured")
-            }
-
-            console.log("📷 [Scan] Photo captured:", photo.uri)
-
-            // Update state before async operations
-            if (!isMountedRef.current) {
-                isProcessingRef.current = false
-                console.warn("⚠️ [Scan] Not mounted, ignoring capture request")
-                return
-            }
-            setScanState("saving-image")
-
-            // Save image permanently first (this is fast)
-            console.log("💾 [Scan] Saving image...")
-            const savedPath = await saveScannedImage(photo.uri)
-            console.log("✅ [Scan] Image saved:", savedPath)
-
-            if (!isMountedRef.current) {
-                isProcessingRef.current = false
-                console.warn("⚠️ [Scan] Not mounted, ignoring save request")
-                return
-            }
-            setCapturedImagePath(savedPath)
-            setScanState("processing")
-
-            // Small delay to ensure UI updates
-            await new Promise((resolve) => setTimeout(resolve, 100))
-
-            // Process OCR with timeout protection
-            console.log("🔍 [Scan] Starting OCR processing...")
-
-            const ocrPromise = processImageOCR(savedPath, ocr)
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error("OCR timeout after 30 seconds")), 30000),
-            )
-
-            const result = (await Promise.race([ocrPromise, timeoutPromise])) as Awaited<
-                ReturnType<typeof processImageOCR>
-            >
-
-            console.log(`✅ [Scan] OCR complete. Confidence: ${Math.round(result.confidence * 100)}%`)
-
-            if (!isMountedRef.current) {
-                isProcessingRef.current = false
-                console.warn("⚠️ [Scan] Not mounted, ignoring OCR completion")
-                return
-            }
-
-            const formattedText = formatOCRText(result)
-
-            if (!formattedText || formattedText.trim().length === 0) {
-                console.warn("⚠️ [Scan] No text extracted from image")
-                setExtractedText("")
-                setConfidence(0)
-            } else {
-                setExtractedText(formattedText)
-                setConfidence(result.confidence)
-            }
-
-            setScanState("review")
-            isProcessingRef.current = false
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-        } catch (err) {
-            console.error("❌ [Scan] Capture/process failed:", err)
-
-            const errorMessage = err instanceof Error ? err.message : "Unknown error occurred"
-
-            if (!isMountedRef.current) return
-
-            setError(`Failed to process image: ${errorMessage}`)
-            setScanState("camera")
-
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-
-            // Show user-friendly error
-            Alert.alert(
-                "Scan Failed",
-                "Failed to process the image. This might be unknown error." +
-                    "Try restarting the app or scanning a smaller area.",
-                [{ text: "OK" }],
-            )
-        } finally {
-            isProcessingRef.current = false
-        }
-    }, [ocr, hasPermission])
+        const uri = pendingPhotoUriRef.current
+        pendingPhotoUriRef.current = null
+        handleProcessCapturedPhoto(uri)
+    }, [handleProcessCapturedPhoto, ocr?.isReady, scanState])
 
     // Retake photo
     const handleRetake = useCallback(() => {
-        if (isProcessingRef.current) {
-            console.warn("⚠️ [Scan] Cannot retake while processing")
-            return
-        }
-
-        setScanState("camera")
         setCapturedImagePath(null)
         setExtractedText("")
         setConfidence(0)
         setError(null)
-    }, [])
+        setScanState("camera")
+        handleOpenCamera()
+    }, [handleOpenCamera])
 
     // Save and navigate to note detail with better error handling
     const handleSave = useCallback(async () => {
@@ -259,20 +210,7 @@ export const ScanHome: React.FC = () => {
 
     // Close without saving
     const handleClose = useCallback(() => {
-        if (isProcessingRef.current) {
-            Alert.alert("Processing", "OCR is still processing. Are you sure you want to cancel?", [
-                { text: "Wait", style: "cancel" },
-                {
-                    text: "Cancel",
-                    style: "destructive",
-                    onPress: () => {
-                        isProcessingRef.current = false
-                        router.back()
-                    },
-                },
-            ])
-            return
-        }
+        setScanState("camera")
         router.back()
     }, [router])
 
@@ -295,11 +233,11 @@ export const ScanHome: React.FC = () => {
                 setExtractedText={setExtractedText}
                 handleRetake={handleRetake}
                 handleSave={handleSave}
-                isDisabledRetake={isProcessingRef.current}
+                isDisabledRetake={scanState === "processing" || scanState === "saving-image" || isSaving}
                 isSaving={isSaving}
             />
         ),
-        [capturedImagePath, confidence, extractedText, setExtractedText, handleRetake, handleSave, isSaving],
+        [capturedImagePath, confidence, extractedText, setExtractedText, handleRetake, handleSave, isSaving, scanState],
     )
 
     return (
@@ -316,47 +254,32 @@ export const ScanHome: React.FC = () => {
                 <Box className="w-10 h-10" />
             </Box>
 
-            {!hasPermission ? <ScanCameraPermission requestPermission={requestPermission} /> : null}
-
             {/* Content based on state */}
-            {scanState === "camera" && hasPermission ? (
-                <Box className="flex-1 -mt-6">
-                    <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} mode="picture" facing="back" />
+            {scanState === "camera" ? (
+                <Box className="flex-1 justify-center items-center px-6 -mt-6">
+                    <Text className="mb-3 text-lg font-semibold text-center">Ready to scan</Text>
+                    <Text className="mb-6 text-center text-typography-600">
+                        Open the camera, align your document inside the frame, then take a picture.
+                    </Text>
 
-                    {/* Camera overlay with guide */}
-                    <Box style={styles.mask}>
-                        <Box style={styles.maskTop} />
-                        <Box style={styles.maskMiddle}>
-                            <Box style={styles.maskSide} />
-                            <Box className="rounded-lg" style={styles.scanFrame} />
-                            <Box style={styles.maskSide} />
-                        </Box>
-                        <Box style={styles.maskBottom} />
-                    </Box>
+                    <Pressable
+                        onPress={handleOpenCamera}
+                        className="px-4 py-3 rounded-md bg-primary-500"
+                        disabled={false}
+                    >
+                        <Text className="font-semibold text-white">Open camera</Text>
+                    </Pressable>
 
-                    {/* OCR Model Status */}
                     {!ocr?.isReady && (
-                        <Box style={styles.modelStatusBanner}>
-                            <Text style={styles.modelStatusText}>
+                        <Box className="px-4 py-2 mt-6 bg-blue-500 rounded-md">
+                            <Text className="text-sm font-medium text-center text-white">
                                 OCR model loading: {Math.round((ocr?.downloadProgress || 0) * 100)}%
                             </Text>
                         </Box>
                     )}
 
-                    {/* Capture button */}
-                    <Box style={[styles.captureButtonContainer, { paddingBottom: bottom + 20 }]}>
-                        <Pressable
-                            onPress={handleCapture}
-                            disabled={!ocr?.isReady || ocr?.isGenerating}
-                            style={[
-                                styles.captureButton,
-                                (!ocr?.isReady || ocr?.isGenerating) && styles.captureButtonDisabled,
-                            ]}
-                        />
-                    </Box>
-
                     {error && (
-                        <Box className="absolute right-5 left-5 bottom-48 p-4 mx-8 bg-red-500 rounded-lg">
+                        <Box className="p-4 mt-6 bg-red-500 rounded-lg">
                             <Text className="text-sm font-medium text-center text-white">{error}</Text>
                         </Box>
                     )}
