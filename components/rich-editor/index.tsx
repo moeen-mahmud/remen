@@ -65,13 +65,11 @@ const useKeyboardAnimation = () => {
 
 interface RichEditorProps {
     noteId?: string | null
-    onClose?: () => void
     placeholder?: string
 }
 
 export default function RichEditor({
     noteId: initialNoteId = null,
-    onClose,
     placeholder = "What's on your mind?",
 }: RichEditorProps) {
     const { height, inset } = useKeyboardAnimation()

@@ -8,7 +8,7 @@ export default function EditNoteScreen() {
     const { id } = useLocalSearchParams<{ id: string }>()
     const router = useRouter()
 
-    const handleClose = async () => {
+    const handleBack = async () => {
         await KeyboardController.dismiss()
         router.back()
     }
@@ -20,8 +20,8 @@ export default function EditNoteScreen() {
 
     return (
         <PageWrapper disableBottomPadding>
-            <EditorHeader isEditing={true} handleBack={handleClose} handleViewNotes={handleViewNotes} />
-            <RichEditor noteId={id || null} onClose={handleClose} />
+            <EditorHeader isEditing={true} handleBack={handleBack} handleViewNotes={handleViewNotes} />
+            <RichEditor noteId={id || null} />
         </PageWrapper>
     )
 }
