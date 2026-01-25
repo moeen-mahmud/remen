@@ -109,7 +109,7 @@ export default function RichEditor({
     onClose,
     placeholder = "What's on your mind?",
 }: RichEditorProps) {
-    const { height, progress, inset } = useKeyboardAnimation()
+    const { height, inset } = useKeyboardAnimation()
     const { bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
@@ -289,11 +289,12 @@ export default function RichEditor({
 
     const bottomSafeAreaSpacerStyle = useAnimatedStyle(() => {
         const maxPadding = bottom + 8
-        // When keyboard is fully open (progress=1) -> 0 spacer.
-        // When closed (progress=0) -> safe-area + a bit of breathing room.
-        const spacer = Math.max(0, maxPadding * (1 - progress.value))
-        return { height: spacer }
-    }, [bottom, progress])
+        // Don't animate this while the keyboard opens; otherwise the toolbar "drifts".
+        // As soon as the keyboard starts appearing, remove safe-area spacer so the toolbar
+        // stays flush to the keyboard edge.
+        const isKeyboardActive = height.value > 1
+        return { height: isKeyboardActive ? 0 : maxPadding }
+    }, [bottom, height])
 
     // Handle text changes - trigger autosave
     const handleChangeText = (e: OnChangeTextEvent) => {
@@ -354,7 +355,9 @@ export default function RichEditor({
     if (isLoading) return <PageLoader />
 
     const handleBottomBarLayout = (e: LayoutChangeEvent) => {
-        setBottomBarHeight(e.nativeEvent.layout.height)
+        const next = e.nativeEvent.layout.height
+        // Keep the max height so scroll padding doesn't "shrink" mid-animation.
+        setBottomBarHeight((prev) => (next > prev ? next : prev))
     }
 
     return (
@@ -372,7 +375,7 @@ export default function RichEditor({
                 // className="flex-1"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: Math.max(bottomBarHeight, bottom + 16) }}
-                // keyboardShouldPersistTaps="handled"
+                keyboardShouldPersistTaps="handled"
             >
                 <EnrichedTextInput
                     ref={ref}
@@ -395,7 +398,7 @@ export default function RichEditor({
             </Reanimated.ScrollView>
 
             {/* Bottom Bar */}
-            <Reanimated.View style={[editorStyles.bottomBarContainer, bottomBarAnimatedStyle]}>
+            <Reanimated.View style={bottomBarAnimatedStyle}>
                 <Box onLayout={handleBottomBarLayout} className="pt-2 border-t bg-background-0 border-background-300">
                     {/* Formatting toolbar (always visible) */}
                     <Box className="mt-2">

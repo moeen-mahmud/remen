@@ -6,6 +6,7 @@ import { useRouter } from "expo-router"
 import { CameraIcon, MicIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback } from "react"
+import { KeyboardController } from "react-native-keyboard-controller"
 
 export default function Index() {
     const router = useRouter()
@@ -42,7 +43,8 @@ export default function Index() {
     const handleViewNotes = () => {
         router.push("/notes" as any)
     }
-    const handleBack = () => {
+    const handleBack = async () => {
+        await KeyboardController.dismiss()
         router.back()
     }
 
