@@ -9,6 +9,7 @@ import { useAI } from "@/lib/ai/provider"
 import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database"
 import { Alert, ScrollView } from "react-native"
 
+import { SettingsAIControls } from "@/components/settings/settings-home/settings-ai-controls"
 import { Box } from "@/components/ui/box"
 import { Preferences, getPreferences, savePreferences } from "@/lib/preferences"
 import * as Haptics from "expo-haptics"
@@ -133,6 +134,9 @@ export const SettingsHome: React.FC = () => {
                 overallProgress={overallProgress}
                 isInitializing={isInitializing}
             />
+
+            {/* AI Controls Section */}
+            <SettingsAIControls />
 
             {/* About Section */}
             <SettingsAbout />

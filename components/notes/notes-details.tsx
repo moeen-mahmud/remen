@@ -2,18 +2,19 @@ import { NotesTitle } from "@/components/notes/notes-title"
 import { Box } from "@/components/ui/box"
 import { Divider } from "@/components/ui/divider"
 import { Heading } from "@/components/ui/heading"
+import { Icon } from "@/components/ui/icon"
 import { PageLoader } from "@/components/ui/page-loader"
 import { Spinner } from "@/components/ui/spinner"
 import { Text } from "@/components/ui/text"
 import { getNoteTypeBadge } from "@/lib/ai/classify"
 import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
-import { getNoteById, getTagsForNote, moveToTrash, updateNote, type Note, type Tag } from "@/lib/database"
+import { getNoteById, getTagsForNote, updateNote, type Note, type Tag } from "@/lib/database"
 import { findRelatedNotes, type SearchResult } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
-import { MicIcon, ScanIcon } from "lucide-react-native"
+import { MicIcon, RefreshCwIcon, ScanIcon, XCircle } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native"
@@ -146,37 +147,6 @@ export const NoteDetails: React.FC = () => {
         router.push(`/edit/${id}` as any)
     }, [id, router])
 
-    // Handle delete
-    const handleDelete = useCallback(() => {
-        if (!note) return
-
-        Alert.alert(
-            "Move to Recycle Bin",
-            "This note will be moved to the recycle bin. You can restore it from there.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Move",
-                    style: "default",
-                    onPress: async () => {
-                        try {
-                            await moveToTrash(note.id)
-                            // Remove from local state
-                            setNote(null)
-                            setTags([])
-                            setRelatedNotes([])
-                            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-                            router.back()
-                        } catch (error) {
-                            console.error("Failed to delete note:", error)
-                            Alert.alert("Error", "Failed to delete note")
-                        }
-                    },
-                },
-            ],
-        )
-    }, [note, router])
-
     // Handle title editing
     const handleTitlePress = useCallback(() => {
         if (isProcessingThisNote) {
@@ -207,6 +177,33 @@ export const NoteDetails: React.FC = () => {
         setIsEditingTitle(false)
         setEditingTitle(note?.title || "")
     }, [note?.title])
+
+    const handleReorganizeWithAI = useCallback(() => {
+        if (!note || isProcessingThisNote) return
+
+        Alert.alert(
+            "Re-organize with AI",
+            "This will regenerate the note’s title, type, tags, and embedding. Your note content won’t change.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Re-organize",
+                    style: "default",
+                    onPress: async () => {
+                        try {
+                            await updateNote(note.id, { is_processed: false, ai_status: "queued", ai_error: null })
+                            aiQueue.add({ noteId: note.id, content: note.content })
+                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                            loadNote()
+                        } catch (error) {
+                            console.error("Failed to queue AI reorganize:", error)
+                            Alert.alert("Error", "Failed to start AI re-organization")
+                        }
+                    },
+                },
+            ],
+        )
+    }, [note, isProcessingThisNote, loadNote])
 
     if (isLoading) {
         return <PageLoader />
@@ -290,12 +287,33 @@ export const NoteDetails: React.FC = () => {
                 </Pressable>
 
                 {/* Processing status */}
-                {(note.is_processed || isProcessingThisNote) && (
+                {(note.is_processed ||
+                    isProcessingThisNote ||
+                    note.ai_status === "queued" ||
+                    note.ai_status === "failed" ||
+                    note.ai_status === "cancelled") && (
                     <Box className="flex-row items-center px-4 pt-6 mt-8 border-t border-neutral-200 dark:border-neutral-900">
                         {isProcessingThisNote ? (
                             <>
                                 <Spinner className="mr-2" size="small" color="grey" />
                                 <Text className="text-sm text-success-500">AI organizing...</Text>
+                            </>
+                        ) : note.ai_status === "queued" ? (
+                            <>
+                                <Spinner className="mr-2" size="small" color="grey" />
+                                <Text className="text-sm text-neutral-500 dark:text-neutral-400">Queued for AI…</Text>
+                            </>
+                        ) : note.ai_status === "cancelled" ? (
+                            <>
+                                <Icon as={XCircle} className="mr-2" color={isDark ? "#666" : "#999"} />
+                                <Text className="text-sm text-neutral-500 dark:text-neutral-400">AI cancelled</Text>
+                            </>
+                        ) : note.ai_status === "failed" ? (
+                            <>
+                                <Icon as={XCircle} className="mr-2" color={isDark ? "#E7000B" : "#F9423C"} />
+                                <Text className="text-sm" style={{ color: isDark ? "#E7000B" : "#F9423C" }}>
+                                    AI organization failed
+                                </Text>
                             </>
                         ) : (
                             <>
@@ -305,6 +323,26 @@ export const NoteDetails: React.FC = () => {
                         )}
                     </Box>
                 )}
+
+                {note.ai_status === "failed" && note.ai_error ? (
+                    <Box className="px-4 pt-2">
+                        <Text className="text-xs text-neutral-500 dark:text-neutral-400" numberOfLines={3}>
+                            {note.ai_error}
+                        </Text>
+                    </Box>
+                ) : null}
+
+                {/* Re-organize */}
+                <Pressable
+                    onPress={handleReorganizeWithAI}
+                    disabled={isProcessingThisNote}
+                    className="flex-row gap-2 justify-center items-center p-3 mx-4 mt-6 rounded-lg bg-neutral-200 dark:bg-neutral-900"
+                >
+                    <Icon as={RefreshCwIcon} color={isDark ? "#fff" : "#000"} />
+                    <Text className="font-medium text-typography-900 dark:text-typography-0">
+                        {note.ai_status === "failed" ? "Try AI re-organization again" : "Re-organize with AI"}
+                    </Text>
+                </Pressable>
 
                 {/* Related Notes */}
                 {relatedNotes.length > 0 && (

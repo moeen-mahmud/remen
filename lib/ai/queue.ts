@@ -5,7 +5,7 @@
  * Processes notes one at a time to avoid overwhelming the device.
  */
 
-import { addTagToNote, getNoteById, updateNote } from "@/lib/database"
+import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database"
 import { classifyNoteType } from "./classify"
 import { generateEmbedding } from "./embeddings"
 import type { EmbeddingsModel, LLMModel } from "./provider"
@@ -55,6 +55,7 @@ class AIProcessingQueue {
     private onProcessingCompleteCallbacks: ProcessingCompleteCallback[] = []
     private processingTimeouts: Map<string, NodeJS.Timeout> = new Map()
     private isOnEditingPage = false
+    private cancelToken = 0
 
     /**
      * Set whether the user is currently on an editing page
@@ -161,6 +162,17 @@ class AIProcessingQueue {
     }
 
     /**
+     * Cancel all queued AI work.
+     *
+     * Note: This cannot forcibly interrupt in-flight native model inference,
+     * but it will prevent further steps and clear all queued work.
+     */
+    cancelAll() {
+        this.cancelToken++
+        this.clear()
+    }
+
+    /**
      * Process the next job in the queue
      */
     private async processNext() {
@@ -169,11 +181,16 @@ class AIProcessingQueue {
         this.isProcessing = true
         const job = this.queue.shift()!
         this.currentJob = job
+        const tokenAtStart = this.cancelToken
 
         console.log(`📋 [Queue] Processing note: ${job.noteId.substring(0, 8)}... (${this.queue.length} remaining)`)
 
         try {
-            await this.processNote(job)
+            await this.processNote(job, tokenAtStart)
+            if (tokenAtStart !== this.cancelToken) {
+                // Cancelled while processing - don't fire completion callbacks.
+                return
+            }
             // Notify callbacks that processing completed
             this.onProcessingCompleteCallbacks.forEach((callback) => {
                 try {
@@ -195,8 +212,10 @@ class AIProcessingQueue {
     /**
      * Process a single note with AI
      */
-    private async processNote(job: NoteJob) {
+    private async processNote(job: NoteJob, tokenAtStart: number) {
         const { noteId, content } = job
+
+        const isCancelled = () => tokenAtStart !== this.cancelToken
 
         // Verify note still exists
         const note = await getNoteById(noteId)
@@ -205,10 +224,13 @@ class AIProcessingQueue {
             return
         }
 
+        // Mark as processing for UI/status
+        await updateNote(noteId, { ai_status: "processing", ai_error: null })
+
         // Skip empty or very short content
         if (content.trim().length < 10) {
             console.log(`⚠️ [Queue] Note too short, skipping AI processing: ${noteId.substring(0, 8)}...`)
-            await updateNote(noteId, { is_processed: true })
+            await updateNote(noteId, { is_processed: true, ai_status: "organized", ai_error: null })
             return
         }
 
@@ -224,6 +246,10 @@ class AIProcessingQueue {
             // Wait for LLM to be available before starting LLM operations
             const llmReady = await waitForModel(llm, 3000)
             console.log(`  🤖 LLM ready: ${llmReady}`)
+            if (isCancelled()) {
+                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" })
+                return
+            }
 
             // Generate title (uses LLM)
             console.log(`  📝 Generating title...`)
@@ -236,6 +262,10 @@ class AIProcessingQueue {
                 title = await generateTitle(content, null) // Fallback
             }
             console.log(`  📝 Title: "${title}"`)
+            if (isCancelled()) {
+                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" })
+                return
+            }
 
             // Classify type (uses LLM) - skip if note type was explicitly set to voice/scan
             let type = note.type
@@ -251,6 +281,10 @@ class AIProcessingQueue {
                 }
                 console.log(`  🏷️ Type: ${type}`)
             }
+            if (isCancelled()) {
+                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" })
+                return
+            }
 
             // Extract tags (uses LLM)
             console.log(`  🔖 Extracting tags...`)
@@ -262,20 +296,38 @@ class AIProcessingQueue {
                 tags = await extractTags(content, null) // Fallback
             }
             console.log(`  🔖 Tags: [${tags.join(", ")}]`)
+            if (isCancelled()) {
+                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" })
+                return
+            }
 
             // Wait for embedding to complete
             const embedding = await embeddingPromise
             console.log(`  📊 Embedding: ${embedding.length} dimensions`)
+            if (isCancelled()) {
+                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" })
+                return
+            }
 
             // Update note with AI-generated metadata and embedding
             await updateNote(noteId, {
                 title,
                 type,
                 is_processed: true,
+                ai_status: "organized",
+                ai_error: null,
                 embedding: JSON.stringify(embedding),
             })
 
-            // Add tags to the note
+            // Replace existing auto tags (keep any user/manual tags)
+            const existingTags = await getTagsForNote(noteId)
+            for (const tag of existingTags) {
+                if (tag.is_auto) {
+                    await removeTagFromNote(noteId, tag.id)
+                }
+            }
+
+            // Add extracted tags
             for (const tag of tags) {
                 await addTagToNote(noteId, tag)
             }
@@ -293,7 +345,8 @@ class AIProcessingQueue {
         } catch (error) {
             console.error(`❌ [Queue] AI processing error for ${noteId.substring(0, 8)}...:`, error)
             // Mark as processed even on error to avoid infinite retries
-            await updateNote(noteId, { is_processed: true })
+            const message = error instanceof Error ? error.message : String(error)
+            await updateNote(noteId, { is_processed: true, ai_status: "failed", ai_error: message })
         }
     }
 

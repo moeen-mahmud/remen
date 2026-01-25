@@ -11,6 +11,8 @@ export interface Note {
     created_at: number
     updated_at: number
     is_processed: boolean
+    ai_status: "unprocessed" | "queued" | "processing" | "organized" | "failed" | "cancelled"
+    ai_error: string | null
     embedding: string | null
     original_image: string | null
     audio_file: string | null
@@ -54,6 +56,8 @@ export interface UpdateNoteInput {
     title?: string | null
     type?: NoteType
     is_processed?: boolean
+    ai_status?: Note["ai_status"]
+    ai_error?: string | null
     embedding?: string | null
 }
 
@@ -82,6 +86,8 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
             created_at INTEGER NOT NULL,
             updated_at INTEGER NOT NULL,
             is_processed INTEGER DEFAULT 0,
+            ai_status TEXT DEFAULT 'unprocessed',
+            ai_error TEXT,
             embedding TEXT,
             original_image TEXT,
             audio_file TEXT,
@@ -131,6 +137,16 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
     } catch {
         // Column already exists
     }
+    try {
+        await database.execAsync(`ALTER TABLE notes ADD COLUMN ai_status TEXT DEFAULT 'unprocessed'`)
+    } catch {
+        // Column already exists
+    }
+    try {
+        await database.execAsync(`ALTER TABLE notes ADD COLUMN ai_error TEXT`)
+    } catch {
+        // Column already exists
+    }
 }
 
 // Note CRUD Operations
@@ -146,6 +162,8 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
         created_at: now,
         updated_at: now,
         is_processed: false,
+        ai_status: "unprocessed",
+        ai_error: null,
         embedding: null,
         original_image: input.original_image ?? null,
         audio_file: input.audio_file ?? null,
@@ -155,8 +173,8 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
     }
 
     await database.runAsync(
-        `INSERT INTO notes (id, content, html, title, type, created_at, updated_at, is_processed, embedding, original_image, audio_file, is_archived, is_deleted, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO notes (id, content, html, title, type, created_at, updated_at, is_processed, ai_status, ai_error, embedding, original_image, audio_file, is_archived, is_deleted, deleted_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             note.id,
             note.content,
@@ -166,6 +184,8 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
             note.created_at,
             note.updated_at,
             note.is_processed ? 1 : 0,
+            note.ai_status,
+            note.ai_error,
             note.embedding,
             note.original_image,
             note.audio_file,
@@ -188,6 +208,8 @@ interface NoteRow {
     created_at: number
     updated_at: number
     is_processed: number
+    ai_status: Note["ai_status"] | null
+    ai_error: string | null
     embedding: string | null
     original_image: string | null
     audio_file: string | null
@@ -202,6 +224,8 @@ function rowToNote(row: NoteRow): Note {
         ...row,
         type: row.type as NoteType,
         is_processed: row.is_processed === 1,
+        ai_status: row.ai_status ?? "unprocessed",
+        ai_error: row.ai_error ?? null,
         is_archived: row.is_archived === 1,
         is_deleted: row.is_deleted === 1,
     }
@@ -271,18 +295,22 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
         title: input.title !== undefined ? input.title : existing.title,
         type: input.type ?? existing.type,
         is_processed: input.is_processed ?? existing.is_processed,
+        ai_status: input.ai_status ?? existing.ai_status,
+        ai_error: input.ai_error !== undefined ? input.ai_error : existing.ai_error,
         embedding: input.embedding !== undefined ? input.embedding : existing.embedding,
         updated_at: Date.now(),
     }
 
     await database.runAsync(
-        `UPDATE notes SET content = ?, html = ?, title = ?, type = ?, is_processed = ?, embedding = ?, updated_at = ? WHERE id = ?`,
+        `UPDATE notes SET content = ?, html = ?, title = ?, type = ?, is_processed = ?, ai_status = ?, ai_error = ?, embedding = ?, updated_at = ? WHERE id = ?`,
         [
             updated.content,
             updated.html,
             updated.title,
             updated.type,
             updated.is_processed ? 1 : 0,
+            updated.ai_status,
+            updated.ai_error,
             updated.embedding,
             updated.updated_at,
             id,
