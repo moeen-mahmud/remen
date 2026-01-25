@@ -3,7 +3,7 @@ import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
 import { aiQueue } from "@/lib/ai"
 import * as Haptics from "expo-haptics"
-import { AlertCircle, CircleStop } from "lucide-react-native"
+import { AlertCircle, ChevronRight, CircleStop } from "lucide-react-native"
 import { useEffect, useState } from "react"
 import { Alert, Pressable } from "react-native"
 
@@ -75,17 +75,20 @@ export const SettingsAIControls = () => {
                     {queueStatus.currentJobId ? (
                         <Box className="mt-3">
                             <Text className="text-xs text-neutral-500 dark:text-neutral-400">
-                                Current: {queueStatus.currentJobId.slice(0, 8)}…
+                                Current Job ID: {queueStatus.currentJobId}
                             </Text>
                         </Box>
                     ) : null}
                 </Box>
                 <Pressable
-                    className="flex-row gap-2 items-center p-4 mt-2 rounded-lg dark:bg-error-500 bg-error-50"
+                    className="flex-row justify-between items-center p-4 mt-2 rounded-lg dark:bg-error-500 bg-error-50"
                     onPress={handleStopAIProcessing}
                 >
-                    <Icon as={CircleStop} className="text-error-900 dark:text-error-50" size="lg" />
-                    <Text className="font-semibold text-error-900 dark:text-error-50">Stop AI processes</Text>
+                    <Box className="flex-row gap-2 items-center">
+                        <Icon as={CircleStop} className="text-error-900 dark:text-error-50" size="lg" />
+                        <Text className="font-semibold text-error-900 dark:text-error-50">Stop AI processes</Text>
+                    </Box>
+                    <Icon as={ChevronRight} className="text-error-900 dark:text-error-50" size="lg" />
                 </Pressable>
             </Box>
         </Box>
