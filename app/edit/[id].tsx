@@ -1,4 +1,6 @@
+import { PageWrapper } from "@/components/page-wrapper"
 import RichEditor from "@/components/rich-editor"
+import { EditorHeader } from "@/components/rich-editor/editor-header"
 import { useLocalSearchParams, useRouter } from "expo-router"
 
 export default function EditNoteScreen() {
@@ -9,5 +11,14 @@ export default function EditNoteScreen() {
         router.back()
     }
 
-    return <RichEditor noteId={id || null} onClose={handleClose} showBackButton={true} showQuickActions={false} />
+    const handleViewNotes = () => {
+        router.push("/notes" as any)
+    }
+
+    return (
+        <PageWrapper>
+            <EditorHeader isEditing={true} handleBack={handleClose} handleViewNotes={handleViewNotes} />
+            <RichEditor noteId={id || null} onClose={handleClose} />
+        </PageWrapper>
+    )
 }

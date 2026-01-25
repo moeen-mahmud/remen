@@ -7,7 +7,6 @@ import {
     type Selection,
     type StylesState,
 } from "@/components/rich-editor/constants"
-import { EditorHeader } from "@/components/rich-editor/editor-header"
 import { editorStyles } from "@/components/rich-editor/editor-styles"
 import { htmlStyle } from "@/components/rich-editor/html-styles"
 import { LinkModal } from "@/components/rich-editor/link-modal"
@@ -18,7 +17,7 @@ import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
 import { createNote, getNoteById, updateNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
-import { useRouter } from "expo-router"
+import { router } from "expo-router"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AppState } from "react-native"
@@ -51,13 +50,6 @@ interface RichEditorProps {
      */
     onClose?: () => void
     /**
-     * Whether to show the back button (default: true)
-     */
-    showBackButton?: boolean
-    /**
-     * Whether to show quick action buttons (voice/scan) (default: true)
-     */
-    /**
      * Custom placeholder text
      */
     placeholder?: string
@@ -66,13 +58,11 @@ interface RichEditorProps {
 export default function RichEditor({
     noteId: initialNoteId = null,
     onClose,
-    showBackButton = true,
     placeholder = "What's on your mind?",
 }: RichEditorProps) {
-    const { top, bottom } = useSafeAreaInsets()
     const { isVisible: isKeyboardVisible } = useKeyboardState()
+    const { bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
-    const router = useRouter()
     const isDark = colorScheme === "dark"
 
     // Get AI models for processing queue
@@ -83,7 +73,6 @@ export default function RichEditor({
 
     // Autosave state
     const [currentNoteId, setCurrentNoteId] = useState<string | null>(initialNoteId)
-    const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle")
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const lastSavedContentRef = useRef<string>("")
 
@@ -97,6 +86,10 @@ export default function RichEditor({
     const [currentLink, setCurrentLink] = useState<CurrentLinkState>(DEFAULT_LINK_STATE)
 
     const ref = useRef<EnrichedTextInputInstance>(null)
+
+    const handleViewNotes = useCallback(() => {
+        router.push("/notes" as any)
+    }, [])
 
     // Load existing note if noteId is provided
     useEffect(() => {
@@ -139,8 +132,6 @@ export default function RichEditor({
                 return noteId
             }
 
-            setSaveStatus("saving")
-
             try {
                 if (noteId) {
                     // Update existing note
@@ -149,7 +140,6 @@ export default function RichEditor({
                         html: noteHtml,
                     })
                     lastSavedContentRef.current = noteContent
-                    setSaveStatus("saved")
 
                     // Queue for AI processing (re-process on update)
                     aiQueue.setModels({ llm, embeddings })
@@ -163,7 +153,6 @@ export default function RichEditor({
                         html: noteHtml,
                     })
                     lastSavedContentRef.current = noteContent
-                    setSaveStatus("saved")
 
                     // Queue for AI processing
                     aiQueue.setModels({ llm, embeddings })
@@ -174,7 +163,6 @@ export default function RichEditor({
                 }
             } catch (error) {
                 console.error("Failed to save note:", error)
-                setSaveStatus("idle")
                 return noteId
             }
         },
@@ -191,7 +179,6 @@ export default function RichEditor({
 
             // Don't save empty content
             if (noteContent.trim().length === 0) {
-                setSaveStatus("idle")
                 return
             }
 
@@ -264,28 +251,9 @@ export default function RichEditor({
         if (onClose) {
             onClose()
         } else {
-            router.push("/notes" as any)
+            handleViewNotes()
         }
-    }, [immediateSave, onClose, router])
-
-    // Navigate to voice capture
-    const handleVoice = useCallback(async () => {
-        await immediateSave()
-        await KeyboardController.dismiss()
-        router.push("/voice" as any)
-    }, [immediateSave, router])
-
-    // Navigate to scan capture
-    const handleScan = useCallback(async () => {
-        await immediateSave()
-        await KeyboardController.dismiss()
-        router.push("/scan" as any)
-    }, [immediateSave, router])
-
-    // Dismiss keyboard
-    const handleDismissKeyboard = useCallback(async () => {
-        await KeyboardController.dismiss()
-    }, [])
+    }, [immediateSave, onClose, handleViewNotes])
 
     const insideCurrentLink =
         stylesState.link.isActive &&
@@ -328,43 +296,34 @@ export default function RichEditor({
         setSelection(sel)
     }
 
-    const handleViewNotes = useCallback(() => {
-        router.push("/notes" as any)
-    }, [router])
-
     if (isLoading) return <PageLoader />
 
     return (
-        <Box className="flex-1 bg-background" style={{ paddingTop: top }}>
-            {/* Header */}
-            <EditorHeader showBackButton={showBackButton} handleBack={handleBack} handleViewNotes={handleViewNotes} />
-
+        <Box className="flex-1">
             {/* Editor */}
             <KeyboardAwareScrollView
-                style={editorStyles.scrollView}
+                // className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: bottom + 120 }}
+                // contentContainerStyle={{ paddingBottom: bottom + }}
                 keyboardShouldPersistTaps="handled"
             >
-                <Box className="w-full">
-                    <EnrichedTextInput
-                        ref={ref}
-                        style={[editorStyles.editorInput, { color: isDark ? "#ffffff" : "#000000" }] as any}
-                        htmlStyle={htmlStyle}
-                        defaultValue={initialContent}
-                        placeholder={placeholder}
-                        placeholderTextColor={isDark ? "#555555" : "#aaaaaa"}
-                        selectionColor={isDark ? "#dddddd" : "#666666"}
-                        autoCapitalize="sentences"
-                        autoFocus={false}
-                        linkRegex={LINK_REGEX}
-                        onChangeText={(e) => handleChangeText(e.nativeEvent)}
-                        onChangeHtml={(e) => handleChangeHtml(e.nativeEvent)}
-                        onChangeState={(e) => handleChangeState(e.nativeEvent)}
-                        onLinkDetected={handleLinkDetected}
-                        onChangeSelection={(e) => handleSelectionChangeEvent(e.nativeEvent)}
-                    />
-                </Box>
+                <EnrichedTextInput
+                    ref={ref}
+                    style={[editorStyles.editorInput, { color: isDark ? "#ffffff" : "#000000" }] as any}
+                    htmlStyle={htmlStyle}
+                    defaultValue={initialContent}
+                    placeholder={placeholder}
+                    placeholderTextColor={isDark ? "#555555" : "#aaaaaa"}
+                    selectionColor={isDark ? "#dddddd" : "#666666"}
+                    autoCapitalize="sentences"
+                    autoFocus={false}
+                    linkRegex={LINK_REGEX}
+                    onChangeText={(e) => handleChangeText(e.nativeEvent)}
+                    onChangeHtml={(e) => handleChangeHtml(e.nativeEvent)}
+                    onChangeState={(e) => handleChangeState(e.nativeEvent)}
+                    onLinkDetected={handleLinkDetected}
+                    onChangeSelection={(e) => handleSelectionChangeEvent(e.nativeEvent)}
+                />
             </KeyboardAwareScrollView>
 
             {/* Bottom Bar */}

@@ -1,38 +1,35 @@
-import { RemenLogo } from "@/components/brand/logo"
-import { editorStyles } from "@/components/rich-editor/editor-styles"
 import { Box } from "@/components/ui/box"
 import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
-import { ArrowLeftIcon, ListIcon } from "lucide-react-native"
+import { ChevronLeft, ListIcon } from "lucide-react-native"
 import { Pressable } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 type EditorHeaderProps = {
-    showBackButton: boolean
+    isEditing: boolean
     handleBack: () => void
     handleViewNotes: () => void
 }
 
-export const EditorHeader: React.FC<EditorHeaderProps> = ({ showBackButton, handleBack, handleViewNotes }) => {
+export const EditorHeader: React.FC<EditorHeaderProps> = ({ isEditing, handleBack, handleViewNotes }) => {
+    const { top } = useSafeAreaInsets()
     return (
-        <Box
-            className="flex-row justify-between items-center px-4 py-2 border-b border-background-300"
-            style={editorStyles.header}
-        >
-            {showBackButton ? (
-                <Pressable hitSlop={10} onPress={handleBack} className="flex-row gap-2 justify-center items-center p-2">
-                    <Icon as={ArrowLeftIcon} size="xl" className="text-background-900" />
-                    <Text className="text-lg font-bold">Edit Note</Text>
-                </Pressable>
-            ) : (
-                <Box className="min-w-11">
-                    <RemenLogo size="md" showIcon={true} />
-                </Box>
-            )}
+        <Box style={{ paddingTop: top }} className="p-4 mb-6 bg-background-0">
+            <Box className="flex-row justify-between items-center">
+                {isEditing ? (
+                    <Pressable hitSlop={10} onPress={handleBack} className="flex-row gap-2 justify-center items-center">
+                        <Icon as={ChevronLeft} size="xl" />
+                        <Text className="text-xl font-bold">Edit Note</Text>
+                    </Pressable>
+                ) : (
+                    <Text className="text-xl font-bold">Remen</Text>
+                )}
 
-            {/* Spacer for header alignment */}
-            <Pressable onPress={handleViewNotes} hitSlop={10}>
-                <Icon as={ListIcon} size="xl" className="text-background-900" />
-            </Pressable>
+                {/* Spacer for header alignment */}
+                <Pressable onPress={handleViewNotes} hitSlop={10}>
+                    <Icon as={ListIcon} size="xl" />
+                </Pressable>
+            </Box>
         </Box>
     )
 }

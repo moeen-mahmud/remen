@@ -45,7 +45,6 @@ export const editorStyles = StyleSheet.create({
         minHeight: 400,
         fontSize: 17,
         lineHeight: 28,
-        paddingVertical: 24,
         paddingHorizontal: 16,
     },
     bottomBarContainer: {

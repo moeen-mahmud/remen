@@ -1,6 +1,7 @@
 import { SpeedDial, type FabAction } from "@/components/fab"
+import { PageWrapper } from "@/components/page-wrapper"
 import RichEditor from "@/components/rich-editor"
-import { Box } from "@/components/ui/box"
+import { EditorHeader } from "@/components/rich-editor/editor-header"
 import { useRouter } from "expo-router"
 import { CameraIcon, MicIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
@@ -38,10 +39,18 @@ export default function Index() {
         },
     ]
 
+    const handleViewNotes = () => {
+        router.push("/notes" as any)
+    }
+    const handleBack = () => {
+        router.back()
+    }
+
     return (
-        <Box className="flex-1 bg-background-50">
-            <RichEditor showBackButton={false} />
+        <PageWrapper>
+            <EditorHeader isEditing={false} handleBack={handleBack} handleViewNotes={handleViewNotes} />
+            <RichEditor />
             <SpeedDial actions={fabActions} position="bottom-right" />
-        </Box>
+        </PageWrapper>
     )
 }

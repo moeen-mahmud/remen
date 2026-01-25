@@ -43,7 +43,7 @@ export const NotesHeader: React.FC<NotesHeaderProps> = ({
             ) : (
                 <Box className="flex-row justify-between items-center">
                     <Box className="flex-row gap-4 items-center">
-                        <Text className="text-xl font-bold">Remen</Text>
+                        <Text className="text-xl font-bold">Notes</Text>
                     </Box>
                     <Pressable hitSlop={10} onPress={handleSettings}>
                         <Icon as={Cog} size="xl" />
