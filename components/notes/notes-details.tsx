@@ -1,5 +1,6 @@
 import { NotesTitle } from "@/components/notes/notes-title"
 import { Box } from "@/components/ui/box"
+import { Button, ButtonIcon, ButtonText } from "@/components/ui/button"
 import { Divider } from "@/components/ui/divider"
 import { Heading } from "@/components/ui/heading"
 import { Icon } from "@/components/ui/icon"
@@ -14,7 +15,7 @@ import { findRelatedNotes, type SearchResult } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
-import { MicIcon, RefreshCwIcon, ScanIcon, XCircle } from "lucide-react-native"
+import { MicIcon, ScanIcon, Sparkles, XCircle } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native"
@@ -292,7 +293,7 @@ export const NoteDetails: React.FC = () => {
                     note.ai_status === "queued" ||
                     note.ai_status === "failed" ||
                     note.ai_status === "cancelled") && (
-                    <Box className="flex-row items-center px-4 pt-6 mt-8 border-t border-neutral-200 dark:border-neutral-900">
+                    <Box className="flex-row items-center px-4 pt-2 mt-2">
                         {isProcessingThisNote ? (
                             <>
                                 <Spinner className="mr-2" size="small" color="grey" />
@@ -316,10 +317,22 @@ export const NoteDetails: React.FC = () => {
                                 </Text>
                             </>
                         ) : (
-                            <>
-                                <Box className="mr-2 w-2 h-2 rounded-full bg-success-500" />
-                                <Text className="text-sm text-neutral-500 dark:text-neutral-400">AI organized</Text>
-                            </>
+                            <Box className="flex-row flex-grow gap-2 justify-between items-center">
+                                <Box className="flex-row gap-1 items-center">
+                                    <Box className="mr-2 w-2 h-2 rounded-full bg-success-500" />
+                                    <Text className="text-sm text-neutral-500 dark:text-neutral-400">AI organized</Text>
+                                </Box>
+                                <Button
+                                    action="secondary"
+                                    variant="outline"
+                                    size="sm"
+                                    onPress={handleReorganizeWithAI}
+                                    disabled={isProcessingThisNote}
+                                >
+                                    <ButtonIcon as={Sparkles} />
+                                    <ButtonText>Shuffle</ButtonText>
+                                </Button>
+                            </Box>
                         )}
                     </Box>
                 )}
@@ -333,7 +346,7 @@ export const NoteDetails: React.FC = () => {
                 ) : null}
 
                 {/* Re-organize */}
-                <Pressable
+                {/* <Pressable
                     onPress={handleReorganizeWithAI}
                     disabled={isProcessingThisNote}
                     className="flex-row gap-2 justify-center items-center p-3 mx-4 mt-6 rounded-lg bg-neutral-200 dark:bg-neutral-900"
@@ -342,7 +355,7 @@ export const NoteDetails: React.FC = () => {
                     <Text className="font-medium text-typography-900 dark:text-typography-0">
                         {note.ai_status === "failed" ? "Try AI re-organization again" : "Re-organize with AI"}
                     </Text>
-                </Pressable>
+                </Pressable> */}
 
                 {/* Related Notes */}
                 {relatedNotes.length > 0 && (
@@ -447,17 +460,6 @@ const styles = StyleSheet.create({
     },
     titleEditContainer: {
         alignItems: "flex-start",
-    },
-    titleInput: {
-        // fontWeight: "bold",
-        // textAlign: "left",
-        // minWidth: "100%",
-        // paddingVertical: 8,
-        // paddingHorizontal: 16,
-        // borderRadius: 8,
-        // borderWidth: 1,
-        // borderColor: "#39FF14",
-        // backgroundColor: "rgba(57, 255, 20, 0.1)",
     },
     titleActions: {
         flexDirection: "row",

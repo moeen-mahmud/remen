@@ -1,5 +1,4 @@
 import { Box } from "@/components/ui/box"
-import { Divider } from "@/components/ui/divider"
 import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
 import { aiQueue } from "@/lib/ai"
@@ -81,7 +80,6 @@ export const SettingsAIControls = () => {
                         </Box>
                     ) : null}
                 </Box>
-                <Divider className="bg-background-50 dark:bg-background-100" />
                 <Pressable
                     className="flex-row gap-2 items-center p-4 mt-2 rounded-lg dark:bg-error-500 bg-error-50"
                     onPress={handleStopAIProcessing}
