@@ -16,7 +16,7 @@ export default function EditNoteScreen() {
     }
 
     return (
-        <PageWrapper>
+        <PageWrapper disableBottomPadding>
             <EditorHeader isEditing={true} handleBack={handleClose} handleViewNotes={handleViewNotes} />
             <RichEditor noteId={id || null} onClose={handleClose} />
         </PageWrapper>

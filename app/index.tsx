@@ -47,7 +47,7 @@ export default function Index() {
     }
 
     return (
-        <PageWrapper>
+        <PageWrapper disableBottomPadding>
             <EditorHeader isEditing={false} handleBack={handleBack} handleViewNotes={handleViewNotes} />
             <RichEditor />
             <SpeedDial actions={fabActions} position="bottom-right" />

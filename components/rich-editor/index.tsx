@@ -17,10 +17,9 @@ import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
 import { createNote, getNoteById, updateNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
-import { router } from "expo-router"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AppState } from "react-native"
+import { Animated, AppState, type LayoutChangeEvent } from "react-native"
 import {
     EnrichedTextInput,
     type EnrichedTextInputInstance,
@@ -30,12 +29,7 @@ import {
     type OnChangeTextEvent,
     type OnLinkDetected,
 } from "react-native-enriched"
-import {
-    KeyboardAvoidingView,
-    KeyboardAwareScrollView,
-    KeyboardController,
-    useKeyboardState,
-} from "react-native-keyboard-controller"
+import { KeyboardAwareScrollView, useKeyboardState } from "react-native-keyboard-controller"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 interface RichEditorProps {
@@ -60,7 +54,11 @@ export default function RichEditor({
     onClose,
     placeholder = "What's on your mind?",
 }: RichEditorProps) {
-    const { isVisible: isKeyboardVisible } = useKeyboardState()
+    const keyboard = useKeyboardState((state) => ({
+        isVisible: state.isVisible,
+        height: state.height,
+        duration: state.duration,
+    }))
     const { bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
@@ -70,6 +68,11 @@ export default function RichEditor({
 
     const [isLoading, setIsLoading] = useState(!!initialNoteId)
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
+    const [isToolbarMounted, setIsToolbarMounted] = useState(false)
+    const [bottomBarHeight, setBottomBarHeight] = useState(0)
+
+    const bottomBarTranslateY = useRef(new Animated.Value(0)).current
+    const toolbarAnim = useRef(new Animated.Value(0)).current
 
     // Autosave state
     const [currentNoteId, setCurrentNoteId] = useState<string | null>(initialNoteId)
@@ -86,10 +89,6 @@ export default function RichEditor({
     const [currentLink, setCurrentLink] = useState<CurrentLinkState>(DEFAULT_LINK_STATE)
 
     const ref = useRef<EnrichedTextInputInstance>(null)
-
-    const handleViewNotes = useCallback(() => {
-        router.push("/notes" as any)
-    }, [])
 
     // Load existing note if noteId is provided
     useEffect(() => {
@@ -227,6 +226,42 @@ export default function RichEditor({
         }
     }, [])
 
+    // Keep bottom bar above keyboard (with animation)
+    useEffect(() => {
+        // Lift exactly by the keyboard height so the bar sits flush on top of it.
+        const keyboardLift = keyboard.isVisible ? Math.max(0, keyboard.height) : 0
+        const toValue = -keyboardLift
+        Animated.timing(bottomBarTranslateY, {
+            toValue,
+            duration: keyboard.duration || 250,
+            useNativeDriver: true,
+        }).start()
+    }, [keyboard.isVisible, keyboard.height, keyboard.duration, bottomBarTranslateY])
+
+    // Animate toolbar in/out (separately from keyboard slide)
+    useEffect(() => {
+        toolbarAnim.stopAnimation()
+
+        if (keyboard.isVisible) {
+            setIsToolbarMounted(true)
+            toolbarAnim.setValue(0)
+            Animated.timing(toolbarAnim, {
+                toValue: 1,
+                duration: Math.max(150, keyboard.duration || 250),
+                useNativeDriver: true,
+            }).start()
+            return
+        }
+
+        Animated.timing(toolbarAnim, {
+            toValue: 0,
+            duration: Math.max(150, keyboard.duration || 250),
+            useNativeDriver: true,
+        }).start(({ finished }) => {
+            if (finished) setIsToolbarMounted(false)
+        })
+    }, [keyboard.isVisible, keyboard.duration, toolbarAnim])
+
     // Handle text changes - trigger autosave
     const handleChangeText = (e: OnChangeTextEvent) => {
         const newContent = e.value
@@ -241,19 +276,6 @@ export default function RichEditor({
     const handleChangeState = (state: OnChangeStateEvent) => {
         setStylesState(state)
     }
-
-    // Navigate to notes list or close
-    const handleBack = useCallback(async () => {
-        await immediateSave()
-        await KeyboardController.dismiss()
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-
-        if (onClose) {
-            onClose()
-        } else {
-            handleViewNotes()
-        }
-    }, [immediateSave, onClose, handleViewNotes])
 
     const insideCurrentLink =
         stylesState.link.isActive &&
@@ -298,13 +320,17 @@ export default function RichEditor({
 
     if (isLoading) return <PageLoader />
 
+    const handleBottomBarLayout = (e: LayoutChangeEvent) => {
+        setBottomBarHeight(e.nativeEvent.layout.height)
+    }
+
     return (
         <Box className="flex-1">
             {/* Editor */}
             <KeyboardAwareScrollView
                 // className="flex-1"
                 showsVerticalScrollIndicator={false}
-                // contentContainerStyle={{ paddingBottom: bottom + }}
+                contentContainerStyle={{ paddingBottom: Math.max(bottomBarHeight, bottom + 16) }}
                 keyboardShouldPersistTaps="handled"
             >
                 <EnrichedTextInput
@@ -327,19 +353,41 @@ export default function RichEditor({
             </KeyboardAwareScrollView>
 
             {/* Bottom Bar */}
-            <KeyboardAvoidingView behavior="padding" style={editorStyles.bottomBarContainer}>
+            <Animated.View
+                style={[
+                    editorStyles.bottomBarContainer,
+                    {
+                        transform: [{ translateY: bottomBarTranslateY }],
+                    },
+                ]}
+            >
                 <Box
-                    className="pt-2 border-t bg-background-50 border-background-300"
-                    style={{ paddingBottom: isKeyboardVisible ? 0 : bottom + 8 }}
+                    onLayout={handleBottomBarLayout}
+                    className="pt-2 border-t bg-background-0 border-background-300"
+                    style={{ paddingBottom: keyboard.isVisible ? 0 : bottom + 8 }}
                 >
                     {/* Formatting toolbar (only when keyboard is visible) */}
-                    {isKeyboardVisible && (
-                        <Box className="mt-2">
-                            <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
-                        </Box>
+                    {isToolbarMounted && (
+                        <Animated.View
+                            style={{
+                                opacity: toolbarAnim,
+                                transform: [
+                                    {
+                                        translateY: toolbarAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [8, 0],
+                                        }),
+                                    },
+                                ],
+                            }}
+                        >
+                            <Box className="mt-2">
+                                <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
+                            </Box>
+                        </Animated.View>
                     )}
                 </Box>
-            </KeyboardAvoidingView>
+            </Animated.View>
 
             {/* Modals */}
             <LinkModal

@@ -13,17 +13,17 @@ SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
     return (
-        <GluestackUIProvider>
-            <AIProvider>
+        <AIProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
                 <KeyboardProvider>
-                    <StatusBar style="auto" />
-                    <GestureHandlerRootView style={{ flex: 1 }}>
+                    <GluestackUIProvider>
+                        <StatusBar style="auto" />
                         <AppInitializer>
                             <Stack screenOptions={{ headerShown: false }} />
                         </AppInitializer>
-                    </GestureHandlerRootView>
+                    </GluestackUIProvider>
                 </KeyboardProvider>
-            </AIProvider>
-        </GluestackUIProvider>
+            </GestureHandlerRootView>
+        </AIProvider>
     )
 }

@@ -52,6 +52,8 @@ export const editorStyles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
+        zIndex: 50,
+        elevation: 50,
     },
     bottomBar: {
         borderTopWidth: StyleSheet.hairlineWidth,
