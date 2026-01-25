@@ -10,7 +10,7 @@ import {
     UnderlineIcon,
 } from "lucide-react-native"
 import type { FC } from "react"
-import { FlatList, type ListRenderItemInfo, StyleSheet } from "react-native"
+import { FlatList, type ListRenderItemInfo } from "react-native"
 import type { EnrichedTextInputInstance, OnChangeStateEvent } from "react-native-enriched"
 import { ToolbarButton } from "./toolbar-button"
 
@@ -261,13 +261,7 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
             // )}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
-            style={styles.container}
+            className="w-full"
         />
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        width: "100%",
-    },
-})

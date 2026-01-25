@@ -19,7 +19,7 @@ import { createNote, getNoteById, updateNote } from "@/lib/database"
 import * as Haptics from "expo-haptics"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Animated, AppState, type LayoutChangeEvent } from "react-native"
+import { AppState, type LayoutChangeEvent } from "react-native"
 import {
     EnrichedTextInput,
     type EnrichedTextInputInstance,
@@ -29,16 +29,14 @@ import {
     type OnChangeTextEvent,
     type OnLinkDetected,
 } from "react-native-enriched"
-import { KeyboardGestureArea, useKeyboardHandler, useKeyboardState } from "react-native-keyboard-controller"
-import Reanimated, { useAnimatedProps, useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated"
+import { KeyboardGestureArea, useKeyboardHandler } from "react-native-keyboard-controller"
+import Reanimated, { useAnimatedProps, useAnimatedStyle, useSharedValue } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 const useKeyboardAnimation = () => {
     const progress = useSharedValue(0)
     const height = useSharedValue(0)
     const inset = useSharedValue(0)
-    const offset = useSharedValue(0)
-    const scroll = useSharedValue(0)
     const shouldUseOnMoveHandler = useSharedValue(false)
 
     useKeyboardHandler({
@@ -59,14 +57,13 @@ const useKeyboardAnimation = () => {
             height.value = e.height
 
             inset.value = e.height
-            // Math.max is needed to prevent overscroll when keyboard hides (and user scrolled to the top, for example)
-            offset.value = Math.max(e.height + scroll.value, 0)
         },
         onInteractive: (e) => {
             "worklet"
 
             progress.value = e.progress
             height.value = e.height
+            inset.value = e.height
         },
         onMove: (e) => {
             "worklet"
@@ -74,6 +71,7 @@ const useKeyboardAnimation = () => {
             if (shouldUseOnMoveHandler.value) {
                 progress.value = e.progress
                 height.value = e.height
+                inset.value = e.height
             }
         },
         onEnd: (e) => {
@@ -81,17 +79,12 @@ const useKeyboardAnimation = () => {
 
             height.value = e.height
             progress.value = e.progress
+            inset.value = e.height
             shouldUseOnMoveHandler.value = false
         },
     })
 
-    const onScroll = useAnimatedScrollHandler({
-        onScroll: (e) => {
-            scroll.value = e.contentOffset.y - inset.value
-        },
-    })
-
-    return { height, progress, onScroll, inset, offset }
+    return { height, progress, inset }
 }
 
 interface RichEditorProps {
@@ -116,12 +109,7 @@ export default function RichEditor({
     onClose,
     placeholder = "What's on your mind?",
 }: RichEditorProps) {
-    const keyboard = useKeyboardState((state) => ({
-        isVisible: state.isVisible,
-        height: state.height,
-        duration: state.duration,
-    }))
-    const { height, onScroll, inset, offset } = useKeyboardAnimation()
+    const { height, progress, inset } = useKeyboardAnimation()
     const { bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
@@ -130,10 +118,6 @@ export default function RichEditor({
         contentInset: {
             bottom: inset.value,
         },
-        contentOffset: {
-            x: 0,
-            y: offset.value,
-        },
     }))
 
     // Get AI models for processing queue
@@ -141,11 +125,7 @@ export default function RichEditor({
 
     const [isLoading, setIsLoading] = useState(!!initialNoteId)
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
-    const [isToolbarMounted, setIsToolbarMounted] = useState(false)
     const [bottomBarHeight, setBottomBarHeight] = useState(0)
-
-    const bottomBarTranslateY = useRef(new Animated.Value(0)).current
-    const toolbarAnim = useRef(new Animated.Value(0)).current
 
     // Autosave state
     const [currentNoteId, setCurrentNoteId] = useState<string | null>(initialNoteId)
@@ -300,41 +280,20 @@ export default function RichEditor({
         }
     }, [])
 
-    // Keep bottom bar above keyboard (with animation)
-    useEffect(() => {
-        // Lift exactly by the keyboard height so the bar sits flush on top of it.
-        const keyboardLift = keyboard.isVisible ? Math.max(0, keyboard.height) : 0
-        const toValue = -keyboardLift
-        Animated.timing(bottomBarTranslateY, {
-            toValue,
-            duration: keyboard.duration || 250,
-            useNativeDriver: true,
-        }).start()
-    }, [keyboard.isVisible, keyboard.height, keyboard.duration, bottomBarTranslateY])
-
-    // Animate toolbar in/out (separately from keyboard slide)
-    useEffect(() => {
-        toolbarAnim.stopAnimation()
-
-        if (keyboard.isVisible) {
-            setIsToolbarMounted(true)
-            toolbarAnim.setValue(0)
-            Animated.timing(toolbarAnim, {
-                toValue: 1,
-                duration: Math.max(150, keyboard.duration || 250),
-                useNativeDriver: true,
-            }).start()
-            return
+    // Smooth, native-driven bottom bar movement + safe-area spacer (Google Keep-like)
+    const bottomBarAnimatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateY: -height.value }],
         }
+    }, [height])
 
-        Animated.timing(toolbarAnim, {
-            toValue: 0,
-            duration: Math.max(150, keyboard.duration || 250),
-            useNativeDriver: true,
-        }).start(({ finished }) => {
-            if (finished) setIsToolbarMounted(false)
-        })
-    }, [keyboard.isVisible, keyboard.duration, toolbarAnim])
+    const bottomSafeAreaSpacerStyle = useAnimatedStyle(() => {
+        const maxPadding = bottom + 8
+        // When keyboard is fully open (progress=1) -> 0 spacer.
+        // When closed (progress=0) -> safe-area + a bit of breathing room.
+        const spacer = Math.max(0, maxPadding * (1 - progress.value))
+        return { height: spacer }
+    }, [bottom, progress])
 
     // Handle text changes - trigger autosave
     const handleChangeText = (e: OnChangeTextEvent) => {
@@ -391,9 +350,6 @@ export default function RichEditor({
     const handleSelectionChangeEvent = (sel: OnChangeSelectionEvent) => {
         setSelection(sel)
     }
-    const scrollToBottom = useCallback(() => {
-        animatedScrollViewRef.current?.scrollToEnd({ animated: false })
-    }, [])
 
     if (isLoading) return <PageLoader />
 
@@ -412,8 +368,7 @@ export default function RichEditor({
                 // contentContainerStyle={contentContainerStyle}
                 contentInsetAdjustmentBehavior="never"
                 keyboardDismissMode="interactive"
-                onContentSizeChange={scrollToBottom}
-                onScroll={onScroll}
+                // onContentSizeChange={scrollToBottom}
                 // className="flex-1"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: Math.max(bottomBarHeight, bottom + 16) }}
@@ -440,41 +395,17 @@ export default function RichEditor({
             </Reanimated.ScrollView>
 
             {/* Bottom Bar */}
-            <Animated.View
-                style={[
-                    editorStyles.bottomBarContainer,
-                    {
-                        transform: [{ translateY: bottomBarTranslateY }],
-                    },
-                ]}
-            >
-                <Box
-                    onLayout={handleBottomBarLayout}
-                    className="pt-2 border-t bg-background-0 border-background-300"
-                    style={{ paddingBottom: keyboard.isVisible ? 0 : bottom + 8 }}
-                >
-                    {/* Formatting toolbar (only when keyboard is visible) */}
-                    {isToolbarMounted && (
-                        <Animated.View
-                            style={{
-                                opacity: toolbarAnim,
-                                transform: [
-                                    {
-                                        translateY: toolbarAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [8, 0],
-                                        }),
-                                    },
-                                ],
-                            }}
-                        >
-                            <Box className="mt-2">
-                                <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
-                            </Box>
-                        </Animated.View>
-                    )}
+            <Reanimated.View style={[editorStyles.bottomBarContainer, bottomBarAnimatedStyle]}>
+                <Box onLayout={handleBottomBarLayout} className="pt-2 border-t bg-background-0 border-background-300">
+                    {/* Formatting toolbar (always visible) */}
+                    <Box className="mt-2">
+                        <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
+                    </Box>
+
+                    {/* Smoothly animates away when keyboard opens (keeps bar flush to keyboard) */}
+                    <Reanimated.View style={bottomSafeAreaSpacerStyle} />
                 </Box>
-            </Animated.View>
+            </Reanimated.View>
 
             {/* Modals */}
             <LinkModal
