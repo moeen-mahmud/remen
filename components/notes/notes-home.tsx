@@ -26,9 +26,9 @@ interface NoteWithTags extends Note {
 
 export const NotesHome: React.FC = () => {
     const { colorScheme } = useColorScheme()
-    const { bottom } = useSafeAreaInsets()
     const router = useRouter()
     const isDark = colorScheme === "dark"
+    const { bottom } = useSafeAreaInsets()
 
     // Get AI models for search - use ref to avoid dependency issues
     const { embeddings } = useAI()
@@ -352,7 +352,7 @@ export const NotesHome: React.FC = () => {
     }
 
     return (
-        <Box className="flex-grow">
+        <Box className="flex-1">
             {/* Header - Normal or Selection Mode */}
             <NotesHeader
                 isSelectionMode={isSelectionMode}
@@ -389,6 +389,7 @@ export const NotesHome: React.FC = () => {
                 renderItem={renderNote}
                 keyExtractor={keyExtractor}
                 contentContainerClassName="flex-grow"
+                contentContainerStyle={{ paddingBottom: bottom + 16 }}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={renderEmptyState}
                 ListFooterComponent={filteredNotes.length > 0 ? <NotesFooter /> : undefined}
