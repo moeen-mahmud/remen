@@ -14,7 +14,7 @@ import { getNoteById, getTagsForNote, updateNote, type Note, type Tag } from "@/
 import { findRelatedNotes, type SearchResult } from "@/lib/search"
 import * as Haptics from "expo-haptics"
 import { Image } from "expo-image"
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router"
+import { useFocusEffect, useRouter } from "expo-router"
 import { MicIcon, ScanIcon, Sparkles, XCircle } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -46,8 +46,7 @@ function getNoteTypeIcon(type: Note["type"], color: string, size: number = 14) {
     }
 }
 
-export const NoteDetails: React.FC = () => {
-    const { id } = useLocalSearchParams<{ id: string }>()
+export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
     const { colorScheme } = useColorScheme()
     const router = useRouter()
     const isDark = colorScheme === "dark"
