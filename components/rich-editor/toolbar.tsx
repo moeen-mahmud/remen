@@ -1,16 +1,6 @@
-import { Button } from "@/components/ui/button"
-import { Icon } from "@/components/ui/icon"
 import {
     BoldIcon,
-    ChevronDown,
     CodeIcon,
-    CodeSquareIcon,
-    Heading1Icon,
-    Heading2Icon,
-    Heading3Icon,
-    Heading4Icon,
-    Heading5Icon,
-    Heading6Icon,
     ItalicIcon,
     LinkIcon,
     ListIcon,
@@ -22,7 +12,6 @@ import {
 import type { FC } from "react"
 import { FlatList, type ListRenderItemInfo, StyleSheet } from "react-native"
 import type { EnrichedTextInputInstance, OnChangeStateEvent } from "react-native-enriched"
-import { KeyboardController } from "react-native-keyboard-controller"
 import { ToolbarButton } from "./toolbar-button"
 
 const STYLE_ITEMS = [
@@ -43,42 +32,6 @@ const STYLE_ITEMS = [
         icon: StrikethroughIcon,
     },
     {
-        name: "inline-code",
-        icon: CodeIcon,
-    },
-    {
-        name: "heading-1",
-        icon: Heading1Icon,
-    },
-    {
-        name: "heading-2",
-        icon: Heading2Icon,
-    },
-    {
-        name: "heading-3",
-        icon: Heading3Icon,
-    },
-    {
-        name: "heading-4",
-        icon: Heading4Icon,
-    },
-    {
-        name: "heading-5",
-        icon: Heading5Icon,
-    },
-    {
-        name: "heading-6",
-        icon: Heading6Icon,
-    },
-    {
-        name: "quote",
-        icon: QuoteIcon,
-    },
-    {
-        name: "code-block",
-        icon: CodeSquareIcon,
-    },
-    {
         name: "link",
         icon: LinkIcon,
     },
@@ -90,6 +43,42 @@ const STYLE_ITEMS = [
         name: "ordered-list",
         icon: ListOrderedIcon,
     },
+    {
+        name: "quote",
+        icon: QuoteIcon,
+    },
+    {
+        name: "inline-code",
+        icon: CodeIcon,
+    },
+    // {
+    //     name: "heading-1",
+    //     icon: Heading1Icon,
+    // },
+    // {
+    //     name: "heading-2",
+    //     icon: Heading2Icon,
+    // },
+    // {
+    //     name: "heading-3",
+    //     icon: Heading3Icon,
+    // },
+    // {
+    //     name: "heading-4",
+    //     icon: Heading4Icon,
+    // },
+    // {
+    //     name: "heading-5",
+    //     icon: Heading5Icon,
+    // },
+    // {
+    //     name: "heading-6",
+    //     icon: Heading6Icon,
+    // },
+    // {
+    //     name: "code-block",
+    //     icon: CodeSquareIcon,
+    // }
 ] as const
 
 type Item = (typeof STYLE_ITEMS)[number]
@@ -122,27 +111,27 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
             case "inline-code":
                 editorRef?.current?.toggleInlineCode()
                 break
-            case "heading-1":
-                editorRef.current?.toggleH1()
-                break
-            case "heading-2":
-                editorRef.current?.toggleH2()
-                break
-            case "heading-3":
-                editorRef.current?.toggleH3()
-                break
-            case "heading-4":
-                editorRef.current?.toggleH4()
-                break
-            case "heading-5":
-                editorRef.current?.toggleH5()
-                break
-            case "heading-6":
-                editorRef.current?.toggleH6()
-                break
-            case "code-block":
-                editorRef?.current?.toggleCodeBlock()
-                break
+            // case "heading-1":
+            //     editorRef.current?.toggleH1()
+            //     break
+            // case "heading-2":
+            //     editorRef.current?.toggleH2()
+            //     break
+            // case "heading-3":
+            //     editorRef.current?.toggleH3()
+            //     break
+            // case "heading-4":
+            //     editorRef.current?.toggleH4()
+            //     break
+            // case "heading-5":
+            //     editorRef.current?.toggleH5()
+            //     break
+            // case "heading-6":
+            //     editorRef.current?.toggleH6()
+            //     break
+            // case "code-block":
+            //     editorRef?.current?.toggleCodeBlock()
+            //     break
             case "quote":
                 editorRef?.current?.toggleBlockQuote()
                 break
@@ -170,20 +159,20 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
                 return stylesState.strikeThrough.isBlocking
             case "inline-code":
                 return stylesState.inlineCode.isBlocking
-            case "heading-1":
-                return stylesState.h1.isBlocking
-            case "heading-2":
-                return stylesState.h2.isBlocking
-            case "heading-3":
-                return stylesState.h3.isBlocking
-            case "heading-4":
-                return stylesState.h4.isBlocking
-            case "heading-5":
-                return stylesState.h5.isBlocking
-            case "heading-6":
-                return stylesState.h6.isBlocking
-            case "code-block":
-                return stylesState.codeBlock.isBlocking
+            // case "heading-1":
+            //     return stylesState.h1.isBlocking
+            // case "heading-2":
+            //     return stylesState.h2.isBlocking
+            // case "heading-3":
+            //     return stylesState.h3.isBlocking
+            // case "heading-4":
+            //     return stylesState.h4.isBlocking
+            // case "heading-5":
+            //     return stylesState.h5.isBlocking
+            // case "heading-6":
+            //     return stylesState.h6.isBlocking
+            // case "code-block":
+            //     return stylesState.codeBlock.isBlocking
             case "quote":
                 return stylesState.blockQuote.isBlocking
             case "unordered-list":
@@ -209,20 +198,20 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
                 return stylesState.strikeThrough.isActive
             case "inline-code":
                 return stylesState.inlineCode.isActive
-            case "heading-1":
-                return stylesState.h1.isActive
-            case "heading-2":
-                return stylesState.h2.isActive
-            case "heading-3":
-                return stylesState.h3.isActive
-            case "heading-4":
-                return stylesState.h4.isActive
-            case "heading-5":
-                return stylesState.h5.isActive
-            case "heading-6":
-                return stylesState.h6.isActive
-            case "code-block":
-                return stylesState.codeBlock.isActive
+            // case "heading-1":
+            //     return stylesState.h1.isActive
+            // case "heading-2":
+            //     return stylesState.h2.isActive
+            // case "heading-3":
+            //     return stylesState.h3.isActive
+            // case "heading-4":
+            //     return stylesState.h4.isActive
+            // case "heading-5":
+            //     return stylesState.h5.isActive
+            // case "heading-6":
+            //     return stylesState.h6.isActive
+            // case "code-block":
+            //     return stylesState.codeBlock.isActive
             case "quote":
                 return stylesState.blockQuote.isActive
             case "unordered-list":
@@ -236,9 +225,9 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
         }
     }
 
-    const handleHideKeyboard = async () => {
-        await KeyboardController.dismiss()
-    }
+    // const handleHideKeyboard = async () => {
+    //     await KeyboardController.dismiss()
+    // }
 
     const renderItem = ({ item }: ListRenderItemInfo<Item>) => {
         return (
@@ -259,16 +248,17 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
             bounces={false}
             showsHorizontalScrollIndicator={false}
             horizontal
+            contentContainerClassName="justify-between flex-row items-center gap-2 flex-grow"
             data={STYLE_ITEMS}
-            ListHeaderComponent={() => (
-                <Button
-                    className="bg-transparent data-[active=true]:bg-transparent px-3"
-                    size="md"
-                    onPress={handleHideKeyboard}
-                >
-                    <Icon as={ChevronDown} className={"text-typography-0 dark:text-typography-0"} />
-                </Button>
-            )}
+            // ListHeaderComponent={() => (
+            //     <Button
+            //         className="bg-transparent data-[active=true]:bg-transparent px-3"
+            //         size="md"
+            //         onPress={handleHideKeyboard}
+            //     >
+            //         <Icon as={ChevronDown} className={"text-typography-0"} />
+            //     </Button>
+            // )}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
             style={styles.container}

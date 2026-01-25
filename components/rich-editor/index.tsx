@@ -29,8 +29,70 @@ import {
     type OnChangeTextEvent,
     type OnLinkDetected,
 } from "react-native-enriched"
-import { KeyboardAwareScrollView, useKeyboardState } from "react-native-keyboard-controller"
+import { KeyboardGestureArea, useKeyboardHandler, useKeyboardState } from "react-native-keyboard-controller"
+import Reanimated, { useAnimatedProps, useAnimatedScrollHandler, useSharedValue } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+
+const useKeyboardAnimation = () => {
+    const progress = useSharedValue(0)
+    const height = useSharedValue(0)
+    const inset = useSharedValue(0)
+    const offset = useSharedValue(0)
+    const scroll = useSharedValue(0)
+    const shouldUseOnMoveHandler = useSharedValue(false)
+
+    useKeyboardHandler({
+        onStart: (e) => {
+            "worklet"
+
+            // i. e. the keyboard was under interactive gesture, and will be showed
+            // again. Since iOS will not schedule layout animation for that we can't
+            // simply update `height` to destination and we need to listen to `onMove`
+            // handler to have a smooth animation
+            if (progress.value !== 1 && progress.value !== 0 && e.height !== 0) {
+                shouldUseOnMoveHandler.value = true
+
+                return
+            }
+
+            progress.value = e.progress
+            height.value = e.height
+
+            inset.value = e.height
+            // Math.max is needed to prevent overscroll when keyboard hides (and user scrolled to the top, for example)
+            offset.value = Math.max(e.height + scroll.value, 0)
+        },
+        onInteractive: (e) => {
+            "worklet"
+
+            progress.value = e.progress
+            height.value = e.height
+        },
+        onMove: (e) => {
+            "worklet"
+
+            if (shouldUseOnMoveHandler.value) {
+                progress.value = e.progress
+                height.value = e.height
+            }
+        },
+        onEnd: (e) => {
+            "worklet"
+
+            height.value = e.height
+            progress.value = e.progress
+            shouldUseOnMoveHandler.value = false
+        },
+    })
+
+    const onScroll = useAnimatedScrollHandler({
+        onScroll: (e) => {
+            scroll.value = e.contentOffset.y - inset.value
+        },
+    })
+
+    return { height, progress, onScroll, inset, offset }
+}
 
 interface RichEditorProps {
     /**
@@ -59,9 +121,20 @@ export default function RichEditor({
         height: state.height,
         duration: state.duration,
     }))
+    const { height, onScroll, inset, offset } = useKeyboardAnimation()
     const { bottom } = useSafeAreaInsets()
     const { colorScheme } = useColorScheme()
     const isDark = colorScheme === "dark"
+
+    const props = useAnimatedProps(() => ({
+        contentInset: {
+            bottom: inset.value,
+        },
+        contentOffset: {
+            x: 0,
+            y: offset.value,
+        },
+    }))
 
     // Get AI models for processing queue
     const { llm, embeddings } = useAI()
@@ -88,6 +161,7 @@ export default function RichEditor({
     const [stylesState, setStylesState] = useState<StylesState>(DEFAULT_STYLES)
     const [currentLink, setCurrentLink] = useState<CurrentLinkState>(DEFAULT_LINK_STATE)
 
+    const animatedScrollViewRef = useRef<Reanimated.ScrollView>(null)
     const ref = useRef<EnrichedTextInputInstance>(null)
 
     // Load existing note if noteId is provided
@@ -317,6 +391,9 @@ export default function RichEditor({
     const handleSelectionChangeEvent = (sel: OnChangeSelectionEvent) => {
         setSelection(sel)
     }
+    const scrollToBottom = useCallback(() => {
+        animatedScrollViewRef.current?.scrollToEnd({ animated: false })
+    }, [])
 
     if (isLoading) return <PageLoader />
 
@@ -325,16 +402,26 @@ export default function RichEditor({
     }
 
     return (
-        <Box className="flex-1">
+        <KeyboardGestureArea offset={bottomBarHeight} style={editorStyles.container} textInputNativeID="rich-editor">
             {/* Editor */}
-            <KeyboardAwareScrollView
+            <Reanimated.ScrollView
+                ref={animatedScrollViewRef}
+                // simulation of `automaticallyAdjustKeyboardInsets` behavior on RN < 0.73
+                animatedProps={props}
+                automaticallyAdjustContentInsets={false}
+                // contentContainerStyle={contentContainerStyle}
+                contentInsetAdjustmentBehavior="never"
+                keyboardDismissMode="interactive"
+                onContentSizeChange={scrollToBottom}
+                onScroll={onScroll}
                 // className="flex-1"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: Math.max(bottomBarHeight, bottom + 16) }}
-                keyboardShouldPersistTaps="handled"
+                // keyboardShouldPersistTaps="handled"
             >
                 <EnrichedTextInput
                     ref={ref}
+                    nativeID="rich-editor"
                     style={[editorStyles.editorInput, { color: isDark ? "#ffffff" : "#000000" }] as any}
                     htmlStyle={htmlStyle}
                     defaultValue={initialContent}
@@ -350,7 +437,7 @@ export default function RichEditor({
                     onLinkDetected={handleLinkDetected}
                     onChangeSelection={(e) => handleSelectionChangeEvent(e.nativeEvent)}
                 />
-            </KeyboardAwareScrollView>
+            </Reanimated.ScrollView>
 
             {/* Bottom Bar */}
             <Animated.View
@@ -397,6 +484,6 @@ export default function RichEditor({
                 onSubmit={submitLink}
                 onClose={closeLinkModal}
             />
-        </Box>
+        </KeyboardGestureArea>
     )
 }
