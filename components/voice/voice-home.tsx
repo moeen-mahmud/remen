@@ -1,6 +1,3 @@
-import { Box } from "@/components/ui/box"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
 import { Waveform } from "@/components/waveform"
 import { useAI } from "@/lib/ai/provider"
 import { aiQueue } from "@/lib/ai/queue"
@@ -11,7 +8,7 @@ import { useRouter } from "expo-router"
 import { MicIcon, MicOffIcon, XIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useEffect, useRef, useState } from "react"
-import { Alert, Pressable, StyleSheet } from "react-native"
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
@@ -165,6 +162,7 @@ export const VoiceHome: React.FC = () => {
 
     // Close without saving
     const handleClose = () => {
+        console.log("close")
         currentTranscript = ""
         voiceCapture.destroy()
         if (timerRef.current) {
@@ -174,48 +172,45 @@ export const VoiceHome: React.FC = () => {
     }
 
     return (
-        <Box className="flex-1 bg-background-0">
-            {/* Header (matches scan header) */}
-            <Box
-                style={{ paddingTop: top }}
-                className="flex-row justify-between items-center p-4 mb-6 border-b bg-background-0 border-neutral-200 dark:border-neutral-800"
-            >
-                <Pressable hitSlop={10} onPress={handleClose}>
-                    <Icon as={XIcon} size="xl" />
+        <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff", paddingTop: top }]}>
+            {/* Header */}
+            <View style={styles.header}>
+                <Pressable onPress={handleClose} style={styles.closeButton}>
+                    <XIcon size={24} color={isDark ? "#fff" : "#000"} />
                 </Pressable>
-                <Text className="text-xl font-bold">Voice Note</Text>
-                <Box className="w-10 h-10" />
-            </Box>
+                <Text style={[styles.headerTitle, { color: isDark ? "#fff" : "#000" }]}>Voice Note</Text>
+                <View style={styles.closeButton} />
+            </View>
 
             {/* Waveform */}
-            <Box className="flex-1 justify-center items-center" style={{ paddingBottom: 60 }}>
+            <View style={styles.waveformContainer}>
                 <Waveform isActive={isRecording} color="#EF4444" size={100} />
-            </Box>
+            </View>
 
             {/* Status */}
-            <Box className="items-center py-6">
-                <Text className="text-lg font-medium text-typography-900 dark:text-typography-0">
+            <View style={styles.statusContainer}>
+                <Text style={[styles.statusText, { color: isDark ? "#fff" : "#000" }]}>
                     {isSaving ? "Saving..." : isRecording ? "Press again to save" : ""}
                 </Text>
-                {isRecording ? <Text style={styles.timerText}>{formatTime(recordingTime)}</Text> : null}
-            </Box>
+                {isRecording && (
+                    <Text style={[styles.timerText, { color: "#EF4444" }]}>{formatTime(recordingTime)}</Text>
+                )}
+            </View>
 
             {/* Live transcript */}
             {isRecording && currentTranscript?.length > 0 ? (
-                <Box className="px-8 py-5" style={{ maxHeight: 150 }}>
-                    <Text
-                        className="text-base italic leading-7 text-center text-neutral-700 dark:text-neutral-300"
-                        numberOfLines={5}
-                    >
+                <View style={styles.transcriptContainer}>
+                    <Text style={[styles.transcriptText, { color: isDark ? "#ddd" : "#333" }]} numberOfLines={5}>
                         &ldquo;{currentTranscript}&rdquo;
                     </Text>
-                </Box>
+                </View>
             ) : null}
 
             {/* Mic button */}
-            <Box className="items-center py-12" style={{ paddingBottom: bottom + 40 }}>
+            <View style={[styles.micContainer, { paddingBottom: bottom + 40 }]}>
                 {/* Pulse ring */}
                 <Animated.View style={[styles.pulseRing, { backgroundColor: "#EF4444" }, pulseStyle]}>
+                    {/* Main button */}
                     {isRecording ? (
                         <Pressable
                             onPress={stopRecording}
@@ -225,7 +220,7 @@ export const VoiceHome: React.FC = () => {
                                 { backgroundColor: isRecording ? "#EF4444" : isDark ? "#333" : "#f0f0f0" },
                             ]}
                         >
-                            <Icon as={MicOffIcon} size="xl" className={isRecording ? "text-white" : ""} />
+                            <MicOffIcon size={40} color={isRecording ? "#fff" : isDark ? "#fff" : "#000"} />
                         </Pressable>
                     ) : (
                         <Pressable
@@ -236,29 +231,83 @@ export const VoiceHome: React.FC = () => {
                                 { backgroundColor: isRecording ? "#EF4444" : isDark ? "#333" : "#f0f0f0" },
                             ]}
                         >
-                            <Icon as={MicIcon} size="xl" className={isDark ? "text-white" : "text-black"} />
+                            <MicIcon size={40} color={isRecording ? "#fff" : isDark ? "#fff" : "#000"} />
                         </Pressable>
                     )}
                 </Animated.View>
 
-                <Text className="mt-5 text-sm font-medium text-neutral-500 dark:text-neutral-400">
+                <Text style={[styles.hintText, { color: isDark ? "#888" : "#666" }]}>
                     {isRecording ? "Listening..." : "Start speaking"}
                 </Text>
-            </Box>
-        </Box>
+            </View>
+        </View>
     )
 }
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    closeButton: {
+        width: 44,
+        height: 44,
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 22,
+    },
+    headerTitle: {
+        fontSize: 17,
+        fontWeight: "600",
+        letterSpacing: -0.3,
+    },
+    waveformContainer: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingBottom: 60,
+    },
+    statusContainer: {
+        alignItems: "center",
+        paddingVertical: 24,
+    },
+    statusText: {
+        fontSize: 18,
+        fontWeight: "500",
+        letterSpacing: 0.2,
+    },
     timerText: {
         fontSize: 56,
         fontWeight: "200",
         marginTop: 12,
         fontVariant: ["tabular-nums"],
         letterSpacing: -1,
-        color: "#EF4444",
+    },
+    transcriptContainer: {
+        paddingHorizontal: 32,
+        paddingVertical: 20,
+        maxHeight: 150,
+    },
+    transcriptText: {
+        fontSize: 16,
+        fontStyle: "italic",
+        textAlign: "center",
+        lineHeight: 26,
+        opacity: 0.9,
+    },
+    micContainer: {
+        position: "relative",
+        alignItems: "center",
+        paddingVertical: 48,
     },
     pulseRing: {
+        // position: "absolute",
         alignItems: "center",
         justifyContent: "center",
         width: 110,
@@ -276,5 +325,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 16,
         elevation: 12,
+    },
+    hintText: {
+        marginTop: 20,
+        fontSize: 14,
+        fontWeight: "500",
+        letterSpacing: 0.2,
     },
 })

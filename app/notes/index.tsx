@@ -4,7 +4,7 @@ import { PageWrapper } from "@/components/page-wrapper"
 
 export default function NotesScreen() {
     return (
-        <PageWrapper>
+        <PageWrapper disableBottomPadding>
             <NotesHome />
             <SpeedDial actions={[]} actionRoute="/" position="bottom-right" />
         </PageWrapper>
