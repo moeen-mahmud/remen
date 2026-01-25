@@ -1,3 +1,4 @@
+import { Box } from "@/components/ui/box"
 import { Heading } from "@/components/ui/heading"
 import { Text } from "@/components/ui/text"
 import { getNoteTypeBadge } from "@/lib/ai/classify"
@@ -200,25 +201,27 @@ export const NoteCard: FC<NoteCardProps> = ({
             )}
 
             {/* Type + Tags Row */}
-            <View style={styles.badgesContainer}>
+            <Box className="flex-row flex-wrap gap-2 items-center">
                 {/* Type badge */}
-                <View style={[styles.typeBadge, { backgroundColor: typeBadge.bgColor }]}>
-                    {typeIcon && <View style={styles.typeIcon}>{typeIcon}</View>}
-                    <Text style={[styles.typeBadgeText, { color: typeBadge.color }]}>{typeBadge.label}</Text>
-                </View>
+                <Box
+                    className="flex-row gap-2 items-center p-2 rounded-lg"
+                    style={{ backgroundColor: typeBadge.bgColor }}
+                >
+                    {typeIcon && <Box>{typeIcon}</Box>}
+                    <Text className="text-sm font-semibold uppercase" style={{ color: typeBadge.color }}>
+                        {typeBadge.label}
+                    </Text>
+                </Box>
 
                 {/* Tags */}
-                {displayTags.map((tag) => (
-                    <View key={tag.id} style={[styles.tagBadge, { backgroundColor: isDark ? "#333" : "#f0f0f0" }]}>
-                        <Text style={[styles.tagText, { color: isDark ? "#ccc" : "#555" }]}>#{tag.name}</Text>
-                    </View>
+                {tags.map((tag) => (
+                    <Box key={tag.id} className="p-2 rounded-lg bg-neutral-200 dark:bg-neutral-900">
+                        <Text className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+                            #{tag.name}
+                        </Text>
+                    </Box>
                 ))}
-
-                {/* More tags indicator */}
-                {hasMoreTags && (
-                    <Text style={[styles.moreTagsText, { color: isDark ? "#666" : "#999" }]}>+{tags.length - 3}</Text>
-                )}
-            </View>
+            </Box>
         </AnimatedPressable>
     )
 }
@@ -229,7 +232,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginVertical: 6,
         // borderRadius: 16,
-        borderWidth: StyleSheet.hairlineWidth,
+        // borderWidth: StyleSheet.hairlineWidth,
     },
     header: {
         flexDirection: "row",

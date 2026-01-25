@@ -17,6 +17,7 @@ import { MicIcon, ScanIcon } from "lucide-react-native"
 import { useColorScheme } from "nativewind"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 // Format full date
 function formatFullDate(timestamp: number): string {
@@ -48,6 +49,7 @@ export const NoteDetails: React.FC = () => {
     const { colorScheme } = useColorScheme()
     const router = useRouter()
     const isDark = colorScheme === "dark"
+    const { bottom } = useSafeAreaInsets()
 
     // Get AI embeddings model - use ref to avoid dependency issues
     const { embeddings } = useAI()
@@ -225,8 +227,13 @@ export const NoteDetails: React.FC = () => {
     const typeIcon = getNoteTypeIcon(note.type, typeBadge.color)
 
     return (
-        <Box className="flex-grow">
-            <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+        <Box className="flex-1">
+            <ScrollView
+                contentContainerStyle={{ paddingBottom: bottom + 16 }}
+                contentContainerClassName="flex-grow"
+                className="flex-1"
+                showsVerticalScrollIndicator={false}
+            >
                 {/* Original image for scan notes */}
                 {note.type === "scan" && note.original_image ? (
                     <Box className="px-4 dark:bg-neutral-900 bg-neutral-200" style={styles.imageContainer}>

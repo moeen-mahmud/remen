@@ -4,7 +4,7 @@ import { SettingsHeader } from "@/components/settings/settings-header"
 
 export default function NoteDetailsScreen() {
     return (
-        <PageWrapper>
+        <PageWrapper disableBottomPadding>
             <SettingsHeader title="View Note" showBackButton={true} />
             <NoteDetails />
         </PageWrapper>
