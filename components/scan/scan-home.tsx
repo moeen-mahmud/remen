@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { ScanReview } from "@/components/scan/scan-review"
 import { Box } from "@/components/ui/box"
+import { Button, ButtonText } from "@/components/ui/button"
 import { Icon } from "@/components/ui/icon"
 export const ScanHome: React.FC = () => {
     const { top } = useSafeAreaInsets()
@@ -262,13 +263,15 @@ export const ScanHome: React.FC = () => {
                         Open the camera, align your document inside the frame, then take a picture.
                     </Text>
 
-                    <Pressable
+                    <Button
                         onPress={handleOpenCamera}
-                        className="px-4 py-3 rounded-md bg-primary-500"
+                        className="rounded-lg"
+                        action="secondary"
+                        variant="outline"
                         disabled={false}
                     >
-                        <Text className="font-semibold text-white">Open camera</Text>
-                    </Pressable>
+                        <ButtonText className="font-semibold">Open camera</ButtonText>
+                    </Button>
 
                     {!ocr?.isReady && (
                         <Box className="px-4 py-2 mt-6 bg-blue-500 rounded-md">

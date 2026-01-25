@@ -1,17 +1,19 @@
 import { ScanCameraPermission } from "@/components/scan/scan-camera-permission"
 import { scanStyles as styles } from "@/components/scan/scan-styles"
 import { Box } from "@/components/ui/box"
+import { PageLoader } from "@/components/ui/page-loader"
 import { Text } from "@/components/ui/text"
 import { useAI } from "@/lib/ai/provider"
 import { setPendingScanPhotoUri } from "@/lib/capture/pending-scan-photo"
 import { CameraView, useCameraPermissions } from "expo-camera"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Alert, Pressable, StyleSheet } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 export const ScanCamera: React.FC = () => {
+    const [isCameraMounted, setIsCameraMounted] = useState(false)
     const { top, bottom } = useSafeAreaInsets()
     const router = useRouter()
     const { ocr } = useAI()
@@ -26,20 +28,37 @@ export const ScanCamera: React.FC = () => {
 
     const handleClose = useCallback(() => {
         router.replace("/")
+        setIsCameraMounted(false)
     }, [router])
 
     const handleCapture = useCallback(async () => {
+        if (!isCameraMounted) {
+            console.warn("⚠️ [Scan] Camera not mounted, ignoring capture request")
+            return
+        }
         if (!hasPermission) {
             Alert.alert("Permission Required", "Camera permission is required to scan documents")
             return
         }
 
-        if (isCapturingRef.current) return
-        if (!cameraRef.current) return
+        if (isCapturingRef.current) {
+            console.warn("⚠️ [Scan] Already capturing, ignoring capture request")
+            return
+        }
+        if (!cameraRef.current) {
+            console.warn("⚠️ [Scan] Camera not mounted, ignoring capture request")
+            return
+        }
 
         // Keep capture disabled while OCR is not ready (matches prior behavior)
-        if (!ocr?.isReady) return
-        if (ocr?.isGenerating) return
+        if (!ocr?.isReady) {
+            console.warn("⚠️ [Scan] OCR not ready, ignoring capture request")
+            return
+        }
+        if (ocr?.isGenerating) {
+            console.warn("⚠️ [Scan] OCR is generating, ignoring capture request")
+            return
+        }
 
         try {
             isCapturingRef.current = true
@@ -56,7 +75,8 @@ export const ScanCamera: React.FC = () => {
 
             // Pass the URI back to `/scan` and pop this route (unmounting camera state)
             setPendingScanPhotoUri(photo.uri)
-            router.back()
+            router.replace("/scan")
+            setIsCameraMounted(false)
         } catch (err) {
             const message = err instanceof Error ? err.message : "Unknown error occurred"
             setError(message)
@@ -64,7 +84,21 @@ export const ScanCamera: React.FC = () => {
         } finally {
             isCapturingRef.current = false
         }
-    }, [hasPermission, ocr, router])
+    }, [hasPermission, ocr, router, isCameraMounted])
+
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            setIsCameraMounted(true)
+        }, 200)
+
+        return () => clearTimeout(timeout)
+    }, [])
+
+    console.log("🔍 [Scan] isCameraMounted:", isCameraMounted)
+
+    if (!isCameraMounted) {
+        return <PageLoader />
+    }
 
     return (
         <Box className="flex-1 bg-black">
@@ -72,7 +106,17 @@ export const ScanCamera: React.FC = () => {
                 <ScanCameraPermission requestPermission={requestPermission} />
             ) : (
                 <Box className="flex-1">
-                    <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} mode="picture" facing="back" active />
+                    <CameraView
+                        onMountError={(error) => {
+                            console.error("❌ [Scan] Camera error:", error)
+                            setError(error.message)
+                        }}
+                        ref={cameraRef}
+                        style={StyleSheet.absoluteFill}
+                        mode="picture"
+                        facing="back"
+                        active={isCameraMounted}
+                    />
 
                     {/* Close button overlay (safe-area padded) */}
                     <Box className="absolute right-0 left-0 z-10" style={{ paddingTop: top + 10 }}>

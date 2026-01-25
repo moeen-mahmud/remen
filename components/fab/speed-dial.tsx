@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     },
     container: {
         position: "absolute",
-        marginBottom: 16,
+        marginBottom: 24,
         zIndex: 999,
         alignItems: "flex-end",
     },
