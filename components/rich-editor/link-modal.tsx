@@ -51,7 +51,7 @@ export const LinkModal: FC<LinkModalProps> = ({ isOpen, editedText, editedUrl, o
                 </AlertDialogBody>
                 <AlertDialogFooter>
                     <Button onPress={handleSave} disabled={url.length === 0}>
-                        <ButtonText>Save</ButtonText>
+                        <ButtonText className="text-white dark:text-black">Save</ButtonText>
                     </Button>
                 </AlertDialogFooter>
             </AlertDialogContent>

@@ -1,4 +1,5 @@
 import { RemenLogo } from "@/components/brand/logo"
+import { Icon } from "@/components/ui/icon"
 import { Text } from "@/components/ui/text"
 import { LinearGradient } from "expo-linear-gradient"
 import { Bot, Camera, ChevronRight, Mic, Search, Shield } from "lucide-react-native"
@@ -40,6 +41,13 @@ const slides: OnboardingSlide[] = [
         gradient: ["#667eea", "#764ba2"],
     },
     {
+        id: "privacy",
+        icon: <Shield size={48} color="#fff" />,
+        title: "Privacy First",
+        description: "All processing stays on your device. Your data never leaves your phone.",
+        gradient: ["#fa709a", "#fee140"],
+    },
+    {
         id: "voice",
         icon: <Mic size={48} color="#fff" />,
         title: "Voice Notes",
@@ -59,13 +67,6 @@ const slides: OnboardingSlide[] = [
         title: "Smart Search",
         description: "Find anything instantly using semantic search and natural language.",
         gradient: ["#43e97b", "#38f9d7"],
-    },
-    {
-        id: "privacy",
-        icon: <Shield size={48} color="#fff" />,
-        title: "Privacy First",
-        description: "All processing stays on your device. Your data never leaves your phone.",
-        gradient: ["#fa709a", "#fee140"],
     },
 ]
 
@@ -134,11 +135,11 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
 
     return (
         <Animated.View
+            className="bg-background-0"
             style={[
                 styles.container,
                 containerStyle,
                 {
-                    backgroundColor: isDark ? "#000" : "#fff",
                     paddingTop: top + 16,
                     paddingBottom: bottom + 16,
                 },
@@ -148,12 +149,12 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             <View style={styles.header}>
                 <RemenLogo size="sm" showIcon animated={false} />
                 <Pressable onPress={handleSkip}>
-                    <Text style={{ color: isDark ? "#888" : "#666" }}>Skip</Text>
+                    <Text className="text-neutral-500 dark:text-neutral-400">Skip</Text>
                 </Pressable>
             </View>
 
             {/* Dots */}
-            <View style={styles.progressContainer}>
+            <View className="flex-row gap-2 justify-center">
                 {slides.map((_, i) => (
                     <Dot key={i} index={i} translateX={translateX} />
                 ))}
@@ -183,12 +184,13 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             {/* Footer */}
             <Pressable
                 onPress={handleNext}
-                style={[styles.nextButton, { backgroundColor: isDark ? "#39FF14" : "#00B700" }]}
+                className="flex-row gap-2 justify-center items-center p-4 rounded-lg"
+                style={{ backgroundColor: isDark ? "#39FF14" : "#00B700" }}
             >
-                <Text style={{ color: isDark ? "#000" : "#fff", fontSize: 18 }}>
+                <Text className="text-xl font-bold text-white dark:text-black">
                     {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
                 </Text>
-                <ChevronRight color={isDark ? "#000" : "#fff"} />
+                <Icon as={ChevronRight} size="xl" color={isDark ? "#000" : "#fff"} />
             </Pressable>
         </Animated.View>
     )
@@ -252,7 +254,6 @@ const styles = StyleSheet.create({
         marginHorizontal: 24,
         marginBottom: 12,
         paddingVertical: 16,
-        borderRadius: 12,
         flexDirection: "row",
         justifyContent: "center",
         alignItems: "center",

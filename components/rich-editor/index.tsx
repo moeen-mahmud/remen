@@ -389,7 +389,7 @@ export default function RichEditor({
             </Reanimated.ScrollView>
 
             <Reanimated.View style={bottomBarAnimatedStyle}>
-                <Box onLayout={handleBottomBarLayout} className="pt-2 mt-2 bg-background-50">
+                <Box onLayout={handleBottomBarLayout} className="py-2 mt-2 bg-background-50">
                     <Toolbar stylesState={stylesState} editorRef={ref} onOpenLinkModal={openLinkModal} />
                 </Box>
             </Reanimated.View>

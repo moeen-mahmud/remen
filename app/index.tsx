@@ -27,7 +27,7 @@ export default function Index() {
             label: "Scan",
             icon: CameraIcon,
             onPress: handleScanCapture,
-            backgroundColor: isDark ? "#000000" : "#fff",
+            backgroundColor: isDark ? "#1A1A1B" : "#fff",
             color: isDark ? "#fff" : "#000",
         },
         {
@@ -35,7 +35,7 @@ export default function Index() {
             label: "Voice",
             icon: MicIcon,
             onPress: handleVoiceCapture,
-            backgroundColor: isDark ? "#000000" : "#fff",
+            backgroundColor: isDark ? "#1A1A1B" : "#fff",
             color: isDark ? "#fff" : "#000",
         },
     ]
