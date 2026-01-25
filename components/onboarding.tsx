@@ -153,13 +153,6 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 </Pressable>
             </View>
 
-            {/* Dots */}
-            <View className="flex-row gap-2 justify-center">
-                {slides.map((_, i) => (
-                    <Dot key={i} index={i} translateX={translateX} />
-                ))}
-            </View>
-
             {/* Slides */}
             <GestureDetector gesture={panGesture}>
                 <Animated.View style={[styles.slidesContainer, { width: SCREEN_WIDTH * slides.length }, slidesStyle]}>
@@ -180,6 +173,13 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                     ))}
                 </Animated.View>
             </GestureDetector>
+
+            {/* Dots */}
+            <View className="flex-row gap-2 justify-center mb-10">
+                {slides.map((_, i) => (
+                    <Dot key={i} index={i} translateX={translateX} />
+                ))}
+            </View>
 
             {/* Footer */}
             <Pressable

@@ -5,39 +5,41 @@ import { PageLoader } from "@/components/ui/page-loader"
 import { Text } from "@/components/ui/text"
 import { useAI } from "@/lib/ai/provider"
 import { setPendingScanPhotoUri } from "@/lib/capture/pending-scan-photo"
-import { CameraView, useCameraPermissions } from "expo-camera"
+import { useIsFocused } from "@react-navigation/native"
 import * as Haptics from "expo-haptics"
 import { useRouter } from "expo-router"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { Alert, Pressable, StyleSheet } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { Camera, useCameraDevice, useCameraFormat, useCameraPermission } from "react-native-vision-camera"
 
 export const ScanCamera: React.FC = () => {
-    const [isCameraMounted, setIsCameraMounted] = useState(false)
     const { top, bottom } = useSafeAreaInsets()
     const router = useRouter()
+    const isFocused = useIsFocused()
     const { ocr } = useAI()
 
-    const [permission, requestPermission] = useCameraPermissions()
-    const hasPermission = !!permission?.granted
+    const { hasPermission, requestPermission } = useCameraPermission()
+    const device = useCameraDevice("back")
+    const format = useCameraFormat(device, [{ photoResolution: { width: 1280, height: 720 } }])
 
-    const cameraRef = useRef<CameraView>(null)
+    const cameraRef = useRef<Camera>(null)
     const isCapturingRef = useRef(false)
 
     const [error, setError] = useState<string | null>(null)
 
     const handleClose = useCallback(() => {
-        router.replace("/")
-        setIsCameraMounted(false)
+        router.back()
     }, [router])
 
     const handleCapture = useCallback(async () => {
-        if (!isCameraMounted) {
-            console.warn("⚠️ [Scan] Camera not mounted, ignoring capture request")
-            return
-        }
         if (!hasPermission) {
             Alert.alert("Permission Required", "Camera permission is required to scan documents")
+            return
+        }
+
+        if (!device) {
+            console.warn("⚠️ [Scan] No camera device found")
             return
         }
 
@@ -64,19 +66,18 @@ export const ScanCamera: React.FC = () => {
             isCapturingRef.current = true
             setError(null)
 
-            const photo = await cameraRef.current.takePictureAsync({
-                quality: 0.1,
-                skipProcessing: true,
+            const photo = await cameraRef.current.takePhoto({
+                flash: "off",
             })
 
-            if (!photo?.uri) throw new Error("No photo was captured")
+            if (!photo?.path) throw new Error("No photo was captured")
 
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
 
             // Pass the URI back to `/scan` and pop this route (unmounting camera state)
-            setPendingScanPhotoUri(photo.uri)
-            router.replace("/scan")
-            setIsCameraMounted(false)
+            const uri = photo.path.startsWith("file://") ? photo.path : `file://${photo.path}`
+            setPendingScanPhotoUri(uri)
+            router.back()
         } catch (err) {
             const message = err instanceof Error ? err.message : "Unknown error occurred"
             setError(message)
@@ -84,39 +85,32 @@ export const ScanCamera: React.FC = () => {
         } finally {
             isCapturingRef.current = false
         }
-    }, [hasPermission, ocr, router, isCameraMounted])
-
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            setIsCameraMounted(true)
-        }, 200)
-
-        return () => clearTimeout(timeout)
-    }, [])
-
-    console.log("🔍 [Scan] isCameraMounted:", isCameraMounted)
-
-    if (!isCameraMounted) {
-        return <PageLoader />
-    }
+    }, [device, hasPermission, ocr, router])
 
     return (
         <Box className="flex-1 bg-black">
             {!hasPermission ? (
-                <ScanCameraPermission requestPermission={requestPermission} />
+                <ScanCameraPermission requestPermission={() => void requestPermission()} />
             ) : (
                 <Box className="flex-1">
-                    <CameraView
-                        onMountError={(error) => {
-                            console.error("❌ [Scan] Camera error:", error)
-                            setError(error.message)
-                        }}
-                        ref={cameraRef}
-                        style={StyleSheet.absoluteFill}
-                        mode="picture"
-                        facing="back"
-                        active={isCameraMounted}
-                    />
+                    {!device ? (
+                        <PageLoader />
+                    ) : (
+                        <Camera
+                            ref={cameraRef}
+                            style={StyleSheet.absoluteFill}
+                            device={device}
+                            format={format}
+                            isActive={isFocused}
+                            photoQualityBalance="speed"
+                            photo
+                            enableZoomGesture
+                            onError={(e) => {
+                                console.error("❌ [Scan] Camera error:", e)
+                                setError(e.message)
+                            }}
+                        />
+                    )}
 
                     {/* Close button overlay (safe-area padded) */}
                     <Box className="absolute right-0 left-0 z-10" style={{ paddingTop: top + 10 }}>
@@ -155,10 +149,10 @@ export const ScanCamera: React.FC = () => {
                     <Box style={[styles.captureButtonContainer, { paddingBottom: bottom + 20 }]}>
                         <Pressable
                             onPress={handleCapture}
-                            disabled={!ocr?.isReady || ocr?.isGenerating}
+                            disabled={!device || !ocr?.isReady || ocr?.isGenerating}
                             style={[
                                 styles.captureButton,
-                                (!ocr?.isReady || ocr?.isGenerating) && styles.captureButtonDisabled,
+                                (!device || !ocr?.isReady || ocr?.isGenerating) && styles.captureButtonDisabled,
                             ]}
                         />
                     </Box>

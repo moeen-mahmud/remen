@@ -63,10 +63,10 @@
         }
       ],
       [
-        "expo-camera",
+        "react-native-vision-camera",
         {
-          "cameraPermission": "Remen uses the camera to scan documents and handwritten notes",
-          "recordAudioAndroid": false
+          "cameraPermissionText": "Remen uses the camera to scan documents and handwritten notes",
+          "enableMicrophonePermission": false
         }
       ],
       [
