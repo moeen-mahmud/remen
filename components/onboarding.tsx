@@ -1,4 +1,5 @@
 import { RemenLogo } from "@/components/brand/logo";
+import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { LinearGradient } from "expo-linear-gradient";
@@ -177,27 +178,29 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             {/* Dots */}
             <View className="flex-row gap-2 justify-center mb-10">
                 {slides.map((_, i) => (
-                    <Dot key={i} index={i} translateX={translateX} />
+                    <Dot key={i} index={i} translateX={translateX} isDark={isDark} />
                 ))}
             </View>
 
             {/* Footer */}
-            <Pressable
-                onPress={handleNext}
-                className="flex-row gap-2 justify-center items-center p-4 rounded-lg"
-                style={{ backgroundColor: isDark ? "#39FF14" : "#00B700" }}
-            >
-                <Text className="text-xl font-bold text-white dark:text-black">
-                    {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
-                </Text>
-                <Icon as={ChevronRight} size="xl" color={isDark ? "#000" : "#fff"} />
-            </Pressable>
+            <Box className="px-8">
+                <Pressable
+                    onPress={handleNext}
+                    className="flex-row gap-2 justify-center items-center p-4 rounded-lg"
+                    style={{ backgroundColor: isDark ? "#39FF14" : "#00B700" }}
+                >
+                    <Text className="text-xl font-bold text-white dark:text-black">
+                        {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
+                    </Text>
+                    <Icon as={ChevronRight} size="xl" color={isDark ? "#000" : "#fff"} />
+                </Pressable>
+            </Box>
         </Animated.View>
     );
 }
 
 /** Dot Component */
-function Dot({ index, translateX }: { index: number; translateX: SharedValue<number> }) {
+function Dot({ index, translateX, isDark }: { index: number; translateX: SharedValue<number>; isDark: boolean }) {
     const style = useAnimatedStyle(() => {
         const position = -translateX.value / SCREEN_WIDTH;
         const distance = Math.abs(position - index);
@@ -208,7 +211,7 @@ function Dot({ index, translateX }: { index: number; translateX: SharedValue<num
         };
     });
 
-    return <Animated.View style={[styles.dot, style]} />;
+    return <Animated.View style={[{ backgroundColor: isDark ? "#39FF14" : "#00B700" }, styles.dot, style]} />;
 }
 
 /** Styles */
@@ -230,7 +233,6 @@ const styles = StyleSheet.create({
     dot: {
         height: 8,
         borderRadius: 4,
-        backgroundColor: "#39FF14",
     },
     slidesContainer: {
         flexDirection: "row",

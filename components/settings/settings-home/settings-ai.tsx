@@ -36,13 +36,13 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
             },
             {
                 name: "Semantic Search",
-                description: "For intelligent note discovery",
+                description: "Intelligent note discovery",
                 isReady: embeddings?.isReady,
                 downloadProgress: embeddings?.downloadProgress,
             },
             {
                 name: "Text Recognition",
-                description: "For scanning documents",
+                description: "Extracting text from images",
                 isReady: ocr?.isReady,
                 downloadProgress: ocr?.downloadProgress,
             },

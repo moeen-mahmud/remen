@@ -6,7 +6,7 @@ import { scaleValues, springConfigs, timingConfigs } from "@/lib/animation-confi
 
 import type { Note, Tag } from "@/lib/database";
 import * as Haptics from "expo-haptics";
-import { CheckCircleIcon, CircleIcon, MicIcon, ScanIcon } from "lucide-react-native";
+import { CircleCheck, CircleIcon, MicIcon, ScanIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useEffect, type FC } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
@@ -91,10 +91,6 @@ export const NoteCard: FC<NoteCardProps> = ({
     const preview = note.title ? truncateText(note.content, 100) : truncateText(note.content.substring(50), 100);
     const typeIcon = getNoteTypeIcon(note.type, typeBadge.color);
 
-    // Show first 3 tags max
-    const displayTags = tags.slice(0, 3);
-    const hasMoreTags = tags.length > 3;
-
     // Animation values
     const scale = useSharedValue(1);
     const shadowOpacity = useSharedValue(0.1);
@@ -108,7 +104,7 @@ export const NoteCard: FC<NoteCardProps> = ({
     const borderStyle = useAnimatedStyle(() => ({
         borderWidth: isProcessing ? 2 : isSelected ? 2 : 0,
         borderColor: isProcessing
-            ? `rgba(57, 255, 20, ${borderAnim.value})`
+            ? `rgba(${isDark ? "57, 255, 20" : "0, 183, 0"}, ${borderAnim.value})`
             : isSelected
               ? selectedBorderColor
               : isDark
@@ -165,25 +161,14 @@ export const NoteCard: FC<NoteCardProps> = ({
             onLongPress={handleLongPress}
             delayLongPress={400}
             className="rounded-lg bg-background-0"
-            style={[
-                animatedStyle,
-                borderStyle,
-                styles.container,
-                // {
-                //     // backgroundColor: isDark ? "#1a1a1a" : "#ffffff",
-                //     shadowColor: isDark ? "#39FF14" : "#000",
-                //     shadowOffset: { width: 0, height: 2 },
-                //     shadowRadius: 8,
-                //     elevation: 3,
-                // },
-            ]}
+            style={[animatedStyle, borderStyle, styles.container]}
         >
             {/* Header with selection indicator and timestamp */}
             <View style={styles.header}>
                 {isSelectionMode && (
                     <View style={styles.selectionIndicator}>
                         {isSelected ? (
-                            <CheckCircleIcon size={22} color={isDark ? "#39FF14" : "#00B700"} />
+                            <CircleCheck size={22} color={isDark ? "#39FF14" : "#00B700"} />
                         ) : (
                             <CircleIcon size={22} color={isDark ? "#666" : "#ccc"} />
                         )}

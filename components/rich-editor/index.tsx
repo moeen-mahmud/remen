@@ -389,7 +389,7 @@ export default function RichEditor({
                     placeholderTextColor={isDark ? "#555555" : "#aaaaaa"}
                     selectionColor={isDark ? "#dddddd" : "#666666"}
                     autoCapitalize="sentences"
-                    autoFocus={false}
+                    autoFocus={false} // important: do not change
                     linkRegex={LINK_REGEX}
                     onChangeText={(e) => handleChangeText(e.nativeEvent)}
                     onChangeHtml={(e) => handleChangeHtml(e.nativeEvent)}

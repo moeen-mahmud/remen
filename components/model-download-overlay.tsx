@@ -179,7 +179,7 @@ export function ModelDownloadOverlay({
                         style={[
                             styles.progressBar,
                             {
-                                backgroundColor: "#39FF14",
+                                backgroundColor: isDark ? "#39FF14" : "#00B700",
                                 width: progressWidth,
                             },
                         ]}
@@ -187,7 +187,9 @@ export function ModelDownloadOverlay({
                 </View>
 
                 {/* Progress percentage */}
-                <Text style={[styles.progressText, { color: isDark ? "#39FF14" : "#00B700" }]}>{progressPercent}%</Text>
+                <Text className="mt-4 text-4xl font-bold" style={{ color: isDark ? "#39FF14" : "#00B700" }}>
+                    {progressPercent}%
+                </Text>
 
                 {/* Individual model progress */}
                 <View style={styles.modelsContainer}>
@@ -195,19 +197,19 @@ export function ModelDownloadOverlay({
                         name="Language Model"
                         progress={llmProgress}
                         isDark={isDark}
-                        description="For understanding your notes"
+                        description="The core of the AI functionality"
                     />
                     <ModelProgressItem
                         name="Embeddings"
                         progress={embeddingsProgress}
                         isDark={isDark}
-                        description="For semantic search"
+                        description="Intelligent note discovery"
                     />
                     <ModelProgressItem
                         name="Text Recognition"
                         progress={ocrProgress}
                         isDark={isDark}
-                        description="For scanning documents"
+                        description="Extracting text from images"
                     />
                 </View>
             </View>
