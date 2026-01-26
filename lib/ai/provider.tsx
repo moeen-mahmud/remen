@@ -20,8 +20,8 @@ import React, {
 } from "react";
 import {
     ALL_MINILM_L6_V2,
-    LLAMA3_2_1B_SPINQUANT,
     OCR_ENGLISH,
+    SMOLLM2_1_135M_QUANTIZED,
     useLLM,
     useOCR,
     useTextEmbeddings,
@@ -135,7 +135,7 @@ export function AIProvider({ children }: AIProviderProps) {
 
     // Initialize LLM (Llama 3.2 1B)
     const llmHook = useLLM({
-        model: LLAMA3_2_1B_SPINQUANT,
+        model: SMOLLM2_1_135M_QUANTIZED,
     });
 
     const embeddingsHook = useTextEmbeddings({

@@ -2,10 +2,13 @@ import { SettingsAbout } from "@/components/settings/settings-home/settings-abou
 import { SettingsAI } from "@/components/settings/settings-home/settings-ai";
 import { SettingsAppearance } from "@/components/settings/settings-home/settings-appearance";
 import { SettingsData } from "@/components/settings/settings-home/settings-data";
+import { SettingsICloud } from "@/components/settings/settings-home/settings-icloud";
 import { SettingsPreference } from "@/components/settings/settings-home/settings-preference";
+import { SyncOverlay } from "@/components/settings/settings-home/sync-overlay";
 import { PageLoader } from "@/components/ui/page-loader";
 
 import { useAI } from "@/lib/ai/provider";
+import { isICloudAvailable, performFullSync } from "@/lib/cloud-sync";
 import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database";
 import { Alert, ScrollView } from "react-native";
 
@@ -25,8 +28,10 @@ export const SettingsHome: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [archivedCount, setArchivedCount] = useState(0);
     const [trashedCount, setTrashedCount] = useState(0);
+    const [iCloudAvailable, setICloudAvailable] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
 
-    // Load preferences and counts
+    // Load preferences, counts, and iCloud availability
     useEffect(() => {
         async function load() {
             const prefs = await getPreferences();
@@ -36,6 +41,11 @@ export const SettingsHome: React.FC = () => {
             const trashed = await getTrashedNotesCount();
             setArchivedCount(archived);
             setTrashedCount(trashed);
+
+            // Check iCloud availability
+            const cloudAvailable = await isICloudAvailable();
+            setICloudAvailable(cloudAvailable);
+
             setIsLoading(false);
         }
 
@@ -46,6 +56,7 @@ export const SettingsHome: React.FC = () => {
             setPreferences(null);
             setArchivedCount(0);
             setTrashedCount(0);
+            setICloudAvailable(false);
         };
     }, [pathname]);
 
@@ -101,6 +112,52 @@ export const SettingsHome: React.FC = () => {
         );
     }, [handleEmptyAction]);
 
+    const handleICloudToggle = useCallback(
+        async (enabled: boolean) => {
+            console.log("preference", preferences);
+            if (!preferences) return;
+            await savePreferences({ iCloudSyncEnabled: enabled });
+            setPreferences({ ...preferences, iCloudSyncEnabled: enabled });
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+            // If enabling, perform initial sync
+            if (enabled) {
+                setIsSyncing(true);
+                const result = await performFullSync();
+                setIsSyncing(false);
+
+                if (result.success) {
+                    setPreferences((prev) => (prev ? { ...prev, lastICloudSync: result.timestamp ?? null } : null));
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                } else {
+                    Alert.alert("Sync Failed", result.error || "Failed to sync with iCloud");
+                }
+            }
+        },
+        [preferences],
+    );
+
+    const handleSyncNow = useCallback(async () => {
+        if (!preferences?.iCloudSyncEnabled || isSyncing) return;
+
+        setIsSyncing(true);
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+        const result = await performFullSync();
+        setIsSyncing(false);
+
+        if (result.success) {
+            setPreferences((prev) => (prev ? { ...prev, lastICloudSync: result.timestamp ?? null } : null));
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert(
+                "Sync Complete",
+                `Backed up ${result.notesBackedUp || 0} notes. Restored ${result.notesRestored || 0} notes.`,
+            );
+        } else {
+            Alert.alert("Sync Failed", result.error || "Failed to sync with iCloud");
+        }
+    }, [preferences, isSyncing]);
+
     if (!preferences) {
         return <Box className="flex-1 bg-background-50" />;
     }
@@ -126,6 +183,15 @@ export const SettingsHome: React.FC = () => {
                 handleEmptyTrash={handleEmptyTrash}
             />
 
+            {/* iCloud Sync Section */}
+            <SettingsICloud
+                preferences={preferences}
+                iCloudAvailable={iCloudAvailable}
+                isSyncing={isSyncing}
+                onToggleSync={handleICloudToggle}
+                onSyncNow={handleSyncNow}
+            />
+
             {/* AI Section */}
             <SettingsAI
                 llm={llm}
@@ -140,6 +206,8 @@ export const SettingsHome: React.FC = () => {
 
             {/* About Section */}
             <SettingsAbout />
+
+            <SyncOverlay visible={isSyncing} />
         </ScrollView>
     );
 };
