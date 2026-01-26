@@ -158,12 +158,13 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
     }, [note?.title, isProcessingThisNote]);
 
     const handleTitleSave = useCallback(async () => {
-        if (!note || !editingTitle.trim() || isProcessingThisNote) return;
+        if (!note || isProcessingThisNote) return;
 
         try {
+            // Allow empty titles to clear the title
             const trimmedTitle = editingTitle.trim();
-            await updateNote(note.id, { title: trimmedTitle });
-            setNote({ ...note, title: trimmedTitle });
+            await updateNote(note.id, { title: trimmedTitle || null });
+            setNote({ ...note, title: trimmedTitle || null });
             setIsEditingTitle(false);
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         } catch (error) {
@@ -172,10 +173,9 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
         }
     }, [note, editingTitle, isProcessingThisNote]);
 
-    const handleTitleCancel = useCallback(() => {
-        setIsEditingTitle(false);
-        setEditingTitle(note?.title || "");
-    }, [note?.title]);
+    const handleTitleClear = useCallback(() => {
+        setEditingTitle("");
+    }, []);
 
     const handleReorganizeWithAI = useCallback(() => {
         if (!note || isProcessingThisNote) return;
@@ -243,7 +243,7 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                     editingTitle={editingTitle}
                     setEditingTitle={setEditingTitle}
                     handleTitleSave={handleTitleSave}
-                    handleTitleCancel={handleTitleCancel}
+                    handleTitleClear={handleTitleClear}
                     handleTitlePress={handleTitlePress}
                     note={note}
                 />

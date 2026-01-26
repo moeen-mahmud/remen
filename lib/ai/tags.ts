@@ -42,55 +42,39 @@ export async function extractTags(content: string, llm: LLMModel | null, noteTyp
  * AI-based tag extraction using LLM
  */
 async function extractTagsWithAI(content: string, llm: LLMModel, noteType?: NoteType): Promise<string[]> {
-    // Build context-aware guidance based on note type
-    let typeGuidance = "";
-    let exampleTags = "";
+    // Simplified prompts for small models - focus on examples
+    const contentPreview = content.substring(0, 300).trim();
 
+    // Build simple examples based on note type
+    let examples = "";
     switch (noteType) {
         case "meeting":
-            typeGuidance = "Focus on: participants, projects, topics discussed, action items";
-            exampleTags = "team, planning, design, review, follow-up";
+            examples = "Example: 'team, planning, design'";
             break;
         case "task":
-            typeGuidance = "Focus on: priority level, project area, deadlines, categories";
-            exampleTags = "urgent, work, personal, deadline, project-name";
+            examples = "Example: 'urgent, work, deadline'";
             break;
         case "idea":
-            typeGuidance = "Focus on: domain, concepts, innovation areas, themes";
-            exampleTags = "creative, innovation, product, brainstorm, future";
+            examples = "Example: 'product, innovation, future'";
             break;
         case "journal":
-            typeGuidance = "Focus on: emotions, activities, themes, relationships";
-            exampleTags = "reflection, growth, gratitude, health, relationships";
+            examples = "Example: 'gratitude, health, reflection'";
             break;
         case "reference":
-            typeGuidance = "Focus on: subject area, technology, tools, documentation type";
-            exampleTags = "tech, learning, documentation, tutorial, coding";
+            examples = "Example: 'coding, tutorial, docs'";
             break;
         default:
-            typeGuidance = "Focus on: main topics, categories, and key themes";
-            exampleTags = "work, personal, important, project, learning";
+            examples = "Example: 'work, important, project'";
     }
 
     const messages: Message[] = [
         {
             role: "system",
-            content: `Extract 2-5 relevant tags for organizing this ${noteType || "note"}.
-
-Guidelines:
-• ${typeGuidance}
-• Keep tags simple, lowercase, and broad
-• Use single words or hyphenated phrases
-• Avoid duplicating note type (already categorized as ${noteType || "note"})
-• Tags should help find and filter notes later
-
-Example tags for ${noteType || "notes"}: ${exampleTags}
-
-Reply with ONLY comma-separated tags, no hashtags or explanations.`,
+            content: `Extract 2-4 tags. ${examples} Reply with comma-separated words only.`,
         },
         {
             role: "user",
-            content: content.substring(0, 400),
+            content: contentPreview,
         },
     ];
 
@@ -163,7 +147,6 @@ function extractTagsFallback(content: string, noteType?: NoteType): string[] {
  * Get type-specific tags based on note type and content
  */
 function getTypeSpecificTags(content: string, noteType: NoteType): string[] {
-    const lowerContent = content.toLowerCase();
     const tags: string[] = [];
 
     switch (noteType) {

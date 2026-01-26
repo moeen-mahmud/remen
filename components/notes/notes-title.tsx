@@ -1,9 +1,8 @@
 import { Box } from "@/components/ui/box";
-import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { Note } from "@/lib/database";
-import { SquareCheck, SquareX } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
+import { useRef } from "react";
 import { Pressable, TextInput } from "react-native";
 
 type NotesTitleProps = {
@@ -11,7 +10,7 @@ type NotesTitleProps = {
     editingTitle: string;
     setEditingTitle: (title: string) => void;
     handleTitleSave: () => void;
-    handleTitleCancel: () => void;
+    handleTitleClear: () => void;
     handleTitlePress: () => void;
     note: Note;
 };
@@ -21,44 +20,70 @@ export const NotesTitle: React.FC<NotesTitleProps> = ({
     editingTitle,
     setEditingTitle,
     handleTitleSave,
-    handleTitleCancel,
+    handleTitleClear,
     handleTitlePress,
     note,
 }) => {
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === "dark";
+    const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isButtonPressRef = useRef(false);
+
+    const handleBlur = () => {
+        // Small delay to allow button presses to complete first
+        blurTimeoutRef.current = setTimeout(() => {
+            if (!isButtonPressRef.current) {
+                handleTitleSave();
+            }
+            isButtonPressRef.current = false;
+        }, 150);
+    };
+
+    const handleClearPress = () => {
+        isButtonPressRef.current = true;
+        if (blurTimeoutRef.current) {
+            clearTimeout(blurTimeoutRef.current);
+        }
+        handleTitleClear();
+    };
 
     return (
         <Box className="px-4 mb-4">
             {isEditingTitle ? (
-                <Box className="flex-row gap-2 items-center">
-                    <TextInput
-                        className="flex-1 text-xl font-semibold text-left text-typography-900 dark:text-typography-0"
-                        value={editingTitle}
-                        onChangeText={setEditingTitle}
-                        placeholder="Enter title..."
-                        placeholderTextColor={isDark ? "#666" : "#999"}
-                        autoFocus
-                        selectTextOnFocus
-                        onSubmitEditing={handleTitleSave}
-                        maxLength={100}
-                    />
+                <Box>
                     <Box className="flex-row gap-2 items-center">
-                        <Pressable onPress={handleTitleSave} hitSlop={10}>
-                            <Icon as={SquareCheck} color={isDark ? "#39FF14" : "#00B700"} />
+                        <TextInput
+                            className="flex-1 -mt-1 text-xl font-semibold text-left text-typography-900 dark:text-typography-0"
+                            value={editingTitle}
+                            onChangeText={setEditingTitle}
+                            placeholder="Enter title..."
+                            placeholderTextColor={isDark ? "#666" : "#999"}
+                            autoFocus
+                            selectTextOnFocus
+                            onSubmitEditing={handleTitleSave}
+                            onBlur={handleBlur}
+                            maxLength={100}
+                        />
+                        {/* {editingTitle.length > 0 && (
+                        <Pressable onPress={handleClearPress} hitSlop={10}>
+                        <Icon as={X} size="sm" color={isDark ? "#666" : "#999"} />
                         </Pressable>
-                        <Pressable onPress={handleTitleCancel} hitSlop={10}>
-                            <Icon as={SquareX} color={isDark ? "#666" : "#999"} />
-                        </Pressable>
+                        )} */}
                     </Box>
+                    <Text className="mt-[5px] text-xs opacity-60 text-typography-400">Tap outside to save</Text>
                 </Box>
-            ) : note.title ? (
-                <Pressable onPress={handleTitlePress}>
-                    <Text className="text-xl font-semibold text-left">{note.title}</Text>
-                </Pressable>
             ) : (
                 <Pressable onPress={handleTitlePress}>
-                    <Text className="text-xl font-semibold text-left">Add a title...</Text>
+                    <Box>
+                        {note.title ? (
+                            <>
+                                <Text className="text-xl font-semibold text-left">{note.title}</Text>
+                                <Text className="mt-0.5 text-xs text-typography-400 opacity-60">Tap to edit</Text>
+                            </>
+                        ) : (
+                            <Text className="text-xl font-semibold text-left text-typography-500">Add a title...</Text>
+                        )}
+                    </Box>
                 </Pressable>
             )}
         </Box>

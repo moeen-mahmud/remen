@@ -378,35 +378,25 @@ export async function classifyNoteType(content: string, llm: LLMModel | null): P
  * AI-based classification using LLM
  */
 async function classifyWithAI(content: string, llm: LLMModel): Promise<NoteType | null> {
+    // For small models, use shorter, more direct prompts with clear examples
+    const contentPreview = content.substring(0, 300).trim();
+
     const messages: Message[] = [
         {
             role: "system",
-            content: `Classify notes into categories. Reply with ONLY the category name.
-
-Categories:
-• meeting - discussions with people, calls, meetings, standups, sync sessions, recaps
-• task - todos, action items, checkboxes, deadlines, things to do, reminders
-• idea - brainstorms, concepts, "what if" thoughts, hypotheses, creative exploration
-• journal - personal reflections, daily logs, feelings, moods, diary entries, gratitude
-• reference - facts, documentation, code, links, guides, how-tos, definitions
-• note - general notes that don't fit the above
-
-Instructions:
-1. Read the note carefully
-2. Identify key characteristics (tone, structure, purpose)
-3. Match to the best category
-4. Reply with ONLY the category name in lowercase
+            content: `Classify note. Reply with ONE word: meeting, task, idea, journal, reference, or note.
 
 Examples:
-"Team sync at 2pm. Discussed Q1 goals. Action: John to send proposal by Friday." → meeting
-"- Buy groceries\n- Call dentist\n- Finish report" → task
-"What if we used AI to auto-categorize notes? Could save time." → idea
-"Feeling grateful today. Had a great conversation with mom." → journal
-"Python list comprehension: [x*2 for x in range(10)]" → reference`,
+"Team meeting at 2pm. Discussed goals." → meeting
+"- Buy milk\n- Call dentist" → task
+"What if we automate this?" → idea
+"Feeling grateful today." → journal
+"Python syntax: [x*2 for x in range(10)]" → reference
+"Random thoughts about the day." → note`,
         },
         {
             role: "user",
-            content: content.substring(0, 400),
+            content: contentPreview,
         },
     ];
 

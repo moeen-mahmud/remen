@@ -45,51 +45,39 @@ export async function generateTitle(content: string, llm: LLMModel | null, noteT
  * Generate title using LLM (SmolLM 360M via ExecutorTorch)
  */
 async function generateTitleWithAI(content: string, llm: LLMModel, noteType?: NoteType): Promise<string | null> {
-    // Build context-aware system prompt based on note type
-    let typeGuidance = "";
+    // Simplified prompt for small models - shorter content and clearer examples
+    const contentPreview = content.substring(0, 350).trim();
+
+    // Type-specific examples for better guidance
+    let examples = "";
     switch (noteType) {
         case "meeting":
-            typeGuidance = "For meetings: include who/what the meeting was about (e.g., 'Sync with Design Team')";
+            examples = "Example: 'Team Sync' or 'Design Review'";
             break;
         case "task":
-            typeGuidance = "For tasks: summarize the main action (e.g., 'Finish Q1 Report')";
+            examples = "Example: 'Daily Tasks' or 'Finish Report'";
             break;
         case "idea":
-            typeGuidance = "For ideas: capture the core concept (e.g., 'AI Note Classification System')";
+            examples = "Example: 'AI Automation Idea'";
             break;
         case "journal":
-            typeGuidance = "For journals: reflect the day or theme (e.g., 'Reflections on Progress')";
+            examples = "Example: 'Gratitude Today'";
             break;
         case "reference":
-            typeGuidance = "For reference: describe what's being documented (e.g., 'Python List Comprehension')";
+            examples = "Example: 'React Hooks Guide'";
             break;
         default:
-            typeGuidance = "Create a descriptive summary of the note's content";
+            examples = "Example: 'Meeting Notes' or 'Project Ideas'";
     }
 
     const messages: Message[] = [
         {
             role: "system",
-            content: `Generate a concise title (max 50 characters) for this note.
-
-Rules:
-• Be specific and descriptive
-• Use title case (capitalize main words)
-• No quotes, explanations, or prefixes
-• ${typeGuidance}
-
-Examples:
-"Team standup at 2pm. Discussed new features..." → Weekly Team Standup
-"- Buy milk\n- Call dentist\n- Submit report" → Daily Tasks
-"What if we automated note tagging with AI?" → Automated Note Tagging Idea
-"Feeling grateful today. Great talk with Sarah." → Gratitude and Connection
-"React hooks: useState for state management" → React Hooks Reference
-
-Reply with ONLY the title.`,
+            content: `Create a short title (max 50 chars). ${examples} Reply with title only, no quotes.`,
         },
         {
             role: "user",
-            content: content.substring(0, 500),
+            content: contentPreview,
         },
     ];
 
