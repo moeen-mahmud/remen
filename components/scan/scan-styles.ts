@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native"
+import { StyleSheet } from "react-native";
 
 // Styles remain the same
 export const scanStyles = StyleSheet.create({
@@ -201,4 +201,4 @@ export const scanStyles = StyleSheet.create({
         borderColor: "#fff",
     },
     maskBottom: { flex: 1, backgroundColor: "rgba(0,0,0,0.55)" },
-})
+});

@@ -1,11 +1,11 @@
-import { Box } from "@/components/ui/box"
-import { Heading } from "@/components/ui/heading"
-import { Text } from "@/components/ui/text"
+import { Box } from "@/components/ui/box";
+import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
 
 interface EmptyPageProps {
-    icon: React.ReactNode
-    title: string
-    description: string
+    icon: React.ReactNode;
+    title: string;
+    description: string;
 }
 
 export const EmptyPage: React.FC<EmptyPageProps> = ({ icon, title, description }) => {
@@ -17,5 +17,5 @@ export const EmptyPage: React.FC<EmptyPageProps> = ({ icon, title, description }
             </Heading>
             <Text className="text-lg text-background-500">{description}</Text>
         </Box>
-    )
-}
+    );
+};

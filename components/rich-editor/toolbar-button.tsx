@@ -1,25 +1,25 @@
-import { Button } from "@/components/ui/button"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
-import { JSX, type FC } from "react"
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { JSX, type FC } from "react";
 
 interface ToolbarButtonIconProps {
-    text?: never
-    icon: JSX.Element
-    isActive: boolean
-    isDisabled: boolean
-    onPress: () => void
+    text?: never;
+    icon: JSX.Element;
+    isActive: boolean;
+    isDisabled: boolean;
+    onPress: () => void;
 }
 
 interface ToolbarButtonTextProps {
-    text: string
-    icon?: never
-    isActive: boolean
-    isDisabled: boolean
-    onPress: () => void
+    text: string;
+    icon?: never;
+    isActive: boolean;
+    isDisabled: boolean;
+    onPress: () => void;
 }
 
-export type ToolbarButtonProps = ToolbarButtonIconProps | ToolbarButtonTextProps
+export type ToolbarButtonProps = ToolbarButtonIconProps | ToolbarButtonTextProps;
 
 export const ToolbarButton: FC<ToolbarButtonProps> = ({ icon, text, isDisabled, isActive, onPress }) => {
     return (
@@ -41,5 +41,5 @@ export const ToolbarButton: FC<ToolbarButtonProps> = ({ icon, text, isDisabled, 
                 </Text>
             )}
         </Button>
-    )
-}
+    );
+};

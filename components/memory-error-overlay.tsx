@@ -1,21 +1,21 @@
-import { RemenLogo } from "@/components/brand/logo"
-import { Text } from "@/components/ui/text"
-import { useColorScheme } from "nativewind"
-import { useEffect, useRef } from "react"
-import { Animated, StyleSheet, View } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { RemenLogo } from "@/components/brand/logo";
+import { Text } from "@/components/ui/text";
+import { useColorScheme } from "nativewind";
+import { useEffect, useRef } from "react";
+import { Animated, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface MemoryErrorOverlayProps {
-    isVisible: boolean
+    isVisible: boolean;
 }
 
 export function MemoryErrorOverlay({ isVisible }: MemoryErrorOverlayProps) {
-    const { top, bottom } = useSafeAreaInsets()
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { top, bottom } = useSafeAreaInsets();
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
     // Animation values
-    const fadeAnim = useRef(new Animated.Value(1)).current
+    const fadeAnim = useRef(new Animated.Value(1)).current;
 
     // Fade out when done
     useEffect(() => {
@@ -24,12 +24,12 @@ export function MemoryErrorOverlay({ isVisible }: MemoryErrorOverlayProps) {
                 toValue: 0,
                 duration: 500,
                 useNativeDriver: true,
-            }).start()
+            }).start();
         }
-    }, [isVisible, fadeAnim])
+    }, [isVisible, fadeAnim]);
 
     if (!isVisible) {
-        return null
+        return null;
     }
 
     return (
@@ -82,7 +82,7 @@ export function MemoryErrorOverlay({ isVisible }: MemoryErrorOverlayProps) {
                 </Text>
             </View>
         </Animated.View>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
@@ -139,4 +139,4 @@ const styles = StyleSheet.create({
         textAlign: "center",
         lineHeight: 18,
     },
-})
+});

@@ -5,13 +5,20 @@
  * Extracts intent, topics, temporal context, and generates search terms.
  */
 
-import { type LLMModel } from "@/lib/ai/provider"
+import { type LLMModel } from "@/lib/ai/provider";
 
 export interface AskNotesResult {
-    searchTerms: string[]
-    temporalHint: string | null
-    topics: string[]
-    interpretedQuery: string
+    searchTerms: string[];
+    temporalHint: string | null;
+    topics: string[];
+    interpretedQuery: string;
+}
+
+function extractJsonObject(text: string): string | null {
+    const start = text.indexOf("{");
+    const end = text.lastIndexOf("}");
+    if (start === -1 || end === -1 || end <= start) return null;
+    return text.slice(start, end + 1);
 }
 
 /**
@@ -19,7 +26,7 @@ export interface AskNotesResult {
  */
 export async function interpretQuery(query: string, llm: LLMModel): Promise<AskNotesResult> {
     if (!llm?.isReady) {
-        throw new Error("LLM model not ready")
+        throw new Error("LLM model not ready");
     }
 
     const systemPrompt = `You are a helpful assistant that interprets natural language queries about finding notes. Your task is to analyze the user's query and extract:
@@ -29,7 +36,7 @@ export async function interpretQuery(query: string, llm: LLMModel): Promise<AskN
 3. Topics - main subjects or themes mentioned
 4. Interpreted query - a clear, concise rephrasing of what the user is asking for
 
-Respond with valid JSON in this exact format:
+Respond with ONLY valid JSON in this exact format (no extra text, no markdown):
 {
     "searchTerms": ["term1", "term2"],
     "temporalHint": "specific time reference or null",
@@ -43,34 +50,39 @@ Guidelines:
 - Identify topics like "work", "personal", "ideas", "meeting"
 - Keep interpreted query concise but clear
 - If no temporal hint, use null
-- Focus on what the user wants to find, not how to find it`
+- Focus on what the user wants to find, not how to find it`;
 
-    const userPrompt = `Please analyze this query: "${query}"`
+    const userPrompt = `Please analyze this query: "${query}"`;
 
     try {
         const messages = [
             { role: "system" as const, content: systemPrompt },
             { role: "user" as const, content: userPrompt },
-        ]
+        ];
 
-        const response = await llm.generate(messages)
-        console.log("🤖 [Ask Notes] LLM response:", response)
+        const response = await llm.generate(messages);
+        console.log("🤖 [Ask Notes] LLM response:", response);
 
-        // Parse JSON response
-        const parsed = JSON.parse(response.trim())
+        // Parse JSON response (robust to occasional non-JSON output)
+        const raw = response.trim();
+        const jsonCandidate = raw.startsWith("{") ? raw : extractJsonObject(raw);
+        if (!jsonCandidate) {
+            throw new Error("LLM did not return JSON");
+        }
+        const parsed = JSON.parse(jsonCandidate);
 
         // Validate the response structure
         if (!parsed.searchTerms || !Array.isArray(parsed.searchTerms)) {
-            throw new Error("Invalid searchTerms in response")
+            throw new Error("Invalid searchTerms in response");
         }
         if (!parsed.topics || !Array.isArray(parsed.topics)) {
-            throw new Error("Invalid topics in response")
+            throw new Error("Invalid topics in response");
         }
         if (typeof parsed.interpretedQuery !== "string") {
-            throw new Error("Invalid interpretedQuery in response")
+            throw new Error("Invalid interpretedQuery in response");
         }
         if (parsed.temporalHint !== null && typeof parsed.temporalHint !== "string") {
-            throw new Error("Invalid temporalHint in response")
+            throw new Error("Invalid temporalHint in response");
         }
 
         console.log("🤖 [Ask Notes] Interpreted query:", {
@@ -79,23 +91,25 @@ Guidelines:
             searchTerms: parsed.searchTerms,
             temporalHint: parsed.temporalHint,
             topics: parsed.topics,
-        })
+        });
 
         return {
             searchTerms: parsed.searchTerms,
             temporalHint: parsed.temporalHint,
             topics: parsed.topics,
             interpretedQuery: parsed.interpretedQuery,
-        }
+        };
     } catch (error) {
-        console.error("❌ [Ask Notes] Failed to interpret query:", error)
+        // This can happen if the local LLM returns plain text instead of JSON.
+        // Don't treat as fatal; fall back to a basic query.
+        console.warn("⚠️ [Ask Notes] Falling back (LLM interpretation failed):", error);
         // Fallback: treat the entire query as search terms
         return {
             searchTerms: [query],
             temporalHint: null,
             topics: [],
             interpretedQuery: query,
-        }
+        };
     }
 }
 
@@ -115,7 +129,7 @@ export function shouldUseLLM(query: string): boolean {
         /(about|regarding|concerning) .+/i,
         // Ideas and concepts
         /(ideas?|concepts?|thoughts?) (about|on|for)/i,
-    ]
+    ];
 
-    return llmQueryPatterns.some((pattern) => pattern.test(query))
+    return llmQueryPatterns.some((pattern) => pattern.test(query));
 }

@@ -1,48 +1,48 @@
-import { Waveform } from "@/components/waveform"
-import { useAI } from "@/lib/ai/provider"
-import { aiQueue } from "@/lib/ai/queue"
-import { voiceCapture, type VoiceState } from "@/lib/capture/voice"
-import { createNote } from "@/lib/database"
-import * as Haptics from "expo-haptics"
-import { useRouter } from "expo-router"
-import { MicIcon, MicOffIcon, XIcon } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { useEffect, useRef, useState } from "react"
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native"
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { Waveform } from "@/components/waveform";
+import { useAI } from "@/lib/ai/provider";
+import { aiQueue } from "@/lib/ai/queue";
+import { voiceCapture, type VoiceState } from "@/lib/capture/voice";
+import { createNote } from "@/lib/database";
+import * as Haptics from "expo-haptics";
+import { useRouter } from "expo-router";
+import { MicIcon, MicOffIcon, XIcon } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { useEffect, useRef, useState } from "react";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const VoiceHome: React.FC = () => {
-    const { top, bottom } = useSafeAreaInsets()
-    const { colorScheme } = useColorScheme()
-    const router = useRouter()
-    const isDark = colorScheme === "dark"
+    const { top, bottom } = useSafeAreaInsets();
+    const { colorScheme } = useColorScheme();
+    const router = useRouter();
+    const isDark = colorScheme === "dark";
 
     // Get AI models for processing queue
-    const { llm, embeddings } = useAI()
+    const { llm, embeddings } = useAI();
 
     const [, setVoiceState] = useState<VoiceState>({
         isListening: false,
         results: [],
         partialResults: [],
         error: null,
-    })
-    const [isRecording, setIsRecording] = useState(false)
-    const [recordingTime, setRecordingTime] = useState(0)
-    const [isSaving, setIsSaving] = useState(false)
+    });
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const [isSaving, setIsSaving] = useState(false);
 
-    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // Pulse animation for the mic button
-    const pulseScale = useSharedValue(1)
-    const pulseOpacity = useSharedValue(0.3)
+    const pulseScale = useSharedValue(1);
+    const pulseOpacity = useSharedValue(0.3);
 
     const pulseStyle = useAnimatedStyle(() => ({
         transform: [{ scale: pulseScale.value }],
         opacity: pulseOpacity.value,
-    }))
+    }));
 
-    let currentTranscript = voiceCapture.getCurrentTranscript()
+    let currentTranscript = voiceCapture.getCurrentTranscript();
 
     // Start pulse animation when recording
     useEffect(() => {
@@ -51,125 +51,125 @@ export const VoiceHome: React.FC = () => {
                 withTiming(1.4, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
                 -1,
                 true,
-            )
+            );
             pulseOpacity.value = withRepeat(
                 withTiming(0, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
                 -1,
                 true,
-            )
+            );
         } else {
-            pulseScale.value = withTiming(1, { duration: 200 })
-            pulseOpacity.value = withTiming(0.3, { duration: 200 })
+            pulseScale.value = withTiming(1, { duration: 200 });
+            pulseOpacity.value = withTiming(0.3, { duration: 200 });
         }
-    }, [isRecording, pulseScale, pulseOpacity])
+    }, [isRecording, pulseScale, pulseOpacity]);
 
     // Set up voice callback
     useEffect(() => {
-        voiceCapture.setCallback(setVoiceState)
+        voiceCapture.setCallback(setVoiceState);
         return () => {
-            voiceCapture.destroy()
+            voiceCapture.destroy();
             if (timerRef.current) {
-                clearInterval(timerRef.current)
+                clearInterval(timerRef.current);
             }
-        }
-    }, [])
+        };
+    }, []);
 
     // Format recording time
     const formatTime = (seconds: number): string => {
-        const mins = Math.floor(seconds / 60)
-        const secs = seconds % 60
-        return `${mins}:${secs.toString().padStart(2, "0")}`
-    }
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs.toString().padStart(2, "0")}`;
+    };
 
     // Start recording
     const startRecording = async () => {
-        const available = await voiceCapture.isAvailable()
+        const available = await voiceCapture.isAvailable();
 
         if (!available) {
-            Alert.alert("Not Available", "Voice recognition is not available on this device")
-            return
+            Alert.alert("Not Available", "Voice recognition is not available on this device");
+            return;
         }
 
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-        setIsRecording(true)
-        setRecordingTime(0)
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setIsRecording(true);
+        setRecordingTime(0);
 
         // Start timer
         timerRef.current = setInterval(() => {
-            setRecordingTime((t) => t + 1)
-        }, 1000)
+            setRecordingTime((t) => t + 1);
+        }, 1000);
 
-        await voiceCapture.start()
-    }
+        await voiceCapture.start();
+    };
 
     // Stop recording and save
     const stopRecording = async () => {
-        if (!isRecording) return
+        if (!isRecording) return;
 
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-        setIsRecording(false)
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setIsRecording(false);
 
         // Stop timer
         if (timerRef.current) {
-            clearInterval(timerRef.current)
-            timerRef.current = null
+            clearInterval(timerRef.current);
+            timerRef.current = null;
         }
 
-        await voiceCapture.stop()
+        await voiceCapture.stop();
 
         // Get transcript
-        const transcript = voiceCapture.getCurrentTranscript()
+        const transcript = voiceCapture.getCurrentTranscript();
 
         if (transcript.trim().length > 0) {
-            await saveAndNavigate(transcript)
+            await saveAndNavigate(transcript);
         } else {
             // No transcript - show brief message and go back
             Alert.alert("No Speech Detected", "We couldn't detect any speech. Please try again.", [
                 { text: "OK", onPress: () => router.back() },
-            ])
+            ]);
         }
-    }
+    };
 
     // Save note and navigate to detail
     const saveAndNavigate = async (transcript: string) => {
-        setIsSaving(true)
+        setIsSaving(true);
 
         try {
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
             const note = await createNote({
                 content: transcript,
                 type: "voice",
-            })
+            });
 
             // Queue for AI processing (with AI models)
-            aiQueue.setModels({ llm, embeddings })
-            aiQueue.add({ noteId: note.id, content: transcript })
+            aiQueue.setModels({ llm, embeddings });
+            aiQueue.add({ noteId: note.id, content: transcript });
 
             // Navigate to note detail
-            currentTranscript = ""
-            voiceCapture.destroy()
+            currentTranscript = "";
+            voiceCapture.destroy();
             if (timerRef.current) {
-                clearInterval(timerRef.current)
+                clearInterval(timerRef.current);
             }
-            router.replace(`/notes/${note.id}` as any)
+            router.replace(`/notes/${note.id}` as any);
         } catch (error) {
-            console.error("Failed to save voice note:", error)
-            Alert.alert("Error", "Failed to save voice note. Please try again.")
-            setIsSaving(false)
+            console.error("Failed to save voice note:", error);
+            Alert.alert("Error", "Failed to save voice note. Please try again.");
+            setIsSaving(false);
         }
-    }
+    };
 
     // Close without saving
     const handleClose = () => {
-        console.log("close")
-        currentTranscript = ""
-        voiceCapture.destroy()
+        console.log("close");
+        currentTranscript = "";
+        voiceCapture.destroy();
         if (timerRef.current) {
-            clearInterval(timerRef.current)
+            clearInterval(timerRef.current);
         }
-        router.back()
-    }
+        router.back();
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff", paddingTop: top }]}>
@@ -241,8 +241,8 @@ export const VoiceHome: React.FC = () => {
                 </Text>
             </View>
         </View>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -332,4 +332,4 @@ const styles = StyleSheet.create({
         fontWeight: "500",
         letterSpacing: 0.2,
     },
-})
+});

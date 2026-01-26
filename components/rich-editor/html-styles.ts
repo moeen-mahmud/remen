@@ -1,4 +1,4 @@
-import type { HtmlStyle } from "react-native-enriched"
+import type { HtmlStyle } from "react-native-enriched";
 
 export const htmlStyle: HtmlStyle = {
     h1: { fontSize: 32, bold: true },
@@ -38,4 +38,4 @@ export const htmlStyle: HtmlStyle = {
         marginLeft: 20,
         gapWidth: 12,
     },
-}
+};

@@ -1,17 +1,17 @@
-import { SettingsAppearanceActions } from "@/components/settings/settings-home/settings-appearance-actions"
-import { Box } from "@/components/ui/box"
-import { Text } from "@/components/ui/text"
-import { Preferences } from "@/lib/preferences"
-import { useColorScheme } from "nativewind"
+import { SettingsAppearanceActions } from "@/components/settings/settings-home/settings-appearance-actions";
+import { Box } from "@/components/ui/box";
+import { Text } from "@/components/ui/text";
+import { Preferences } from "@/lib/preferences";
+import { useColorScheme } from "nativewind";
 
 type SettingAppearanceProps = {
-    handleThemeChange: (theme: Preferences["theme"]) => Promise<void>
-    preferences: Preferences | null
-}
+    handleThemeChange: (theme: Preferences["theme"]) => Promise<void>;
+    preferences: Preferences | null;
+};
 
 export const SettingsAppearance: React.FC<SettingAppearanceProps> = ({ handleThemeChange, preferences }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
     return (
         <Box className="px-4">
@@ -25,5 +25,5 @@ export const SettingsAppearance: React.FC<SettingAppearanceProps> = ({ handleThe
                 />
             </Box>
         </Box>
-    )
-}
+    );
+};

@@ -1,18 +1,18 @@
-import { Box } from "@/components/ui/box"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
-import { ChevronLeft, ListIcon } from "lucide-react-native"
-import { Pressable } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { Box } from "@/components/ui/box";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { ChevronLeft, ListIcon } from "lucide-react-native";
+import { Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type EditorHeaderProps = {
-    isEditing: boolean
-    handleBack: () => void
-    handleViewNotes: () => void
-}
+    isEditing: boolean;
+    handleBack: () => void;
+    handleViewNotes: () => void;
+};
 
 export const EditorHeader: React.FC<EditorHeaderProps> = ({ isEditing, handleBack, handleViewNotes }) => {
-    const { top } = useSafeAreaInsets()
+    const { top } = useSafeAreaInsets();
     return (
         <Box style={{ paddingTop: top }} className="p-4 mb-6 bg-background-0">
             <Box className="flex-row justify-between items-center">
@@ -31,5 +31,5 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({ isEditing, handleBac
                 </Pressable>
             </Box>
         </Box>
-    )
-}
+    );
+};

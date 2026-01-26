@@ -1,6 +1,6 @@
-import { RemenLogo } from "@/components/brand/logo"
-import { Box } from "@/components/ui/box"
-import { Text } from "@/components/ui/text"
+import { RemenLogo } from "@/components/brand/logo";
+import { Box } from "@/components/ui/box";
+import { Text } from "@/components/ui/text";
 
 export const SettingsAbout: React.FC = () => {
     return (
@@ -14,5 +14,5 @@ export const SettingsAbout: React.FC = () => {
                 </Box>
             </Box>
         </Box>
-    )
-}
+    );
+};

@@ -1,18 +1,18 @@
-import { Box } from "@/components/ui/box"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
-import { Cog, LucideRecycle, Share2Icon, XIcon } from "lucide-react-native"
-import { Pressable } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { Box } from "@/components/ui/box";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { Cog, LucideRecycle, Share2Icon, XIcon } from "lucide-react-native";
+import { Pressable } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type NotesHeaderProps = {
-    isSelectionMode: boolean
-    exitSelectionMode: () => void
-    selectedCount: number
-    handleShareSelected: () => void
-    handleBulkDelete: () => void
-    handleSettings: () => void
-}
+    isSelectionMode: boolean;
+    exitSelectionMode: () => void;
+    selectedCount: number;
+    handleShareSelected: () => void;
+    handleBulkDelete: () => void;
+    handleSettings: () => void;
+};
 
 export const NotesHeader: React.FC<NotesHeaderProps> = ({
     isSelectionMode,
@@ -22,7 +22,7 @@ export const NotesHeader: React.FC<NotesHeaderProps> = ({
     handleBulkDelete,
     handleSettings,
 }) => {
-    const { top } = useSafeAreaInsets()
+    const { top } = useSafeAreaInsets();
     return (
         <Box style={{ paddingTop: top }} className="p-4 mb-6 bg-background-0">
             {isSelectionMode ? (
@@ -51,5 +51,5 @@ export const NotesHeader: React.FC<NotesHeaderProps> = ({
                 </Box>
             )}
         </Box>
-    )
-}
+    );
+};

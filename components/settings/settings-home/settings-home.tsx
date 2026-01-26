@@ -1,90 +1,90 @@
-import { SettingsAbout } from "@/components/settings/settings-home/settings-about"
-import { SettingsAI } from "@/components/settings/settings-home/settings-ai"
-import { SettingsAppearance } from "@/components/settings/settings-home/settings-appearance"
-import { SettingsData } from "@/components/settings/settings-home/settings-data"
-import { SettingsPreference } from "@/components/settings/settings-home/settings-preference"
-import { PageLoader } from "@/components/ui/page-loader"
+import { SettingsAbout } from "@/components/settings/settings-home/settings-about";
+import { SettingsAI } from "@/components/settings/settings-home/settings-ai";
+import { SettingsAppearance } from "@/components/settings/settings-home/settings-appearance";
+import { SettingsData } from "@/components/settings/settings-home/settings-data";
+import { SettingsPreference } from "@/components/settings/settings-home/settings-preference";
+import { PageLoader } from "@/components/ui/page-loader";
 
-import { useAI } from "@/lib/ai/provider"
-import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database"
-import { Alert, ScrollView } from "react-native"
+import { useAI } from "@/lib/ai/provider";
+import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database";
+import { Alert, ScrollView } from "react-native";
 
-import { SettingsAIControls } from "@/components/settings/settings-home/settings-ai-controls"
-import { Box } from "@/components/ui/box"
-import { Preferences, getPreferences, savePreferences } from "@/lib/preferences"
-import * as Haptics from "expo-haptics"
-import { router, usePathname } from "expo-router"
-import { useColorScheme } from "nativewind"
-import { useCallback, useEffect, useState } from "react"
+import { SettingsAIControls } from "@/components/settings/settings-home/settings-ai-controls";
+import { Box } from "@/components/ui/box";
+import { Preferences, getPreferences, savePreferences } from "@/lib/preferences";
+import * as Haptics from "expo-haptics";
+import { router, usePathname } from "expo-router";
+import { useColorScheme } from "nativewind";
+import { useCallback, useEffect, useState } from "react";
 
 export const SettingsHome: React.FC = () => {
-    const pathname = usePathname()
-    const { llm, embeddings, ocr, overallProgress, isInitializing } = useAI()
-    const { setColorScheme } = useColorScheme()
-    const [preferences, setPreferences] = useState<Preferences | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-    const [archivedCount, setArchivedCount] = useState(0)
-    const [trashedCount, setTrashedCount] = useState(0)
+    const pathname = usePathname();
+    const { llm, embeddings, ocr, overallProgress, isInitializing } = useAI();
+    const { setColorScheme } = useColorScheme();
+    const [preferences, setPreferences] = useState<Preferences | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [archivedCount, setArchivedCount] = useState(0);
+    const [trashedCount, setTrashedCount] = useState(0);
 
     // Load preferences and counts
     useEffect(() => {
         async function load() {
-            const prefs = await getPreferences()
-            setPreferences(prefs)
+            const prefs = await getPreferences();
+            setPreferences(prefs);
 
-            const archived = await getArchivedNotesCount()
-            const trashed = await getTrashedNotesCount()
-            setArchivedCount(archived)
-            setTrashedCount(trashed)
-            setIsLoading(false)
+            const archived = await getArchivedNotesCount();
+            const trashed = await getTrashedNotesCount();
+            setArchivedCount(archived);
+            setTrashedCount(trashed);
+            setIsLoading(false);
         }
 
-        load()
+        load();
 
         return () => {
-            setIsLoading(true)
-            setPreferences(null)
-            setArchivedCount(0)
-            setTrashedCount(0)
-        }
-    }, [pathname])
+            setIsLoading(true);
+            setPreferences(null);
+            setArchivedCount(0);
+            setTrashedCount(0);
+        };
+    }, [pathname]);
 
     const handleThemeChange = useCallback(
         async (theme: Preferences["theme"]) => {
-            if (!preferences) return
-            await savePreferences({ theme })
-            setPreferences({ ...preferences, theme })
-            setColorScheme(theme)
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            if (!preferences) return;
+            await savePreferences({ theme });
+            setPreferences({ ...preferences, theme });
+            setColorScheme(theme);
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         },
         [preferences, setColorScheme],
-    )
+    );
 
     const handleHapticToggle = useCallback(
         async (value: boolean) => {
-            if (!preferences) return
-            await savePreferences({ hapticFeedback: value })
-            setPreferences({ ...preferences, hapticFeedback: value })
+            if (!preferences) return;
+            await savePreferences({ hapticFeedback: value });
+            setPreferences({ ...preferences, hapticFeedback: value });
             if (value) {
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
         },
         [preferences],
-    )
+    );
     const handleArchives = useCallback(() => {
-        router.push("/settings/archives" as any)
-    }, [])
+        router.push("/settings/archives" as any);
+    }, []);
 
     const handleTrash = useCallback(() => {
-        router.push("/settings/trash" as any)
-    }, [])
+        router.push("/settings/trash" as any);
+    }, []);
 
     const handleEmptyAction = useCallback(async () => {
-        const deleted = await emptyTrash()
-        setTrashedCount(0)
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-        Alert.alert("Done", `${deleted} note${deleted !== 1 ? "s" : ""} permanently deleted.`)
-    }, [])
+        const deleted = await emptyTrash();
+        setTrashedCount(0);
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Done", `${deleted} note${deleted !== 1 ? "s" : ""} permanently deleted.`);
+    }, []);
 
     const handleEmptyTrash = useCallback(async () => {
         Alert.alert(
@@ -98,15 +98,15 @@ export const SettingsHome: React.FC = () => {
                     onPress: handleEmptyAction,
                 },
             ],
-        )
-    }, [handleEmptyAction])
+        );
+    }, [handleEmptyAction]);
 
     if (!preferences) {
-        return <Box className="flex-1 bg-background-50" />
+        return <Box className="flex-1 bg-background-50" />;
     }
 
     if (isLoading) {
-        return <PageLoader />
+        return <PageLoader />;
     }
 
     return (
@@ -141,5 +141,5 @@ export const SettingsHome: React.FC = () => {
             {/* About Section */}
             <SettingsAbout />
         </ScrollView>
-    )
-}
+    );
+};

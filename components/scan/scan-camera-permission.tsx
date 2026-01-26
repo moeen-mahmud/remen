@@ -1,10 +1,10 @@
-import { Box } from "@/components/ui/box"
-import { Button, ButtonText } from "@/components/ui/button"
-import { Text } from "@/components/ui/text"
+import { Box } from "@/components/ui/box";
+import { Button, ButtonText } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
 
 type ScanCameraPermissionProps = {
-    requestPermission: () => void
-}
+    requestPermission: () => void;
+};
 
 export const ScanCameraPermission: React.FC<ScanCameraPermissionProps> = ({ requestPermission }) => {
     return (
@@ -16,5 +16,5 @@ export const ScanCameraPermission: React.FC<ScanCameraPermissionProps> = ({ requ
                 <ButtonText>Grant Permission</ButtonText>
             </Button>
         </Box>
-    )
-}
+    );
+};

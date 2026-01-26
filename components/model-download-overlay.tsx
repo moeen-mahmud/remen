@@ -1,22 +1,22 @@
-import { RemenLogo } from "@/components/brand/logo"
-import { Text } from "@/components/ui/text"
-import { Minimize2 } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Animated, Dimensions, Easing, Pressable, StyleSheet, View } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { RemenLogo } from "@/components/brand/logo";
+import { Text } from "@/components/ui/text";
+import { Minimize2 } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Animated, Dimensions, Easing, Pressable, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window")
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface ModelDownloadOverlayProps {
-    progress: number // 0 to 1
-    llmProgress: number
-    embeddingsProgress: number
-    ocrProgress: number
-    isVisible: boolean
-    onMinimize?: () => void
-    onClose?: () => void
-    isMinimized?: boolean
+    progress: number; // 0 to 1
+    llmProgress: number;
+    embeddingsProgress: number;
+    ocrProgress: number;
+    isVisible: boolean;
+    onMinimize?: () => void;
+    onClose?: () => void;
+    isMinimized?: boolean;
 }
 
 export function ModelDownloadOverlay({
@@ -29,17 +29,17 @@ export function ModelDownloadOverlay({
     onClose,
     isMinimized = false,
 }: ModelDownloadOverlayProps) {
-    const { top, bottom } = useSafeAreaInsets()
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { top, bottom } = useSafeAreaInsets();
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
-    const [internalMinimized, setInternalMinimized] = useState(isMinimized)
+    const [internalMinimized, setInternalMinimized] = useState(isMinimized);
 
     // Animation values
-    const fadeAnim = useRef(new Animated.Value(1)).current
-    const pulseAnim = useRef(new Animated.Value(1)).current
-    const progressAnim = useRef(new Animated.Value(0)).current
-    const minimizeAnim = useRef(new Animated.Value(0)).current
+    const fadeAnim = useRef(new Animated.Value(1)).current;
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const progressAnim = useRef(new Animated.Value(0)).current;
+    const minimizeAnim = useRef(new Animated.Value(0)).current;
 
     // Pulse animation for the logo
     useEffect(() => {
@@ -58,10 +58,10 @@ export function ModelDownloadOverlay({
                     useNativeDriver: true,
                 }),
             ]),
-        )
-        pulse.start()
-        return () => pulse.stop()
-    }, [pulseAnim])
+        );
+        pulse.start();
+        return () => pulse.stop();
+    }, [pulseAnim]);
 
     // Animate progress bar
     useEffect(() => {
@@ -70,8 +70,8 @@ export function ModelDownloadOverlay({
             duration: 300,
             easing: Easing.out(Easing.ease),
             useNativeDriver: false,
-        }).start()
-    }, [progress, progressAnim])
+        }).start();
+    }, [progress, progressAnim]);
 
     // Fade out when done
     useEffect(() => {
@@ -80,20 +80,20 @@ export function ModelDownloadOverlay({
                 toValue: 0,
                 duration: 500,
                 useNativeDriver: true,
-            }).start()
+            }).start();
         }
-    }, [isVisible, fadeAnim])
+    }, [isVisible, fadeAnim]);
 
     // Handle minimize
     const handleMinimize = useCallback(() => {
-        setInternalMinimized(true)
-        onMinimize?.()
-    }, [onMinimize])
+        setInternalMinimized(true);
+        onMinimize?.();
+    }, [onMinimize]);
 
     // Update internal minimized state when prop changes
     useEffect(() => {
-        setInternalMinimized(isMinimized)
-    }, [isMinimized])
+        setInternalMinimized(isMinimized);
+    }, [isMinimized]);
 
     // Animate minimize state
     useEffect(() => {
@@ -102,23 +102,23 @@ export function ModelDownloadOverlay({
             duration: 300,
             easing: Easing.out(Easing.ease),
             useNativeDriver: true,
-        }).start()
-    }, [internalMinimized, minimizeAnim])
+        }).start();
+    }, [internalMinimized, minimizeAnim]);
 
     if (!isVisible && progress >= 1) {
-        return null
+        return null;
     }
 
-    const progressPercent = Math.round(progress * 100)
+    const progressPercent = Math.round(progress * 100);
 
     const progressWidth = progressAnim.interpolate({
         inputRange: [0, 1],
         outputRange: ["0%", "100%"],
-    })
+    });
 
     // Don't render if not visible and progress is complete
     if (!isVisible && progress >= 1) {
-        return null
+        return null;
     }
 
     const minimizedStyle = {
@@ -130,7 +130,7 @@ export function ModelDownloadOverlay({
                 }),
             },
         ],
-    }
+    };
 
     return (
         <Animated.View
@@ -219,19 +219,19 @@ export function ModelDownloadOverlay({
                 </Text>
             </View>
         </Animated.View>
-    )
+    );
 }
 
 interface ModelProgressItemProps {
-    name: string
-    progress: number
-    isDark: boolean
-    description: string
+    name: string;
+    progress: number;
+    isDark: boolean;
+    description: string;
 }
 
 function ModelProgressItem({ name, progress, isDark, description }: ModelProgressItemProps) {
-    const isComplete = progress >= 1
-    const progressPercent = Math.round(progress * 100)
+    const isComplete = progress >= 1;
+    const progressPercent = Math.round(progress * 100);
 
     return (
         <View style={styles.modelItem}>
@@ -250,7 +250,7 @@ function ModelProgressItem({ name, progress, isDark, description }: ModelProgres
             </View>
             <Text style={[styles.modelDescription, { color: isDark ? "#666" : "#999" }]}>{description}</Text>
         </View>
-    )
+    );
 }
 
 const styles = StyleSheet.create({
@@ -353,4 +353,4 @@ const styles = StyleSheet.create({
         textAlign: "center",
         lineHeight: 18,
     },
-})
+});

@@ -1,14 +1,14 @@
-import { ScanState } from "@/components/scan/scan-types"
-import { Box } from "@/components/ui/box"
-import { Spinner } from "@/components/ui/spinner"
-import { Text } from "@/components/ui/text"
-import { OCRModel } from "@/lib/ai"
-import { Pressable } from "react-native"
+import { ScanState } from "@/components/scan/scan-types";
+import { Box } from "@/components/ui/box";
+import { Spinner } from "@/components/ui/spinner";
+import { Text } from "@/components/ui/text";
+import { OCRModel } from "@/lib/ai";
+import { Pressable } from "react-native";
 
 type ScanModelLoadingProps = {
-    ocr: OCRModel | null
-    setScanState: (state: ScanState) => void
-}
+    ocr: OCRModel | null;
+    setScanState: (state: ScanState) => void;
+};
 
 export const ScanModelLoading: React.FC<ScanModelLoadingProps> = ({ ocr, setScanState }) => {
     return (
@@ -23,5 +23,5 @@ export const ScanModelLoading: React.FC<ScanModelLoadingProps> = ({ ocr, setScan
                 <Text className="text-sm">Cancel</Text>
             </Pressable>
         </Box>
-    )
-}
+    );
+};

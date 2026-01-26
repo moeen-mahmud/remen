@@ -1,5 +1,5 @@
-import { useEffect } from "react"
-import { StyleSheet, View } from "react-native"
+import { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
 import Animated, {
     Easing,
     useAnimatedStyle,
@@ -8,16 +8,16 @@ import Animated, {
     withRepeat,
     withSequence,
     withTiming,
-} from "react-native-reanimated"
+} from "react-native-reanimated";
 
 interface WaveformProps {
-    isActive: boolean
-    color?: string
-    size?: number
+    isActive: boolean;
+    color?: string;
+    size?: number;
 }
 
-const NUM_BARS = 5
-const BAR_DELAYS = [0, 100, 200, 100, 0] // Staggered delays for wave effect
+const NUM_BARS = 5;
+const BAR_DELAYS = [0, 100, 200, 100, 0]; // Staggered delays for wave effect
 
 export function Waveform({ isActive, color = "#EF4444", size = 80 }: WaveformProps) {
     return (
@@ -26,19 +26,19 @@ export function Waveform({ isActive, color = "#EF4444", size = 80 }: WaveformPro
                 <WaveformBar key={index} isActive={isActive} color={color} delay={BAR_DELAYS[index]} index={index} />
             ))}
         </View>
-    )
+    );
 }
 
 interface WaveformBarProps {
-    isActive: boolean
-    color: string
-    delay: number
-    index: number
+    isActive: boolean;
+    color: string;
+    delay: number;
+    index: number;
 }
 
 function WaveformBar({ isActive, color, delay, index }: WaveformBarProps) {
-    const scale = useSharedValue(0.3)
-    const opacity = useSharedValue(0.5)
+    const scale = useSharedValue(0.3);
+    const opacity = useSharedValue(0.5);
 
     useEffect(() => {
         if (isActive) {
@@ -53,7 +53,7 @@ function WaveformBar({ isActive, color, delay, index }: WaveformBarProps) {
                     -1,
                     false,
                 ),
-            )
+            );
 
             // Animate opacity
             opacity.value = withDelay(
@@ -66,19 +66,19 @@ function WaveformBar({ isActive, color, delay, index }: WaveformBarProps) {
                     -1,
                     false,
                 ),
-            )
+            );
         } else {
-            scale.value = withTiming(0.3, { duration: 200 })
-            opacity.value = withTiming(0.5, { duration: 200 })
+            scale.value = withTiming(0.3, { duration: 200 });
+            opacity.value = withTiming(0.5, { duration: 200 });
         }
-    }, [isActive, delay, scale, opacity])
+    }, [isActive, delay, scale, opacity]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scaleY: scale.value }],
         opacity: opacity.value,
-    }))
+    }));
 
-    return <Animated.View style={[styles.bar, { backgroundColor: color }, animatedStyle]} />
+    return <Animated.View style={[styles.bar, { backgroundColor: color }, animatedStyle]} />;
 }
 
 const styles = StyleSheet.create({
@@ -93,4 +93,4 @@ const styles = StyleSheet.create({
         height: "100%",
         borderRadius: 4,
     },
-})
+});

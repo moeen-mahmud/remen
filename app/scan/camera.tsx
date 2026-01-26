@@ -1,3 +1,3 @@
-import { ScanCamera } from "@/components/scan/scan-camera"
+import { ScanCamera } from "@/components/scan/scan-camera";
 
-export default ScanCamera
+export default ScanCamera;

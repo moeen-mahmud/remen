@@ -5,32 +5,32 @@ import {
     AlertDialogContent,
     AlertDialogFooter,
     AlertDialogHeader,
-} from "@/components/ui/alert-dialog"
-import { Button, ButtonText } from "@/components/ui/button"
-import { Heading } from "@/components/ui/heading"
-import { Input, InputField } from "@/components/ui/input"
-import { type FC, useEffect, useState } from "react"
+} from "@/components/ui/alert-dialog";
+import { Button, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { Input, InputField } from "@/components/ui/input";
+import { type FC, useEffect, useState } from "react";
 
 interface LinkModalProps {
-    isOpen: boolean
-    editedText: string
-    editedUrl: string
-    onClose: () => void
-    onSubmit: (text: string, url: string) => void
+    isOpen: boolean;
+    editedText: string;
+    editedUrl: string;
+    onClose: () => void;
+    onSubmit: (text: string, url: string) => void;
 }
 
 export const LinkModal: FC<LinkModalProps> = ({ isOpen, editedText, editedUrl, onClose, onSubmit }) => {
-    const [text, setText] = useState("")
-    const [url, setUrl] = useState("")
+    const [text, setText] = useState("");
+    const [url, setUrl] = useState("");
 
     useEffect(() => {
-        setText(editedText)
-        setUrl(editedUrl)
-    }, [editedText, editedUrl])
+        setText(editedText);
+        setUrl(editedUrl);
+    }, [editedText, editedUrl]);
 
     const handleSave = () => {
-        onSubmit(text, url)
-    }
+        onSubmit(text, url);
+    };
 
     return (
         <AlertDialog isOpen={isOpen} onClose={onClose} size="md">
@@ -56,5 +56,5 @@ export const LinkModal: FC<LinkModalProps> = ({ isOpen, editedText, editedUrl, o
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-    )
-}
+    );
+};

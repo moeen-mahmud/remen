@@ -1,10 +1,10 @@
-import { Box } from "@/components/ui/box"
-import { Divider } from "@/components/ui/divider"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
-import { Preferences } from "@/lib/preferences"
-import { MoonIcon, SmartphoneIcon, SunIcon } from "lucide-react-native"
-import { Pressable } from "react-native"
+import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { Preferences } from "@/lib/preferences";
+import { MoonIcon, SmartphoneIcon, SunIcon } from "lucide-react-native";
+import { Pressable } from "react-native";
 
 const actionArray = [
     {
@@ -28,13 +28,13 @@ const actionArray = [
         color: (theme: Preferences["theme"], dark?: boolean) =>
             theme === "dark" ? (dark ? "#39FF14" : "#00B700") : dark ? "#fff" : "#000",
     },
-]
+];
 
 type SettingsAppearanceActionsProps = {
-    theme: Preferences["theme"]
-    dark?: boolean
-    handleThemeChange: (theme: "system" | "light" | "dark") => void
-}
+    theme: Preferences["theme"];
+    dark?: boolean;
+    handleThemeChange: (theme: "system" | "light" | "dark") => void;
+};
 
 export const SettingsAppearanceActions: React.FC<SettingsAppearanceActionsProps> = ({
     handleThemeChange,
@@ -50,5 +50,5 @@ export const SettingsAppearanceActions: React.FC<SettingsAppearanceActionsProps>
 
             {index !== actionArray.length - 1 && <Divider className="bg-background-50 dark:bg-background-100" />}
         </Box>
-    ))
-}
+    ));
+};

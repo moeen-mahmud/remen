@@ -1,7 +1,7 @@
-import { springConfigs, timingConfigs } from "@/lib/animation-config"
-import { useColorScheme } from "nativewind"
-import { type FC } from "react"
-import { StyleSheet, Text, View } from "react-native"
+import { springConfigs, timingConfigs } from "@/lib/animation-config";
+import { useColorScheme } from "nativewind";
+import { type FC } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -9,29 +9,29 @@ import Animated, {
     withSequence,
     withSpring,
     withTiming,
-} from "react-native-reanimated"
+} from "react-native-reanimated";
 
 interface RemenLogoProps {
-    size?: "sm" | "md" | "lg"
-    showIcon?: boolean
-    animated?: boolean
+    size?: "sm" | "md" | "lg";
+    showIcon?: boolean;
+    animated?: boolean;
 }
 
 const SIZES = {
     sm: { fontSize: 18, iconSize: 16, gap: 4 },
     md: { fontSize: 24, iconSize: 20, gap: 6 },
     lg: { fontSize: 32, iconSize: 28, gap: 8 },
-}
+};
 
 export const RemenLogo: FC<RemenLogoProps> = ({ size = "md", showIcon = true, animated = false }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
-    const sizeConfig = SIZES[size]
+    const sizeConfig = SIZES[size];
 
     // Animation values
-    const scale = useSharedValue(1)
-    const rotation = useSharedValue(0)
+    const scale = useSharedValue(1);
+    const rotation = useSharedValue(0);
 
     // Subtle pulse animation for the icon
     if (animated) {
@@ -39,16 +39,16 @@ export const RemenLogo: FC<RemenLogoProps> = ({ size = "md", showIcon = true, an
             withSequence(withTiming(1.05, timingConfigs.slow), withTiming(1, timingConfigs.slow)),
             -1,
             true,
-        )
+        );
     }
 
     const iconAnimatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }, { rotate: `${rotation.value}deg` }],
-    }))
+    }));
 
     // Primary brand color (green from theme)
-    const primaryColor = isDark ? "#39FF14" : "#00B700"
-    const textColor = isDark ? "#F8F8F8" : "#161616"
+    const primaryColor = isDark ? "#39FF14" : "#00B700";
+    const textColor = isDark ? "#F8F8F8" : "#161616";
 
     return (
         <View style={styles.container}>
@@ -80,14 +80,14 @@ export const RemenLogo: FC<RemenLogoProps> = ({ size = "md", showIcon = true, an
                 Remen
             </Text>
         </View>
-    )
-}
+    );
+};
 
 // Compact version for headers - just the wordmark
 export const RemenWordmark: FC<{ size?: "sm" | "md" | "lg" }> = ({ size = "md" }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
-    const sizeConfig = SIZES[size]
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
+    const sizeConfig = SIZES[size];
 
     return (
         <Text
@@ -101,27 +101,27 @@ export const RemenWordmark: FC<{ size?: "sm" | "md" | "lg" }> = ({ size = "md" }
         >
             Remen
         </Text>
-    )
-}
+    );
+};
 
 // Animated icon only - for loading states or accents
 export const RemenIcon: FC<{ size?: number; color?: string }> = ({ size = 24, color }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
-    const iconColor = color || (isDark ? "#39FF14" : "#00B700")
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
+    const iconColor = color || (isDark ? "#39FF14" : "#00B700");
 
-    const scale = useSharedValue(1)
+    const scale = useSharedValue(1);
 
     // Breathing animation
     scale.value = withRepeat(
         withSequence(withSpring(1.1, springConfigs.bouncy), withSpring(1, springConfigs.bouncy)),
         -1,
         true,
-    )
+    );
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
-    }))
+    }));
 
     return (
         <Animated.View style={animatedStyle}>
@@ -134,8 +134,8 @@ export const RemenIcon: FC<{ size?: number; color?: string }> = ({ size = 24, co
                 }}
             />
         </Animated.View>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -157,4 +157,4 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         letterSpacing: -0.5,
     },
-})
+});

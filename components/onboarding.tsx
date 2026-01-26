@@ -1,12 +1,12 @@
-import { RemenLogo } from "@/components/brand/logo"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
-import { LinearGradient } from "expo-linear-gradient"
-import { Bot, Camera, ChevronRight, Mic, Search, Shield } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { useCallback, useState } from "react"
-import { Dimensions, Pressable, StyleSheet, View } from "react-native"
-import { Gesture, GestureDetector } from "react-native-gesture-handler"
+import { RemenLogo } from "@/components/brand/logo";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { LinearGradient } from "expo-linear-gradient";
+import { Bot, Camera, ChevronRight, Mic, Search, Shield } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { useCallback, useState } from "react";
+import { Dimensions, Pressable, StyleSheet, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
     Easing,
     runOnJS,
@@ -14,22 +14,22 @@ import Animated, {
     useAnimatedStyle,
     useSharedValue,
     withTiming,
-} from "react-native-reanimated"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+} from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window")
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 interface OnboardingProps {
-    onComplete: () => void
-    onSkip?: () => void
+    onComplete: () => void;
+    onSkip?: () => void;
 }
 
 interface OnboardingSlide {
-    id: string
-    icon: React.ReactNode
-    title: string
-    description: string
-    gradient: [string, string]
+    id: string;
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    gradient: [string, string];
 }
 
 const slides: OnboardingSlide[] = [
@@ -68,70 +68,70 @@ const slides: OnboardingSlide[] = [
         description: "Find anything instantly using semantic search and natural language.",
         gradient: ["#43e97b", "#38f9d7"],
     },
-]
+];
 
 export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
-    const { colorScheme } = useColorScheme()
-    const { top, bottom } = useSafeAreaInsets()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const { top, bottom } = useSafeAreaInsets();
+    const isDark = colorScheme === "dark";
 
-    const [currentIndex, setCurrentIndex] = useState(0)
+    const [currentIndex, setCurrentIndex] = useState(0);
 
     /** Shared animation state */
-    const translateX = useSharedValue(0)
-    const indexSV = useSharedValue(0)
-    const opacitySV = useSharedValue(1)
+    const translateX = useSharedValue(0);
+    const indexSV = useSharedValue(0);
+    const opacitySV = useSharedValue(1);
 
     /** Deterministic navigation */
     const goToIndex = useCallback((index: number) => {
-        indexSV.value = index
+        indexSV.value = index;
         translateX.value = withTiming(-index * SCREEN_WIDTH, {
             duration: 320,
             easing: Easing.bezier(0.22, 1, 0.36, 1),
-        })
-        setCurrentIndex(index)
-    }, [])
+        });
+        setCurrentIndex(index);
+    }, []);
 
     /** Gesture */
     const panGesture = Gesture.Pan()
         .onUpdate((e) => {
-            translateX.value = -indexSV.value * SCREEN_WIDTH + e.translationX
+            translateX.value = -indexSV.value * SCREEN_WIDTH + e.translationX;
         })
         .onEnd(() => {
-            const rawIndex = -translateX.value / SCREEN_WIDTH
-            const nextIndex = Math.round(rawIndex)
-            const clamped = Math.max(0, Math.min(slides.length - 1, nextIndex))
+            const rawIndex = -translateX.value / SCREEN_WIDTH;
+            const nextIndex = Math.round(rawIndex);
+            const clamped = Math.max(0, Math.min(slides.length - 1, nextIndex));
 
-            indexSV.value = clamped
+            indexSV.value = clamped;
             translateX.value = withTiming(-clamped * SCREEN_WIDTH, {
                 duration: 320,
                 easing: Easing.bezier(0.22, 1, 0.36, 1),
-            })
+            });
 
-            runOnJS(setCurrentIndex)(clamped)
-        })
+            runOnJS(setCurrentIndex)(clamped);
+        });
 
     /** Animated styles */
     const slidesStyle = useAnimatedStyle(() => ({
         transform: [{ translateX: translateX.value }],
-    }))
+    }));
 
     const containerStyle = useAnimatedStyle(() => ({
         opacity: opacitySV.value,
-    }))
+    }));
 
     /** Actions */
     const handleNext = () => {
         if (currentIndex < slides.length - 1) {
-            goToIndex(currentIndex + 1)
+            goToIndex(currentIndex + 1);
         } else {
-            opacitySV.value = withTiming(0, { duration: 240 }, () => runOnJS(onComplete)())
+            opacitySV.value = withTiming(0, { duration: 240 }, () => runOnJS(onComplete)());
         }
-    }
+    };
 
     const handleSkip = () => {
-        opacitySV.value = withTiming(0, { duration: 240 }, () => runOnJS(onSkip || onComplete)())
-    }
+        opacitySV.value = withTiming(0, { duration: 240 }, () => runOnJS(onSkip || onComplete)());
+    };
 
     return (
         <Animated.View
@@ -193,22 +193,22 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
                 <Icon as={ChevronRight} size="xl" color={isDark ? "#000" : "#fff"} />
             </Pressable>
         </Animated.View>
-    )
+    );
 }
 
 /** Dot Component */
 function Dot({ index, translateX }: { index: number; translateX: SharedValue<number> }) {
     const style = useAnimatedStyle(() => {
-        const position = -translateX.value / SCREEN_WIDTH
-        const distance = Math.abs(position - index)
+        const position = -translateX.value / SCREEN_WIDTH;
+        const distance = Math.abs(position - index);
 
         return {
             width: withTiming(distance < 0.5 ? 16 : 8),
             opacity: withTiming(distance < 0.5 ? 1 : 0.4),
-        }
-    })
+        };
+    });
 
-    return <Animated.View style={[styles.dot, style]} />
+    return <Animated.View style={[styles.dot, style]} />;
 }
 
 /** Styles */
@@ -259,4 +259,4 @@ const styles = StyleSheet.create({
         alignItems: "center",
         gap: 8,
     },
-})
+});

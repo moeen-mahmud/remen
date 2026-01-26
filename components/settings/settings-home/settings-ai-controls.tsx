@@ -1,27 +1,27 @@
-import { Box } from "@/components/ui/box"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
-import { aiQueue } from "@/lib/ai"
-import * as Haptics from "expo-haptics"
-import { AlertCircle, ChevronRight, CircleStop } from "lucide-react-native"
-import { useEffect, useState } from "react"
-import { Alert, Pressable } from "react-native"
+import { Box } from "@/components/ui/box";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { aiQueue } from "@/lib/ai";
+import * as Haptics from "expo-haptics";
+import { AlertCircle, ChevronRight, CircleStop } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import { Alert, Pressable } from "react-native";
 
 export const SettingsAIControls = () => {
-    const [queueStatus, setQueueStatus] = useState(() => aiQueue.getStatus())
+    const [queueStatus, setQueueStatus] = useState(() => aiQueue.getStatus());
 
     useEffect(() => {
-        const tick = () => setQueueStatus(aiQueue.getStatus())
-        tick()
-        const interval = setInterval(tick, 750)
-        return () => clearInterval(interval)
-    }, [])
+        const tick = () => setQueueStatus(aiQueue.getStatus());
+        tick();
+        const interval = setInterval(tick, 750);
+        return () => clearInterval(interval);
+    }, []);
 
     const handleStop = async () => {
-        aiQueue.cancelAll()
-        setQueueStatus(aiQueue.getStatus())
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-    }
+        aiQueue.cancelAll();
+        setQueueStatus(aiQueue.getStatus());
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    };
 
     const handleStopAIProcessing = () => {
         Alert.alert(
@@ -35,8 +35,8 @@ export const SettingsAIControls = () => {
                     ? [{ text: "Stop", style: "destructive" as const, onPress: async () => await handleStop() }]
                     : []),
             ],
-        )
-    }
+        );
+    };
 
     return (
         <Box className="px-4 mt-6">
@@ -92,5 +92,5 @@ export const SettingsAIControls = () => {
                 </Pressable>
             </Box>
         </Box>
-    )
-}
+    );
+};

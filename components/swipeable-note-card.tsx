@@ -1,25 +1,25 @@
-import { NoteCard, type NoteCardProps } from "@/components/note-card"
-import { Icon } from "@/components/ui/icon"
-import { gestureThresholds, timingConfigs } from "@/lib/animation-config"
-import * as Haptics from "expo-haptics"
-import { ArchiveIcon, Trash2Icon, UndoIcon } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { type FC, useCallback } from "react"
-import { Dimensions, StyleSheet, Text, View } from "react-native"
-import { Gesture, GestureDetector } from "react-native-gesture-handler"
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated"
+import { NoteCard, type NoteCardProps } from "@/components/note-card";
+import { Icon } from "@/components/ui/icon";
+import { gestureThresholds, timingConfigs } from "@/lib/animation-config";
+import * as Haptics from "expo-haptics";
+import { ArchiveIcon, Trash2Icon, UndoIcon } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { type FC, useCallback } from "react";
+import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window")
-const SWIPE_THRESHOLD = SCREEN_WIDTH * gestureThresholds.swipeActionThreshold
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const SWIPE_THRESHOLD = SCREEN_WIDTH * gestureThresholds.swipeActionThreshold;
 
 interface SwipeableNoteCardProps extends NoteCardProps {
-    onArchive?: () => void
-    onTrash?: () => void
-    onRestore?: () => void
-    isArchived?: boolean
-    isTrashed?: boolean
-    showRightAction?: boolean
-    showLeftAction?: boolean
+    onArchive?: () => void;
+    onTrash?: () => void;
+    onRestore?: () => void;
+    isArchived?: boolean;
+    isTrashed?: boolean;
+    showRightAction?: boolean;
+    showLeftAction?: boolean;
     // Selection mode props are passed through to NoteCard
 }
 
@@ -40,91 +40,91 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
     onToggleSelect,
     isProcessing,
 }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
-    const translateX = useSharedValue(0)
-    const isRemoving = useSharedValue(false)
+    const translateX = useSharedValue(0);
+    const isRemoving = useSharedValue(false);
 
     const triggerHaptic = useCallback(() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-    }, [])
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }, []);
 
     const handleArchive = useCallback(() => {
-        onArchive?.()
-    }, [onArchive])
+        onArchive?.();
+    }, [onArchive]);
 
     const handleTrash = useCallback(() => {
-        onTrash?.()
-    }, [onTrash])
+        onTrash?.();
+    }, [onTrash]);
 
     const handleRestore = useCallback(() => {
-        onRestore?.()
-    }, [onRestore])
+        onRestore?.();
+    }, [onRestore]);
 
     const panGesture = Gesture.Pan()
         .activeOffsetX([-10, 10])
         .failOffsetY([-5, 5])
         .onUpdate((event) => {
             // Limit swipe distance
-            const clampedX = Math.max(-SCREEN_WIDTH * 0.5, Math.min(SCREEN_WIDTH * 0.5, event.translationX))
-            translateX.value = clampedX
+            const clampedX = Math.max(-SCREEN_WIDTH * 0.5, Math.min(SCREEN_WIDTH * 0.5, event.translationX));
+            translateX.value = clampedX;
         })
         .onEnd((event) => {
-            const shouldTriggerLeft = translateX.value < -SWIPE_THRESHOLD
-            const shouldTriggerRight = translateX.value > SWIPE_THRESHOLD
+            const shouldTriggerLeft = translateX.value < -SWIPE_THRESHOLD;
+            const shouldTriggerRight = translateX.value > SWIPE_THRESHOLD;
 
             if (shouldTriggerLeft) {
                 // Swipe left - Archive (or Restore if in trash)
-                runOnJS(triggerHaptic)()
+                runOnJS(triggerHaptic)();
                 if (isTrashed) {
-                    runOnJS(handleRestore)()
+                    runOnJS(handleRestore)();
                 } else if (isArchived) {
-                    runOnJS(handleTrash)()
+                    runOnJS(handleTrash)();
                 } else {
-                    runOnJS(handleArchive)()
+                    runOnJS(handleArchive)();
                 }
-                isRemoving.value = true
-                translateX.value = withTiming(-SCREEN_WIDTH, timingConfigs.fast)
+                isRemoving.value = true;
+                translateX.value = withTiming(-SCREEN_WIDTH, timingConfigs.fast);
             } else if (shouldTriggerRight) {
                 // Swipe right - Trash (or Restore if archived)
-                runOnJS(triggerHaptic)()
+                runOnJS(triggerHaptic)();
                 if (isArchived) {
-                    runOnJS(handleRestore)()
+                    runOnJS(handleRestore)();
                 } else if (isTrashed) {
-                    runOnJS(handleArchive)()
+                    runOnJS(handleArchive)();
                 } else {
-                    runOnJS(handleTrash)()
+                    runOnJS(handleTrash)();
                 }
-                isRemoving.value = true
-                translateX.value = withTiming(SCREEN_WIDTH, timingConfigs.slow)
+                isRemoving.value = true;
+                translateX.value = withTiming(SCREEN_WIDTH, timingConfigs.slow);
             } else {
                 // Snap back
                 // translateX.value = withSpring(0, springConfigs.gentle)
-                translateX.value = withTiming(0, timingConfigs.normal)
+                translateX.value = withTiming(0, timingConfigs.normal);
             }
-        })
+        });
 
     const cardAnimatedStyle = useAnimatedStyle(() => ({
         transform: [{ translateX: translateX.value }],
-    }))
+    }));
 
     const leftActionStyle = useAnimatedStyle(() => {
-        const opacity = Math.min(translateX.value / SWIPE_THRESHOLD, 1)
+        const opacity = Math.min(translateX.value / SWIPE_THRESHOLD, 1);
         return {
             opacity: Math.max(0, opacity),
-        }
-    })
+        };
+    });
 
     const rightActionStyle = useAnimatedStyle(() => {
-        const opacity = Math.min(-translateX.value / SWIPE_THRESHOLD, 1)
+        const opacity = Math.min(-translateX.value / SWIPE_THRESHOLD, 1);
         return {
             opacity: Math.max(0, opacity),
-        }
-    })
+        };
+    });
 
     // Determine action colors and icons based on context
-    const leftActionColor = isArchived ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#E7000B" : "#F9423C"
+    const leftActionColor = isArchived ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#E7000B" : "#F9423C";
     const rightActionColor = isTrashed
         ? isDark
             ? "#39FF14"
@@ -135,13 +135,13 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
               : "#F9423C"
           : isDark
             ? "#39FF14"
-            : "#00B700"
+            : "#00B700";
 
-    const LeftIcon = isArchived ? UndoIcon : Trash2Icon
-    const RightIcon = isTrashed ? UndoIcon : isArchived ? Trash2Icon : ArchiveIcon
+    const LeftIcon = isArchived ? UndoIcon : Trash2Icon;
+    const RightIcon = isTrashed ? UndoIcon : isArchived ? Trash2Icon : ArchiveIcon;
 
-    const leftLabel = isArchived ? "Restore" : isTrashed ? "Permanent Delete" : "Trash"
-    const rightLabel = isTrashed ? "Restore" : isArchived ? "Trash" : "Archive"
+    const leftLabel = isArchived ? "Restore" : isTrashed ? "Permanent Delete" : "Trash";
+    const rightLabel = isTrashed ? "Restore" : isArchived ? "Trash" : "Archive";
 
     return (
         <View style={styles.container}>
@@ -191,8 +191,8 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
                 </Animated.View>
             </GestureDetector>
         </View>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -231,4 +231,4 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: "600",
     },
-})
+});

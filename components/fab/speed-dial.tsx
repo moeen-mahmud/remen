@@ -1,17 +1,17 @@
-import * as Haptics from "expo-haptics"
-import { XIcon, Zap } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { type FC, useState } from "react"
-import { Pressable, StyleSheet, View } from "react-native"
-import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import * as Haptics from "expo-haptics";
+import { XIcon, Zap } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { type FC, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { FabItem } from "@/components/fab/fab-item"
-import { springConfigs } from "@/lib/animation-config"
-import { router } from "expo-router"
-import type { SpeedDialProps } from "./types"
+import { FabItem } from "@/components/fab/fab-item";
+import { springConfigs } from "@/lib/animation-config";
+import { router } from "expo-router";
+import type { SpeedDialProps } from "./types";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export const SpeedDial: FC<SpeedDialProps> = ({
     actions = [],
@@ -21,40 +21,40 @@ export const SpeedDial: FC<SpeedDialProps> = ({
     offsetBottom = 24,
     offsetHorizontal = 24,
 }) => {
-    const { bottom } = useSafeAreaInsets()
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { bottom } = useSafeAreaInsets();
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
-    const [isOpen, setIsOpen] = useState(false)
-    const rotation = useSharedValue(0)
-    const scale = useSharedValue(1)
+    const [isOpen, setIsOpen] = useState(false);
+    const rotation = useSharedValue(0);
+    const scale = useSharedValue(1);
 
     const toggleOpen = async () => {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-        if (!actions?.length) return router.push(actionRoute as any)
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        if (!actions?.length) return router.push(actionRoute as any);
 
         setIsOpen((prev) => {
-            const newState = !prev
-            rotation.value = withSpring(newState ? 90 : 0, { ...springConfigs.stiff })
-            scale.value = withSpring(newState ? 1.1 : 1, { ...springConfigs.gentle })
-            return newState
-        })
-    }
+            const newState = !prev;
+            rotation.value = withSpring(newState ? 90 : 0, { ...springConfigs.stiff });
+            scale.value = withSpring(newState ? 1.1 : 1, { ...springConfigs.gentle });
+            return newState;
+        });
+    };
 
     const closeMenu = () => {
         if (isOpen) {
-            setIsOpen(false)
-            rotation.value = withSpring(0, { ...springConfigs.stiff })
-            scale.value = withSpring(1, { ...springConfigs.gentle })
+            setIsOpen(false);
+            rotation.value = withSpring(0, { ...springConfigs.stiff });
+            scale.value = withSpring(1, { ...springConfigs.gentle });
         }
-    }
+    };
 
     const mainButtonAnimatedStyle = useAnimatedStyle(() => ({
         transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
-    }))
+    }));
 
-    const buttonColor = mainButtonColor || (isDark ? "#39FF14" : "#00B700")
-    const iconColor = isDark ? "#000" : "#fff"
+    const buttonColor = mainButtonColor || (isDark ? "#39FF14" : "#00B700");
+    const iconColor = isDark ? "#000" : "#fff";
 
     // Position styles based on prop
     const positionStyle = {
@@ -62,7 +62,7 @@ export const SpeedDial: FC<SpeedDialProps> = ({
         ...(position === "bottom-right" && { right: offsetHorizontal }),
         ...(position === "bottom-left" && { left: offsetHorizontal }),
         ...(position === "bottom-center" && { left: "50%", transform: [{ translateX: -28 }] }),
-    }
+    };
 
     return (
         <>
@@ -105,8 +105,8 @@ export const SpeedDial: FC<SpeedDialProps> = ({
                 </AnimatedPressable>
             </View>
         </>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     backdrop: {
@@ -135,6 +135,6 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 8,
     },
-})
+});
 
-export default SpeedDial
+export default SpeedDial;

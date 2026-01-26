@@ -8,11 +8,11 @@ import {
     QuoteIcon,
     StrikethroughIcon,
     UnderlineIcon,
-} from "lucide-react-native"
-import type { FC } from "react"
-import { FlatList, type ListRenderItemInfo } from "react-native"
-import type { EnrichedTextInputInstance, OnChangeStateEvent } from "react-native-enriched"
-import { ToolbarButton } from "./toolbar-button"
+} from "lucide-react-native";
+import type { FC } from "react";
+import { FlatList, type ListRenderItemInfo } from "react-native";
+import type { EnrichedTextInputInstance, OnChangeStateEvent } from "react-native-enriched";
+import { ToolbarButton } from "./toolbar-button";
 
 const STYLE_ITEMS = [
     {
@@ -79,38 +79,38 @@ const STYLE_ITEMS = [
     //     name: "code-block",
     //     icon: CodeSquareIcon,
     // }
-] as const
+] as const;
 
-type Item = (typeof STYLE_ITEMS)[number]
-type StylesState = OnChangeStateEvent
+type Item = (typeof STYLE_ITEMS)[number];
+type StylesState = OnChangeStateEvent;
 
 export interface ToolbarProps {
-    stylesState: StylesState
-    editorRef?: React.RefObject<EnrichedTextInputInstance | null>
-    onOpenLinkModal: () => void
+    stylesState: StylesState;
+    editorRef?: React.RefObject<EnrichedTextInputInstance | null>;
+    onOpenLinkModal: () => void;
 }
 
 export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkModal }) => {
     const handlePress = (item: Item) => {
-        const currentRef = editorRef?.current
-        if (!currentRef) return
+        const currentRef = editorRef?.current;
+        if (!currentRef) return;
 
         switch (item.name) {
             case "bold":
-                editorRef.current?.toggleBold()
-                break
+                editorRef.current?.toggleBold();
+                break;
             case "italic":
-                editorRef.current?.toggleItalic()
-                break
+                editorRef.current?.toggleItalic();
+                break;
             case "underline":
-                editorRef.current?.toggleUnderline()
-                break
+                editorRef.current?.toggleUnderline();
+                break;
             case "strikethrough":
-                editorRef.current?.toggleStrikeThrough()
-                break
+                editorRef.current?.toggleStrikeThrough();
+                break;
             case "inline-code":
-                editorRef?.current?.toggleInlineCode()
-                break
+                editorRef?.current?.toggleInlineCode();
+                break;
             // case "heading-1":
             //     editorRef.current?.toggleH1()
             //     break
@@ -133,32 +133,32 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
             //     editorRef?.current?.toggleCodeBlock()
             //     break
             case "quote":
-                editorRef?.current?.toggleBlockQuote()
-                break
+                editorRef?.current?.toggleBlockQuote();
+                break;
             case "unordered-list":
-                editorRef.current?.toggleUnorderedList()
-                break
+                editorRef.current?.toggleUnorderedList();
+                break;
             case "ordered-list":
-                editorRef.current?.toggleOrderedList()
-                break
+                editorRef.current?.toggleOrderedList();
+                break;
             case "link":
-                onOpenLinkModal()
-                break
+                onOpenLinkModal();
+                break;
         }
-    }
+    };
 
     const isDisabled = (item: Item) => {
         switch (item.name) {
             case "bold":
-                return stylesState.bold.isBlocking
+                return stylesState.bold.isBlocking;
             case "italic":
-                return stylesState.italic.isBlocking
+                return stylesState.italic.isBlocking;
             case "underline":
-                return stylesState.underline.isBlocking
+                return stylesState.underline.isBlocking;
             case "strikethrough":
-                return stylesState.strikeThrough.isBlocking
+                return stylesState.strikeThrough.isBlocking;
             case "inline-code":
-                return stylesState.inlineCode.isBlocking
+                return stylesState.inlineCode.isBlocking;
             // case "heading-1":
             //     return stylesState.h1.isBlocking
             // case "heading-2":
@@ -174,30 +174,30 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
             // case "code-block":
             //     return stylesState.codeBlock.isBlocking
             case "quote":
-                return stylesState.blockQuote.isBlocking
+                return stylesState.blockQuote.isBlocking;
             case "unordered-list":
-                return stylesState.unorderedList.isBlocking
+                return stylesState.unorderedList.isBlocking;
             case "ordered-list":
-                return stylesState.orderedList.isBlocking
+                return stylesState.orderedList.isBlocking;
             case "link":
-                return stylesState.link.isBlocking
+                return stylesState.link.isBlocking;
             default:
-                return false
+                return false;
         }
-    }
+    };
 
     const isActive = (item: Item) => {
         switch (item.name) {
             case "bold":
-                return stylesState.bold.isActive
+                return stylesState.bold.isActive;
             case "italic":
-                return stylesState.italic.isActive
+                return stylesState.italic.isActive;
             case "underline":
-                return stylesState.underline.isActive
+                return stylesState.underline.isActive;
             case "strikethrough":
-                return stylesState.strikeThrough.isActive
+                return stylesState.strikeThrough.isActive;
             case "inline-code":
-                return stylesState.inlineCode.isActive
+                return stylesState.inlineCode.isActive;
             // case "heading-1":
             //     return stylesState.h1.isActive
             // case "heading-2":
@@ -213,17 +213,17 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
             // case "code-block":
             //     return stylesState.codeBlock.isActive
             case "quote":
-                return stylesState.blockQuote.isActive
+                return stylesState.blockQuote.isActive;
             case "unordered-list":
-                return stylesState.unorderedList.isActive
+                return stylesState.unorderedList.isActive;
             case "ordered-list":
-                return stylesState.orderedList.isActive
+                return stylesState.orderedList.isActive;
             case "link":
-                return stylesState.link.isActive
+                return stylesState.link.isActive;
             default:
-                return false
+                return false;
         }
-    }
+    };
     const renderItem = ({ item }: ListRenderItemInfo<Item>) => {
         return (
             <ToolbarButton
@@ -233,10 +233,10 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
                 isDisabled={isDisabled(item)}
                 onPress={() => handlePress(item)}
             />
-        )
-    }
+        );
+    };
 
-    const keyExtractor = (item: Item) => item.name
+    const keyExtractor = (item: Item) => item.name;
 
     return (
         <FlatList
@@ -258,5 +258,5 @@ export const Toolbar: FC<ToolbarProps> = ({ stylesState, editorRef, onOpenLinkMo
             keyExtractor={keyExtractor}
             className="w-full"
         />
-    )
-}
+    );
+};

@@ -1,15 +1,15 @@
-import { AppInitializer } from "@/components/app-initializer"
-import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider"
-import { AIProvider } from "@/lib/ai"
-import { Stack } from "expo-router"
-import * as SplashScreen from "expo-splash-screen"
-import { StatusBar } from "expo-status-bar"
-import { GestureHandlerRootView } from "react-native-gesture-handler"
-import "react-native-get-random-values"
-import { KeyboardProvider } from "react-native-keyboard-controller"
-import "../global.css"
+import { AppInitializer } from "@/components/app-initializer";
+import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
+import { AIProvider } from "@/lib/ai";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "react-native-get-random-values";
+import { KeyboardProvider } from "react-native-keyboard-controller";
+import "../global.css";
 
-SplashScreen.preventAutoHideAsync()
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
     return (
@@ -25,5 +25,5 @@ export default function RootLayout() {
                 </KeyboardProvider>
             </GestureHandlerRootView>
         </AIProvider>
-    )
+    );
 }

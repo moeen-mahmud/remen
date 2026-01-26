@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native"
+import { StyleSheet } from "react-native";
 
 export const settingsStyle = StyleSheet.create({
     row: {
@@ -86,4 +86,4 @@ export const settingsStyle = StyleSheet.create({
         fontSize: 14,
         opacity: 0.9,
     },
-})
+});

@@ -1,21 +1,21 @@
-import { Box } from "@/components/ui/box"
-import { Text } from "@/components/ui/text"
-import { useColorScheme } from "nativewind"
+import { Box } from "@/components/ui/box";
+import { Text } from "@/components/ui/text";
+import { useColorScheme } from "nativewind";
 
 type NotesSearchHelperProps = {
-    interpretedQuery: string | null
-    temporalFilterDescription: string | null
-    searchQuery: string | null
-    isDark: boolean
-}
+    interpretedQuery: string | null;
+    temporalFilterDescription: string | null;
+    searchQuery: string | null;
+    isDark: boolean;
+};
 
 export const NotesSearchHelper: React.FC<NotesSearchHelperProps> = ({
     interpretedQuery,
     temporalFilterDescription,
     searchQuery,
 }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
     return (
         <Box className="mx-4 my-2">
             {interpretedQuery ? (
@@ -44,5 +44,5 @@ export const NotesSearchHelper: React.FC<NotesSearchHelperProps> = ({
                 </Box>
             ) : null}
         </Box>
-    )
-}
+    );
+};

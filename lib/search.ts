@@ -9,6 +9,7 @@ import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings"
 import type { EmbeddingsModel, LLMModel } from "@/lib/ai/provider"
 import { interpretQuery, shouldUseLLM, type AskNotesResult } from "@/lib/ask-notes"
 import { getAllNotes, searchNotes as keywordSearch, updateNote, type Note } from "@/lib/database"
+import { processSearchQuery } from "@/lib/search/query-nlp"
 import { parseTemporalQuery, type TemporalFilter } from "@/lib/search/temporal-parser"
 
 export interface SearchResult extends Note {
@@ -25,6 +26,8 @@ export interface EnhancedSearchResult {
 /** Filler phrases that indicate a purely time-based query when combined with a temporal filter */
 const TEMPORAL_ONLY_PATTERNS = [
     /^what\s+(i\s+)?(wrote|was\s+thinking|thought|noted)\s*[?.]?\s*$/i,
+    /^what\s+did\s+i\s+(write|note)\s*[?.]?\s*$/i,
+    /^what\s+did\s+i\s+(write|note)\s+down\s*[?.]?\s*$/i,
     /^notes?\s+(from|i\s+wrote)\s*[?.]?\s*$/i,
     /^(from|my\s+notes?)\s*[?.]?\s*$/i,
 ]
@@ -66,6 +69,7 @@ export async function searchNotesEnhanced(
 
     // Use the cleaned query (with temporal terms removed) or original
     const searchQuery = (temporalFilter?.query || query).trim()
+    const processed = processSearchQuery(searchQuery)
 
     // If we have a temporal filter and the remaining text is empty or temporal-only
     // filler ("what i wrote", "what I was thinking", etc.), treat as time-only: filter
@@ -73,24 +77,47 @@ export async function searchNotesEnhanced(
     if (temporalFilter && isTemporalOnlyRemainder(searchQuery)) {
         console.log(`🔍 [Search] Temporal-only query, filtering notes by time: ${temporalFilter.description}`)
         const allNotes = await getAllNotes()
-        const filteredNotes = allNotes.filter(
-            (note) => note.created_at >= temporalFilter.startTime && note.created_at <= temporalFilter.endTime,
-        )
+        const inRange = (t: number) => t >= temporalFilter.startTime && t <= temporalFilter.endTime
+        const filteredNotes = allNotes.filter((note) => inRange(note.created_at) || inRange(note.updated_at))
+
+        // Rank temporal-only queries:
+        // 1) Notes CREATED in the time window
+        // 2) Notes EDITED in the time window (but created earlier)
+        // Then by recency within that window.
+        const windowMs = Math.max(temporalFilter.endTime - temporalFilter.startTime, 1)
+        const scored = filteredNotes
+            .map((note) => {
+                const createdMatch = inRange(note.created_at)
+                const time = createdMatch ? note.created_at : note.updated_at
+                const recency01 = Math.min(Math.max((time - temporalFilter.startTime) / windowMs, 0), 1)
+                return { note, createdMatch, time, recency01 }
+            })
+            .sort((a, b) => {
+                if (a.createdMatch !== b.createdMatch) return a.createdMatch ? -1 : 1
+                return b.time - a.time
+            })
 
         return {
-            results: filteredNotes.map((note) => ({
+            results: scored.map(({ note, createdMatch, recency01 }) => ({
                 ...note,
-                relevanceScore: 1,
+                // Keep relevance meaningful for debugging/UX:
+                // - createdMatch gets a higher base
+                // - within-window recency breaks ties
+                relevanceScore: (createdMatch ? 2 : 1) + recency01,
                 matchType: "keyword" as const,
             })),
             temporalFilter,
         }
     }
 
-    // Run both search methods in parallel
+    // Run both search methods in parallel.
+    // For natural-language queries, prefer the extracted keywords for searching.
+    const keywordQuery = processed.keywordQuery || processed.normalized || searchQuery
+    const semanticQuery = processed.keywordQuery || processed.normalized || searchQuery
+
     const [semanticResults, keywordResults] = await Promise.all([
-        semanticSearch(searchQuery, embeddingsModel),
-        keywordSearchWithScoring(searchQuery),
+        semanticSearch(semanticQuery, embeddingsModel),
+        keywordSearchWithScoring(keywordQuery),
     ])
 
     // Merge and deduplicate results
@@ -123,6 +150,7 @@ async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | 
 
         // Calculate similarity for each note
         const results: SearchResult[] = []
+        const scoredNotes: { note: Note; similarity: number }[] = []
         const allScores: { title: string; similarity: number; noteDim: number }[] = []
 
         for (const note of allNotes) {
@@ -154,6 +182,7 @@ async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | 
 
             // Calculate similarity
             const similarity = cosineSimilarity(queryEmbedding, noteEmbedding)
+            scoredNotes.push({ note, similarity })
 
             // Track all scores for debugging
             allScores.push({
@@ -178,6 +207,29 @@ async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | 
         console.log(
             `🧠 [Semantic Search] Found ${results.length} semantic matches (threshold: ${embeddingsModel?.isReady ? 0.25 : 0.2})`,
         )
+
+        // Fallback: if nothing cleared the threshold, still return the best matches
+        // so the UI can show "closest" notes instead of empty results.
+        if (results.length === 0 && scoredNotes.length > 0) {
+            const sorted = scoredNotes
+                .filter((s) => Number.isFinite(s.similarity))
+                .sort((a, b) => b.similarity - a.similarity)
+
+            const best = sorted[0]?.similarity ?? 0
+            const min = embeddingsModel?.isReady ? 0.1 : 0.08
+
+            if (best >= min) {
+                const top = sorted.slice(0, 5)
+                console.log(
+                    `🧠 [Semantic Search] No strong matches, returning top ${top.length} low-confidence results (best: ${Math.round(best * 100) / 100})`,
+                )
+                return top.map(({ note, similarity }) => ({
+                    ...note,
+                    relevanceScore: similarity,
+                    matchType: "semantic",
+                }))
+            }
+        }
 
         // Sort by relevance
         return results.sort((a, b) => b.relevanceScore - a.relevanceScore)
@@ -302,10 +354,15 @@ export async function askNotesSearch(
             combinedQuery += " " + uniqueTopics.join(" ")
         }
 
-        console.log(`🤖 [Ask Notes Search] Combined search query: "${combinedQuery}"`)
+        // If the LLM detected a temporal hint, include it in the query we pass to the temporal parser.
+        const queryForSearch = interpretation.temporalHint
+            ? `notes from ${interpretation.temporalHint} ${combinedQuery}`.trim()
+            : combinedQuery.trim()
+
+        console.log(`🤖 [Ask Notes Search] Combined search query: "${queryForSearch}"`)
 
         // Perform the actual search with the interpreted query
-        const searchResult = await searchNotesEnhanced(combinedQuery, embeddingsModel)
+        const searchResult = await searchNotesEnhanced(queryForSearch, embeddingsModel)
 
         // If we have a temporal hint from LLM, try to parse it
         let temporalFilter = searchResult.temporalFilter

@@ -1,29 +1,29 @@
-import { NotesTitle } from "@/components/notes/notes-title"
-import { Box } from "@/components/ui/box"
-import { Button, ButtonIcon, ButtonText } from "@/components/ui/button"
-import { Divider } from "@/components/ui/divider"
-import { Heading } from "@/components/ui/heading"
-import { Icon } from "@/components/ui/icon"
-import { PageLoader } from "@/components/ui/page-loader"
-import { Spinner } from "@/components/ui/spinner"
-import { Text } from "@/components/ui/text"
-import { getNoteTypeBadge } from "@/lib/ai/classify"
-import { useAI } from "@/lib/ai/provider"
-import { aiQueue } from "@/lib/ai/queue"
-import { getNoteById, getTagsForNote, updateNote, type Note, type Tag } from "@/lib/database"
-import { findRelatedNotes, type SearchResult } from "@/lib/search"
-import * as Haptics from "expo-haptics"
-import { Image } from "expo-image"
-import { useFocusEffect, useRouter } from "expo-router"
-import { MicIcon, ScanIcon, Sparkles, XCircle } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { NotesTitle } from "@/components/notes/notes-title";
+import { Box } from "@/components/ui/box";
+import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
+import { Divider } from "@/components/ui/divider";
+import { Heading } from "@/components/ui/heading";
+import { Icon } from "@/components/ui/icon";
+import { PageLoader } from "@/components/ui/page-loader";
+import { Spinner } from "@/components/ui/spinner";
+import { Text } from "@/components/ui/text";
+import { getNoteTypeBadge } from "@/lib/ai/classify";
+import { useAI } from "@/lib/ai/provider";
+import { aiQueue } from "@/lib/ai/queue";
+import { getNoteById, getTagsForNote, updateNote, type Note, type Tag } from "@/lib/database";
+import { findRelatedNotes, type SearchResult } from "@/lib/search";
+import * as Haptics from "expo-haptics";
+import { Image } from "expo-image";
+import { useFocusEffect, useRouter } from "expo-router";
+import { MicIcon, ScanIcon, Sparkles, XCircle } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // Format full date
 function formatFullDate(timestamp: number): string {
-    const date = new Date(timestamp)
+    const date = new Date(timestamp);
     return date.toLocaleDateString("en-US", {
         weekday: "long",
         year: "numeric",
@@ -31,155 +31,155 @@ function formatFullDate(timestamp: number): string {
         day: "numeric",
         hour: "numeric",
         minute: "2-digit",
-    })
+    });
 }
 
 // Get icon for special note types
 function getNoteTypeIcon(type: Note["type"], color: string, size: number = 14) {
     switch (type) {
         case "voice":
-            return <MicIcon size={size} color={color} />
+            return <MicIcon size={size} color={color} />;
         case "scan":
-            return <ScanIcon size={size} color={color} />
+            return <ScanIcon size={size} color={color} />;
         default:
-            return null
+            return null;
     }
 }
 
 export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
-    const { colorScheme } = useColorScheme()
-    const router = useRouter()
-    const isDark = colorScheme === "dark"
-    const { bottom } = useSafeAreaInsets()
+    const { colorScheme } = useColorScheme();
+    const router = useRouter();
+    const isDark = colorScheme === "dark";
+    const { bottom } = useSafeAreaInsets();
 
     // Get AI embeddings model - use ref to avoid dependency issues
-    const { embeddings } = useAI()
-    const embeddingsRef = useRef(embeddings)
-    embeddingsRef.current = embeddings
+    const { embeddings } = useAI();
+    const embeddingsRef = useRef(embeddings);
+    embeddingsRef.current = embeddings;
 
-    const [note, setNote] = useState<Note | null>(null)
-    const [tags, setTags] = useState<Tag[]>([])
-    const [relatedNotes, setRelatedNotes] = useState<SearchResult[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [isProcessingThisNote, setIsProcessingThisNote] = useState(false)
-    const [isEditingTitle, setIsEditingTitle] = useState(false)
-    const [editingTitle, setEditingTitle] = useState("")
+    const [note, setNote] = useState<Note | null>(null);
+    const [tags, setTags] = useState<Tag[]>([]);
+    const [relatedNotes, setRelatedNotes] = useState<SearchResult[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isProcessingThisNote, setIsProcessingThisNote] = useState(false);
+    const [isEditingTitle, setIsEditingTitle] = useState(false);
+    const [editingTitle, setEditingTitle] = useState("");
 
     // Load note - don't depend on embeddings to avoid infinite loops
     const loadNote = useCallback(async () => {
-        if (!id) return
+        if (!id) return;
 
-        setIsLoading(true)
+        setIsLoading(true);
         try {
-            const fetchedNote = await getNoteById(id)
+            const fetchedNote = await getNoteById(id);
             if (fetchedNote) {
-                setNote(fetchedNote)
+                setNote(fetchedNote);
 
-                const fetchedTags = await getTagsForNote(id)
-                setTags(fetchedTags)
+                const fetchedTags = await getTagsForNote(id);
+                setTags(fetchedTags);
 
                 // Load related notes in background (using embeddings ref)
-                findRelatedNotes(id, embeddingsRef.current, 3).then(setRelatedNotes).catch(console.error)
+                findRelatedNotes(id, embeddingsRef.current, 3).then(setRelatedNotes).catch(console.error);
             }
         } catch (error) {
-            console.error("Failed to load note:", error)
+            console.error("Failed to load note:", error);
         } finally {
-            setIsLoading(false)
+            setIsLoading(false);
         }
-    }, [id]) // Only depend on id, not embeddings
+    }, [id]); // Only depend on id, not embeddings
 
     // Reload note when screen comes into focus (after editing)
     useFocusEffect(
         useCallback(() => {
-            loadNote()
+            loadNote();
         }, [loadNote]),
-    )
+    );
 
     // Track AI processing status for this specific note
     useEffect(() => {
         const updateProcessingStatus = () => {
-            if (!id) return
-            const queueStatus = aiQueue.getStatus()
-            setIsProcessingThisNote(queueStatus.currentJobId === id)
-        }
+            if (!id) return;
+            const queueStatus = aiQueue.getStatus();
+            setIsProcessingThisNote(queueStatus.currentJobId === id);
+        };
 
         const handleProcessingComplete = (processedNoteId: string) => {
             if (processedNoteId === id) {
-                console.log(`📋 [NoteDetail] AI processing completed for current note: ${processedNoteId}`)
+                console.log(`📋 [NoteDetail] AI processing completed for current note: ${processedNoteId}`);
                 // Refresh note data to show updated tags/categories
-                loadNote()
+                loadNote();
                 // Update processing status
-                updateProcessingStatus()
+                updateProcessingStatus();
             }
-        }
+        };
 
         // Register callback for processing completion
-        aiQueue.onProcessingComplete(handleProcessingComplete)
+        aiQueue.onProcessingComplete(handleProcessingComplete);
 
         // Update immediately
-        updateProcessingStatus()
+        updateProcessingStatus();
 
         // Check periodically for processing status changes
-        const interval = setInterval(updateProcessingStatus, 1000)
+        const interval = setInterval(updateProcessingStatus, 1000);
 
         return () => {
-            clearInterval(interval)
-            aiQueue.removeProcessingCompleteCallback(handleProcessingComplete)
-        }
-    }, [id, loadNote])
+            clearInterval(interval);
+            aiQueue.removeProcessingCompleteCallback(handleProcessingComplete);
+        };
+    }, [id, loadNote]);
 
     // Handle related note press
     const handleRelatedNotePress = useCallback(
         (relatedNote: Note) => {
-            router.push(`/notes/${relatedNote.id}` as any)
+            router.push(`/notes/${relatedNote.id}` as any);
         },
         [router],
-    )
+    );
 
     // Handle back
     const handleBack = useCallback(() => {
-        router.back()
-    }, [router])
+        router.back();
+    }, [router]);
 
     // Handle edit - navigate to edit screen
     const handleEdit = useCallback(() => {
-        if (!id) return
-        router.push(`/edit/${id}` as any)
-    }, [id, router])
+        if (!id) return;
+        router.push(`/edit/${id}` as any);
+    }, [id, router]);
 
     // Handle title editing
     const handleTitlePress = useCallback(() => {
         if (isProcessingThisNote) {
             Alert.alert("Processing", "AI is still processing this note. Please wait for it to complete.", [
                 { text: "OK", onPress: () => {} },
-            ])
+            ]);
         }
-        setEditingTitle(note?.title || "")
-        setIsEditingTitle(true)
-    }, [note?.title, isProcessingThisNote])
+        setEditingTitle(note?.title || "");
+        setIsEditingTitle(true);
+    }, [note?.title, isProcessingThisNote]);
 
     const handleTitleSave = useCallback(async () => {
-        if (!note || !editingTitle.trim() || isProcessingThisNote) return
+        if (!note || !editingTitle.trim() || isProcessingThisNote) return;
 
         try {
-            const trimmedTitle = editingTitle.trim()
-            await updateNote(note.id, { title: trimmedTitle })
-            setNote({ ...note, title: trimmedTitle })
-            setIsEditingTitle(false)
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            const trimmedTitle = editingTitle.trim();
+            await updateNote(note.id, { title: trimmedTitle });
+            setNote({ ...note, title: trimmedTitle });
+            setIsEditingTitle(false);
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         } catch (error) {
-            console.error("Failed to update note title:", error)
-            Alert.alert("Error", "Failed to update title")
+            console.error("Failed to update note title:", error);
+            Alert.alert("Error", "Failed to update title");
         }
-    }, [note, editingTitle, isProcessingThisNote])
+    }, [note, editingTitle, isProcessingThisNote]);
 
     const handleTitleCancel = useCallback(() => {
-        setIsEditingTitle(false)
-        setEditingTitle(note?.title || "")
-    }, [note?.title])
+        setIsEditingTitle(false);
+        setEditingTitle(note?.title || "");
+    }, [note?.title]);
 
     const handleReorganizeWithAI = useCallback(() => {
-        if (!note || isProcessingThisNote) return
+        if (!note || isProcessingThisNote) return;
 
         Alert.alert(
             "Re-organize with AI",
@@ -191,22 +191,22 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                     style: "default",
                     onPress: async () => {
                         try {
-                            await updateNote(note.id, { is_processed: false, ai_status: "queued", ai_error: null })
-                            aiQueue.add({ noteId: note.id, content: note.content })
-                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                            loadNote()
+                            await updateNote(note.id, { is_processed: false, ai_status: "queued", ai_error: null });
+                            aiQueue.add({ noteId: note.id, content: note.content });
+                            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            loadNote();
                         } catch (error) {
-                            console.error("Failed to queue AI reorganize:", error)
-                            Alert.alert("Error", "Failed to start AI re-organization")
+                            console.error("Failed to queue AI reorganize:", error);
+                            Alert.alert("Error", "Failed to start AI re-organization");
                         }
                     },
                 },
             ],
-        )
-    }, [note, isProcessingThisNote, loadNote])
+        );
+    }, [note, isProcessingThisNote, loadNote]);
 
     if (isLoading) {
-        return <PageLoader />
+        return <PageLoader />;
     }
 
     if (!note) {
@@ -217,11 +217,11 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                     <Text style={{ color: "#3B82F6" }}>Go back</Text>
                 </Pressable>
             </View>
-        )
+        );
     }
 
-    const typeBadge = getNoteTypeBadge(note.type)
-    const typeIcon = getNoteTypeIcon(note.type, typeBadge.color)
+    const typeBadge = getNoteTypeBadge(note.type);
+    const typeIcon = getNoteTypeIcon(note.type, typeBadge.color);
 
     return (
         <Box className="flex-1">
@@ -386,8 +386,8 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                 )}
             </ScrollView>
         </Box>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -561,4 +561,4 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         opacity: 0.7,
     },
-})
+});

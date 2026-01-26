@@ -1,7 +1,7 @@
-import { Text } from "@/components/ui/text"
-import { useColorScheme } from "nativewind"
-import { type FC, useEffect } from "react"
-import { StyleSheet, View } from "react-native"
+import { Text } from "@/components/ui/text";
+import { useColorScheme } from "nativewind";
+import { type FC, useEffect } from "react";
+import { StyleSheet, View } from "react-native";
 import Animated, {
     Easing,
     useAnimatedStyle,
@@ -10,37 +10,37 @@ import Animated, {
     withSequence,
     withSpring,
     withTiming,
-} from "react-native-reanimated"
+} from "react-native-reanimated";
 
 interface RemenLogoProps {
-    size?: "sm" | "md" | "lg"
-    showIcon?: boolean
-    animated?: boolean
+    size?: "sm" | "md" | "lg";
+    showIcon?: boolean;
+    animated?: boolean;
 }
 
 const SIZES = {
     sm: { fontSize: 18, iconSize: 20, gap: 6 },
     md: { fontSize: 20, iconSize: 24, gap: 8 },
     lg: { fontSize: 32, iconSize: 36, gap: 10 },
-}
+};
 
 export const RemenLogo: FC<RemenLogoProps> = ({
     size = "md",
     showIcon = true,
     animated = true, // Default to true so you can see it animate
 }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
-    const sizeConfig = SIZES[size]
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
+    const sizeConfig = SIZES[size];
 
     // Animation values
-    const scale = useSharedValue(1)
-    const opacity1 = useSharedValue(0.4)
-    const opacity2 = useSharedValue(0.4)
-    const opacity3 = useSharedValue(0.4)
+    const scale = useSharedValue(1);
+    const opacity1 = useSharedValue(0.4);
+    const opacity2 = useSharedValue(0.4);
+    const opacity3 = useSharedValue(0.4);
 
     // Primary brand color
-    const primaryColor = isDark ? "#39FF14" : "#00B700"
+    const primaryColor = isDark ? "#39FF14" : "#00B700";
 
     useEffect(() => {
         if (animated) {
@@ -52,14 +52,14 @@ export const RemenLogo: FC<RemenLogoProps> = ({
                 ),
                 -1,
                 false,
-            )
+            );
 
             // Sequential pulse for the three dots (like synapses firing)
             opacity1.value = withRepeat(
                 withSequence(withTiming(1, { duration: 400 }), withTiming(0.4, { duration: 800 })),
                 -1,
                 false,
-            )
+            );
 
             opacity2.value = withRepeat(
                 withSequence(
@@ -69,7 +69,7 @@ export const RemenLogo: FC<RemenLogoProps> = ({
                 ),
                 -1,
                 false,
-            )
+            );
 
             opacity3.value = withRepeat(
                 withSequence(
@@ -79,27 +79,27 @@ export const RemenLogo: FC<RemenLogoProps> = ({
                 ),
                 -1,
                 false,
-            )
+            );
         }
-    }, [animated])
+    }, [animated]);
 
     const containerAnimatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
-    }))
+    }));
 
     const dot1Style = useAnimatedStyle(() => ({
         opacity: opacity1.value,
-    }))
+    }));
 
     const dot2Style = useAnimatedStyle(() => ({
         opacity: opacity2.value,
-    }))
+    }));
 
     const dot3Style = useAnimatedStyle(() => ({
         opacity: opacity3.value,
-    }))
+    }));
 
-    const dotSize = sizeConfig.iconSize * 0.25
+    const dotSize = sizeConfig.iconSize * 0.25;
 
     return (
         <View style={styles.container}>
@@ -203,12 +203,12 @@ export const RemenLogo: FC<RemenLogoProps> = ({
                 Remen
             </Text>
         </View>
-    )
-}
+    );
+};
 
 // Compact version for headers
 export const RemenWordmark: FC<{ size?: "sm" | "md" | "lg" }> = ({ size = "md" }) => {
-    const sizeConfig = SIZES[size]
+    const sizeConfig = SIZES[size];
 
     return (
         <Text
@@ -221,8 +221,8 @@ export const RemenWordmark: FC<{ size?: "sm" | "md" | "lg" }> = ({ size = "md" }
         >
             Remen
         </Text>
-    )
-}
+    );
+};
 
 // Animated icon only - simplified version
 export const RemenIcon: FC<{ size?: number; color?: string; animated?: boolean }> = ({
@@ -230,11 +230,11 @@ export const RemenIcon: FC<{ size?: number; color?: string; animated?: boolean }
     color,
     animated = true,
 }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
-    const iconColor = color || (isDark ? "#39FF14" : "#00B700")
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
+    const iconColor = color || (isDark ? "#39FF14" : "#00B700");
 
-    const pulse = useSharedValue(1)
+    const pulse = useSharedValue(1);
 
     useEffect(() => {
         if (animated) {
@@ -245,15 +245,15 @@ export const RemenIcon: FC<{ size?: number; color?: string; animated?: boolean }
                 ),
                 -1,
                 false,
-            )
+            );
         }
-    }, [animated])
+    }, [animated]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: pulse.value }],
-    }))
+    }));
 
-    const dotSize = size * 0.25
+    const dotSize = size * 0.25;
 
     return (
         <Animated.View
@@ -301,8 +301,8 @@ export const RemenIcon: FC<{ size?: number; color?: string; animated?: boolean }
                 }}
             />
         </Animated.View>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -329,4 +329,4 @@ const styles = StyleSheet.create({
         fontWeight: "700",
         letterSpacing: -0.5,
     },
-})
+});

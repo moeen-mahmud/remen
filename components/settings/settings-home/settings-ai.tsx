@@ -1,20 +1,20 @@
-import { settingsStyle as styles } from "@/components/settings/settings-home/settings-style"
-import { Box } from "@/components/ui/box"
-import { Divider } from "@/components/ui/divider"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
-import { EmbeddingsModel, LLMModel, OCRModel } from "@/lib/ai/provider"
-import { CheckCircle, Download, XCircle, Zap } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { useMemo } from "react"
+import { settingsStyle as styles } from "@/components/settings/settings-home/settings-style";
+import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { EmbeddingsModel, LLMModel, OCRModel } from "@/lib/ai/provider";
+import { CheckCircle, Download, XCircle, Zap } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { useMemo } from "react";
 
 type SettingsAIProps = {
-    llm: LLMModel | null
-    embeddings: EmbeddingsModel | null
-    ocr: OCRModel | null
-    overallProgress: number
-    isInitializing: boolean
-}
+    llm: LLMModel | null;
+    embeddings: EmbeddingsModel | null;
+    ocr: OCRModel | null;
+    overallProgress: number;
+    isInitializing: boolean;
+};
 
 export const SettingsAI: React.FC<SettingsAIProps> = ({
     llm,
@@ -23,8 +23,8 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
     overallProgress = 0,
     isInitializing = false,
 }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
     const modelRows = useMemo(() => {
         return [
@@ -46,8 +46,8 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
                 isReady: ocr?.isReady,
                 downloadProgress: ocr?.downloadProgress,
             },
-        ]
-    }, [llm, embeddings, ocr])
+        ];
+    }, [llm, embeddings, ocr]);
 
     return (
         <Box className="px-4 mt-6">
@@ -110,5 +110,5 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
                 </Box>
             )}
         </Box>
-    )
-}
+    );
+};

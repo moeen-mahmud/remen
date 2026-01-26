@@ -1,5 +1,5 @@
-"use client"
-import { vars } from "nativewind"
+"use client";
+import { vars } from "nativewind";
 
 export const config = {
     light: vars({
@@ -308,4 +308,4 @@ export const config = {
         "--color-indicator-info": "0 171 184",
         "--color-indicator-error": "231 0 11",
     }),
-}
+};

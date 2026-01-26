@@ -1,19 +1,19 @@
-import { Box } from "@/components/ui/box"
-import { Icon } from "@/components/ui/icon"
-import { Spinner } from "@/components/ui/spinner"
-import { Text } from "@/components/ui/text"
-import { SearchIcon, XIcon } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { Pressable, TextInput } from "react-native"
+import { Box } from "@/components/ui/box";
+import { Icon } from "@/components/ui/icon";
+import { Spinner } from "@/components/ui/spinner";
+import { Text } from "@/components/ui/text";
+import { SearchIcon, XIcon } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { Pressable, TextInput } from "react-native";
 
 type NotesSearchProps = {
-    searchQuery: string
-    setSearchQuery: (query: string) => void
-    handleSearch: () => void
-    refetchNotes: () => void
-    isSearching: boolean
-    isUsingLLM: boolean
-}
+    searchQuery: string;
+    setSearchQuery: (query: string) => void;
+    handleSearch: () => void;
+    refetchNotes: () => void;
+    isSearching: boolean;
+    isUsingLLM: boolean;
+};
 
 export const NotesSearch: React.FC<NotesSearchProps> = ({
     searchQuery,
@@ -23,13 +23,13 @@ export const NotesSearch: React.FC<NotesSearchProps> = ({
     isSearching,
     isUsingLLM,
 }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
     const handleClearSearch = () => {
-        setSearchQuery("")
-        refetchNotes()
-    }
+        setSearchQuery("");
+        refetchNotes();
+    };
 
     return (
         <Box className="flex-row gap-2 items-center p-4 mx-4 rounded-lg bg-background-0">
@@ -56,5 +56,5 @@ export const NotesSearch: React.FC<NotesSearchProps> = ({
                 </Pressable>
             ) : null}
         </Box>
-    )
-}
+    );
+};

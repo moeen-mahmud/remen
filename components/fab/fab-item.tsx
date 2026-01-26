@@ -1,26 +1,26 @@
-import { FabItemProps } from "@/components/fab/types"
-import * as Haptics from "expo-haptics"
-import type { LucideIcon } from "lucide-react-native"
-import React, { type FC, isValidElement } from "react"
-import { Pressable, StyleSheet, View } from "react-native"
-import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated"
+import { FabItemProps } from "@/components/fab/types";
+import * as Haptics from "expo-haptics";
+import type { LucideIcon } from "lucide-react-native";
+import React, { type FC, isValidElement } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export const FabItem: FC<FabItemProps> = ({ action, index, isOpen, totalItems, onPress, isDark }) => {
     const handlePress = async () => {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-        onPress()
-        action.onPress()
-    }
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+        action.onPress();
+    };
 
     // Calculate stagger delay based on index (reverse order - bottom items animate first)
-    const delay = (totalItems - 1 - index) * 100
+    const delay = (totalItems - 1 - index) * 100;
 
-    if (!isOpen) return null
+    if (!isOpen) return null;
 
-    const IconComponent = action.icon as LucideIcon
-    const isReactElement = isValidElement(action.icon)
+    const IconComponent = action.icon as LucideIcon;
+    const isReactElement = isValidElement(action.icon);
 
     return (
         <AnimatedPressable
@@ -49,8 +49,8 @@ export const FabItem: FC<FabItemProps> = ({ action, index, isOpen, totalItems, o
                 )}
             </View>
         </AnimatedPressable>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     itemContainer: {
@@ -90,4 +90,4 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 4,
     },
-})
+});

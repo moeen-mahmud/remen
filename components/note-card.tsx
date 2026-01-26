@@ -1,69 +1,75 @@
-import { Box } from "@/components/ui/box"
-import { Heading } from "@/components/ui/heading"
-import { Text } from "@/components/ui/text"
-import { getNoteTypeBadge } from "@/lib/ai/classify"
-import { scaleValues, springConfigs, timingConfigs } from "@/lib/animation-config"
+import { Box } from "@/components/ui/box";
+import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
+import { getNoteTypeBadge } from "@/lib/ai/classify";
+import { scaleValues, springConfigs, timingConfigs } from "@/lib/animation-config";
 
-import type { Note, Tag } from "@/lib/database"
-import * as Haptics from "expo-haptics"
-import { CheckCircleIcon, CircleIcon, MicIcon, ScanIcon } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { useEffect, type FC } from "react"
-import { Pressable, StyleSheet, View } from "react-native"
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from "react-native-reanimated"
+import type { Note, Tag } from "@/lib/database";
+import * as Haptics from "expo-haptics";
+import { CheckCircleIcon, CircleIcon, MicIcon, ScanIcon } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { useEffect, type FC } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withRepeat,
+    withSpring,
+    withTiming,
+} from "react-native-reanimated";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable)
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export interface NoteCardProps {
-    note: Note
-    tags?: Tag[]
-    onPress: (note: Note) => void
-    onLongPress?: (note: Note) => void
-    isSelectionMode?: boolean
-    isSelected?: boolean
-    onToggleSelect?: (note: Note) => void
-    isProcessing?: boolean
+    note: Note;
+    tags?: Tag[];
+    onPress: (note: Note) => void;
+    onLongPress?: (note: Note) => void;
+    isSelectionMode?: boolean;
+    isSelected?: boolean;
+    onToggleSelect?: (note: Note) => void;
+    isProcessing?: boolean;
 }
 
 // Format relative time
 function formatRelativeTime(timestamp: number): string {
-    const now = Date.now()
-    const diff = now - timestamp
+    const now = Date.now();
+    const diff = now - timestamp;
 
-    const seconds = Math.floor(diff / 1000)
-    const minutes = Math.floor(seconds / 60)
-    const hours = Math.floor(minutes / 60)
-    const days = Math.floor(hours / 24)
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
 
-    if (seconds < 60) return "Just now"
-    if (minutes < 60) return `${minutes}m ago`
-    if (hours < 24) return `${hours}h ago`
-    if (days < 7) return `${days}d ago`
+    if (seconds < 60) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
 
     // For older notes, show the date
-    const date = new Date(timestamp)
+    const date = new Date(timestamp);
     return date.toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
         year: date.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
-    })
+    });
 }
 
 // Truncate text to a certain length
 function truncateText(text: string, maxLength: number): string {
-    if (text.length <= maxLength) return text
-    return text.substring(0, maxLength).trim() + "..."
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + "...";
 }
 
 // Get icon for special note types
 function getNoteTypeIcon(type: Note["type"], color: string) {
     switch (type) {
         case "voice":
-            return <MicIcon size={12} color={color} />
+            return <MicIcon size={12} color={color} />;
         case "scan":
-            return <ScanIcon size={12} color={color} />
+            return <ScanIcon size={12} color={color} />;
         default:
-            return null
+            return null;
     }
 }
 
@@ -77,27 +83,27 @@ export const NoteCard: FC<NoteCardProps> = ({
     onToggleSelect,
     isProcessing = false,
 }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
-    const typeBadge = getNoteTypeBadge(note.type)
-    const displayTitle = note.title || truncateText(note.content, 50)
-    const preview = note.title ? truncateText(note.content, 100) : truncateText(note.content.substring(50), 100)
-    const typeIcon = getNoteTypeIcon(note.type, typeBadge.color)
+    const typeBadge = getNoteTypeBadge(note.type);
+    const displayTitle = note.title || truncateText(note.content, 50);
+    const preview = note.title ? truncateText(note.content, 100) : truncateText(note.content.substring(50), 100);
+    const typeIcon = getNoteTypeIcon(note.type, typeBadge.color);
 
     // Show first 3 tags max
-    const displayTags = tags.slice(0, 3)
-    const hasMoreTags = tags.length > 3
+    const displayTags = tags.slice(0, 3);
+    const hasMoreTags = tags.length > 3;
 
     // Animation values
-    const scale = useSharedValue(1)
-    const shadowOpacity = useSharedValue(0.1)
-    const borderAnim = useSharedValue(0)
+    const scale = useSharedValue(1);
+    const shadowOpacity = useSharedValue(0.1);
+    const borderAnim = useSharedValue(0);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
         shadowOpacity: shadowOpacity.value,
-    }))
+    }));
 
     const borderStyle = useAnimatedStyle(() => ({
         borderWidth: isProcessing ? 2 : isSelected ? 2 : 0,
@@ -108,48 +114,48 @@ export const NoteCard: FC<NoteCardProps> = ({
               : isDark
                 ? "#333"
                 : "#e5e5e5",
-    }))
+    }));
 
     const handlePressIn = () => {
-        scale.value = withSpring(scaleValues.pressedIn, springConfigs.stiff)
-        shadowOpacity.value = withTiming(0.2, timingConfigs.fast)
-    }
+        scale.value = withSpring(scaleValues.pressedIn, springConfigs.stiff);
+        shadowOpacity.value = withTiming(0.2, timingConfigs.fast);
+    };
 
     const handlePressOut = () => {
-        scale.value = withSpring(scaleValues.pressedOut, springConfigs.gentle)
-        shadowOpacity.value = withTiming(0.1, timingConfigs.fast)
-    }
+        scale.value = withSpring(scaleValues.pressedOut, springConfigs.gentle);
+        shadowOpacity.value = withTiming(0.1, timingConfigs.fast);
+    };
 
     const handlePress = async () => {
         if (isSelectionMode && onToggleSelect) {
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-            onToggleSelect(note)
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onToggleSelect(note);
         } else {
-            onPress(note)
+            onPress(note);
         }
-    }
+    };
 
     const handleLongPress = async () => {
-        scale.value = withSpring(0.95, springConfigs.gentle)
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+        scale.value = withSpring(0.95, springConfigs.gentle);
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setTimeout(() => {
-            scale.value = withSpring(1, springConfigs.gentle)
-        }, 100)
-        onLongPress?.(note)
-    }
+            scale.value = withSpring(1, springConfigs.gentle);
+        }, 100);
+        onLongPress?.(note);
+    };
 
     // Animate border when processing
     useEffect(() => {
         if (isProcessing) {
             borderAnim.value = withTiming(1, { duration: 500 }, () => {
-                borderAnim.value = withRepeat(withTiming(0.3, { duration: 1000 }), -1, true)
-            })
+                borderAnim.value = withRepeat(withTiming(0.3, { duration: 1000 }), -1, true);
+            });
         } else {
-            borderAnim.value = withTiming(0, { duration: 300 })
+            borderAnim.value = withTiming(0, { duration: 300 });
         }
-    }, [isProcessing])
+    }, [isProcessing]);
 
-    const selectedBorderColor = isDark ? "#39FF14" : "#00B700"
+    const selectedBorderColor = isDark ? "#39FF14" : "#00B700";
 
     return (
         <AnimatedPressable
@@ -223,8 +229,8 @@ export const NoteCard: FC<NoteCardProps> = ({
                 ))}
             </Box>
         </AnimatedPressable>
-    )
-}
+    );
+};
 
 const styles = StyleSheet.create({
     container: {
@@ -296,4 +302,4 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         opacity: 0.6,
     },
-})
+});

@@ -1,20 +1,20 @@
-import { settingsStyle as styles } from "@/components/settings/settings-home/settings-style"
-import { Box } from "@/components/ui/box"
-import { Divider } from "@/components/ui/divider"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
+import { settingsStyle as styles } from "@/components/settings/settings-home/settings-style";
+import { Box } from "@/components/ui/box";
+import { Divider } from "@/components/ui/divider";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
 
-import { AlertCircle, Archive, ChevronRightIcon, Recycle } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { Pressable } from "react-native"
+import { AlertCircle, Archive, ChevronRightIcon, Recycle } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { Pressable } from "react-native";
 
 type SettingsDataProps = {
-    handleArchives: () => void
-    archivedCount: number
-    handleTrash: () => void
-    trashedCount: number
-    handleEmptyTrash: () => void
-}
+    handleArchives: () => void;
+    archivedCount: number;
+    handleTrash: () => void;
+    trashedCount: number;
+    handleEmptyTrash: () => void;
+};
 
 export const SettingsData: React.FC<SettingsDataProps> = ({
     handleArchives,
@@ -23,8 +23,8 @@ export const SettingsData: React.FC<SettingsDataProps> = ({
     trashedCount,
     handleEmptyTrash,
 }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
     return (
         <Box className="px-4 mt-6">
             <Text className="mb-2 ml-1 text-sm font-medium text-typography-500">DATA</Text>
@@ -67,5 +67,5 @@ export const SettingsData: React.FC<SettingsDataProps> = ({
                 ) : null}
             </Box>
         </Box>
-    )
-}
+    );
+};

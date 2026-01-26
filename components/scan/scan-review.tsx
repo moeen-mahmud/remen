@@ -1,24 +1,24 @@
-import { scanStyles as styles } from "@/components/scan/scan-styles"
-import { Box } from "@/components/ui/box"
-import { Button, ButtonIcon, ButtonText } from "@/components/ui/button"
-import { Text } from "@/components/ui/text"
-import { Image } from "expo-image"
-import { CheckIcon, RefreshCwIcon } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { TextInput } from "react-native"
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { scanStyles as styles } from "@/components/scan/scan-styles";
+import { Box } from "@/components/ui/box";
+import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
+import { Text } from "@/components/ui/text";
+import { Image } from "expo-image";
+import { CheckIcon, RefreshCwIcon } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { TextInput } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ScanReviewProps = {
-    capturedImagePath: string | null
-    confidence: number
-    extractedText: string
-    setExtractedText: (text: string) => void
-    handleRetake: () => void
-    handleSave: () => void
-    isDisabledRetake: boolean
-    isSaving: boolean
-}
+    capturedImagePath: string | null;
+    confidence: number;
+    extractedText: string;
+    setExtractedText: (text: string) => void;
+    handleRetake: () => void;
+    handleSave: () => void;
+    isDisabledRetake: boolean;
+    isSaving: boolean;
+};
 
 export const ScanReview: React.FC<ScanReviewProps> = ({
     capturedImagePath,
@@ -30,9 +30,9 @@ export const ScanReview: React.FC<ScanReviewProps> = ({
     isDisabledRetake,
     isSaving,
 }) => {
-    const { bottom } = useSafeAreaInsets()
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { bottom } = useSafeAreaInsets();
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
     return (
         <KeyboardAwareScrollView className="flex-1 -mt-6 bg-background-0">
@@ -99,5 +99,5 @@ export const ScanReview: React.FC<ScanReviewProps> = ({
                 </Button>
             </Box>
         </KeyboardAwareScrollView>
-    )
-}
+    );
+};

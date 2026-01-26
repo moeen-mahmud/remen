@@ -1,20 +1,20 @@
-import { Box } from "@/components/ui/box"
-import { Icon } from "@/components/ui/icon"
-import { Text } from "@/components/ui/text"
-import { Note } from "@/lib/database"
-import { SquareCheck, SquareX } from "lucide-react-native"
-import { useColorScheme } from "nativewind"
-import { Pressable, TextInput } from "react-native"
+import { Box } from "@/components/ui/box";
+import { Icon } from "@/components/ui/icon";
+import { Text } from "@/components/ui/text";
+import { Note } from "@/lib/database";
+import { SquareCheck, SquareX } from "lucide-react-native";
+import { useColorScheme } from "nativewind";
+import { Pressable, TextInput } from "react-native";
 
 type NotesTitleProps = {
-    isEditingTitle: boolean
-    editingTitle: string
-    setEditingTitle: (title: string) => void
-    handleTitleSave: () => void
-    handleTitleCancel: () => void
-    handleTitlePress: () => void
-    note: Note
-}
+    isEditingTitle: boolean;
+    editingTitle: string;
+    setEditingTitle: (title: string) => void;
+    handleTitleSave: () => void;
+    handleTitleCancel: () => void;
+    handleTitlePress: () => void;
+    note: Note;
+};
 
 export const NotesTitle: React.FC<NotesTitleProps> = ({
     isEditingTitle,
@@ -25,8 +25,8 @@ export const NotesTitle: React.FC<NotesTitleProps> = ({
     handleTitlePress,
     note,
 }) => {
-    const { colorScheme } = useColorScheme()
-    const isDark = colorScheme === "dark"
+    const { colorScheme } = useColorScheme();
+    const isDark = colorScheme === "dark";
 
     return (
         <Box className="px-4 mb-4">
@@ -62,5 +62,5 @@ export const NotesTitle: React.FC<NotesTitleProps> = ({
                 </Pressable>
             )}
         </Box>
-    )
-}
+    );
+};

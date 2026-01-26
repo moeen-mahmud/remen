@@ -1,9 +1,9 @@
-import { Box } from "@/components/ui/box"
-import { Text } from "@/components/ui/text"
-import { Note } from "@/lib/database"
+import { Box } from "@/components/ui/box";
+import { Text } from "@/components/ui/text";
+import { Note } from "@/lib/database";
 
 interface SettingsNoteCounterProps {
-    notes: Note[]
+    notes: Note[];
 }
 
 export const SettingsNoteCounter: React.FC<SettingsNoteCounterProps> = ({ notes }) => {
@@ -13,5 +13,5 @@ export const SettingsNoteCounter: React.FC<SettingsNoteCounterProps> = ({ notes 
                 {notes.length} {notes.length === 1 ? "note" : "notes"}
             </Text>
         </Box>
-    )
-}
+    );
+};
