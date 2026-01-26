@@ -5,10 +5,10 @@
  */
 
 export interface ProcessedQuery {
-    original: string
-    normalized: string
-    keywordQuery: string
-    keywords: string[]
+    original: string;
+    normalized: string;
+    keywordQuery: string;
+    keywords: string[];
 }
 
 const STOPWORDS = new Set([
@@ -66,7 +66,7 @@ const STOPWORDS = new Set([
     "about",
     "regarding",
     "concerning",
-])
+]);
 
 function normalizeText(q: string): string {
     return (
@@ -77,29 +77,29 @@ function normalizeText(q: string): string {
             .replace(/[^a-z0-9\s']/g, " ")
             .replace(/\s+/g, " ")
             .trim()
-    )
+    );
 }
 
 export function processSearchQuery(query: string): ProcessedQuery {
-    const original = query
-    const normalized = normalizeText(query)
+    const original = query;
+    const normalized = normalizeText(query);
 
-    const tokens = normalized.split(" ").filter(Boolean)
+    const tokens = normalized.split(" ").filter(Boolean);
 
     // Preserve quoted phrases as-is (best-effort)
-    const quoted: string[] = []
-    const quoteMatches = original.match(/"([^"]{1,80})"/g) || []
+    const quoted: string[] = [];
+    const quoteMatches = original.match(/"([^"]{1,80})"/g) || [];
     for (const m of quoteMatches) {
-        const inner = m.slice(1, -1).trim()
-        if (inner) quoted.push(inner)
+        const inner = m.slice(1, -1).trim();
+        if (inner) quoted.push(inner);
     }
 
     const keywords = tokens
         .filter((t) => t.length >= 2 && !STOPWORDS.has(t))
         // de-dupe while keeping order
-        .filter((t, idx, arr) => arr.indexOf(t) === idx)
+        .filter((t, idx, arr) => arr.indexOf(t) === idx);
 
-    const keywordQuery = [...quoted, ...keywords].join(" ").trim()
+    const keywordQuery = [...quoted, ...keywords].join(" ").trim();
 
-    return { original, normalized, keywordQuery, keywords }
+    return { original, normalized, keywordQuery, keywords };
 }

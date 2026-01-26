@@ -138,7 +138,7 @@ export function ModelDownloadOverlay({
                 styles.container,
                 {
                     backgroundColor: isDark ? "#000" : "#fff",
-                    paddingTop: top + 40,
+                    paddingTop: top,
                     paddingBottom: bottom + 40,
                     opacity: fadeAnim,
                 },
@@ -290,9 +290,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    logoContainer: {
-        marginTop: 60,
-    },
+    logoContainer: {},
     messageContainer: {
         alignItems: "center",
     },

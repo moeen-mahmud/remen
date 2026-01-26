@@ -299,21 +299,26 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                                 </>
                             ) : note.ai_status === "cancelled" ? (
                                 <>
-                                    <Icon as={XCircle} className="mr-2" color={isDark ? "#666" : "#999"} />
+                                    <Icon size="sm" as={XCircle} className="mr-2" color={isDark ? "#666" : "#999"} />
                                     <Text className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">
                                         AI cancelled
                                     </Text>
                                 </>
                             ) : note.ai_status === "failed" ? (
-                                <>
-                                    <Icon as={XCircle} className="mr-2" color={isDark ? "#E7000B" : "#F9423C"} />
+                                <Pressable
+                                    hitSlop={20}
+                                    className="flex-row gap-2 items-center"
+                                    onPress={handleReorganizeWithAI}
+                                    disabled={isProcessingThisNote}
+                                >
+                                    <Icon size="sm" as={XCircle} color={isDark ? "#E7000B" : "#F9423C"} />
                                     <Text
                                         className="text-sm font-semibold"
                                         style={{ color: isDark ? "#E7000B" : "#F9423C" }}
                                     >
-                                        AI organization failed
+                                        AI organization failed. Tap to re-organize.
                                     </Text>
-                                </>
+                                </Pressable>
                             ) : (
                                 <Box className="flex-row flex-grow gap-2 justify-between items-center">
                                     <Box className="flex-row gap-1 items-center">
