@@ -68,6 +68,9 @@ export const SettingsICloud: React.FC<SettingsICloudProps> = ({
     const isEnabled = preferences.iCloudSyncEnabled;
     const lastSync = preferences.lastICloudSync;
 
+    // Icon color based on state (similar to other settings)
+    const iconColor = isEnabled && iCloudAvailable ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#fff" : "#000";
+
     return (
         <Box className="px-4 mt-6">
             <Text className="mb-2 ml-1 text-sm font-medium text-typography-500">iCLOUD BACKUP</Text>
@@ -76,12 +79,9 @@ export const SettingsICloud: React.FC<SettingsICloudProps> = ({
                 {/* iCloud Status Row */}
                 <Box style={styles.row}>
                     <Box style={styles.rowLeft}>
-                        <Icon
-                            as={iCloudAvailable ? Cloud : CloudOff}
-                            color={iCloudAvailable ? (isDark ? "#64D2FF" : "#007AFF") : "#8E8E93"}
-                        />
+                        <Icon as={iCloudAvailable ? Cloud : CloudOff} color={iconColor} />
                         <Box>
-                            <Text>iCloud Backup</Text>
+                            <Text style={{ color: iconColor }}>iCloud Backup</Text>
                             <Text className="text-xs text-typography-500">
                                 {iCloudAvailable
                                     ? "Sync notes across your devices"
@@ -92,10 +92,10 @@ export const SettingsICloud: React.FC<SettingsICloudProps> = ({
                     <Switch
                         value={isEnabled}
                         onValueChange={onToggleSync}
-                        disabled={isSyncing}
+                        disabled={isSyncing || !iCloudAvailable}
                         trackColor={{
                             false: isDark ? "#39393D" : "#E9E9EA",
-                            true: isDark ? "#64D2FF" : "#007AFF",
+                            true: isDark ? "#39FF14" : "#00B700",
                         }}
                         thumbColor="#FFFFFF"
                     />
@@ -107,12 +107,12 @@ export const SettingsICloud: React.FC<SettingsICloudProps> = ({
                         <Divider className="bg-background-50 dark:bg-background-100" />
                         <Pressable style={styles.row} onPress={onSyncNow} disabled={isSyncing}>
                             <Box style={styles.rowLeft}>
-                                <Icon as={RefreshCw} color={isDark ? "#64D2FF" : "#007AFF"} />
-                                <Text style={{ color: isDark ? "#64D2FF" : "#007AFF" }}>Sync Now</Text>
+                                <Icon as={RefreshCw} />
+                                <Text>Sync Now</Text>
                             </Box>
                             <Box style={styles.rowRight}>
                                 {isSyncing ? (
-                                    <ActivityIndicator size="small" color={isDark ? "#64D2FF" : "#007AFF"} />
+                                    <ActivityIndicator size="small" color={isDark ? "#fff" : "#000"} />
                                 ) : (
                                     <Text className="text-xs text-typography-500">{formatLastSync(lastSync)}</Text>
                                 )}
@@ -123,7 +123,7 @@ export const SettingsICloud: React.FC<SettingsICloudProps> = ({
             </Box>
 
             {/* Info text */}
-            {isEnabled && (
+            {isEnabled && iCloudAvailable && (
                 <Text className="mt-2 ml-1 text-xs text-typography-500">
                     Your notes will be backed up to iCloud and synced across all your devices.
                 </Text>

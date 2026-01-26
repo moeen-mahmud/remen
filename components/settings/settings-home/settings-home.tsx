@@ -4,7 +4,6 @@ import { SettingsAppearance } from "@/components/settings/settings-home/settings
 import { SettingsData } from "@/components/settings/settings-home/settings-data";
 import { SettingsICloud } from "@/components/settings/settings-home/settings-icloud";
 import { SettingsPreference } from "@/components/settings/settings-home/settings-preference";
-import { SyncOverlay } from "@/components/settings/settings-home/sync-overlay";
 import { PageLoader } from "@/components/ui/page-loader";
 
 import { useAI } from "@/lib/ai/provider";
@@ -123,14 +122,20 @@ export const SettingsHome: React.FC = () => {
             // If enabling, perform initial sync
             if (enabled) {
                 setIsSyncing(true);
-                const result = await performFullSync();
-                setIsSyncing(false);
+                try {
+                    const result = await performFullSync();
 
-                if (result.success) {
-                    setPreferences((prev) => (prev ? { ...prev, lastICloudSync: result.timestamp ?? null } : null));
-                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                } else {
-                    Alert.alert("Sync Failed", result.error || "Failed to sync with iCloud");
+                    if (result.success) {
+                        setPreferences((prev) => (prev ? { ...prev, lastICloudSync: result.timestamp ?? null } : null));
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    } else {
+                        Alert.alert("Sync Failed", result.error || "Failed to sync with iCloud");
+                    }
+                } catch (error) {
+                    console.error("Sync error:", error);
+                    Alert.alert("Sync Failed", error instanceof Error ? error.message : "An unexpected error occurred");
+                } finally {
+                    setIsSyncing(false);
                 }
             }
         },
@@ -143,18 +148,26 @@ export const SettingsHome: React.FC = () => {
         setIsSyncing(true);
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-        const result = await performFullSync();
-        setIsSyncing(false);
+        try {
+            const result = await performFullSync();
 
-        if (result.success) {
-            setPreferences((prev) => (prev ? { ...prev, lastICloudSync: result.timestamp ?? null } : null));
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Alert.alert(
-                "Sync Complete",
-                `Backed up ${result.notesBackedUp || 0} notes. Restored ${result.notesRestored || 0} notes.`,
-            );
-        } else {
-            Alert.alert("Sync Failed", result.error || "Failed to sync with iCloud");
+            if (result.success) {
+                setPreferences((prev) => (prev ? { ...prev, lastICloudSync: result.timestamp ?? null } : null));
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+                const message = result.notesRestored
+                    ? `Backed up ${result.notesBackedUp || 0} notes. Restored ${result.notesRestored} notes.`
+                    : `Backed up ${result.notesBackedUp || 0} notes.`;
+
+                Alert.alert("Sync Complete", message);
+            } else {
+                Alert.alert("Sync Failed", result.error || "Failed to sync with iCloud");
+            }
+        } catch (error) {
+            console.error("Sync error:", error);
+            Alert.alert("Sync Failed", error instanceof Error ? error.message : "An unexpected error occurred");
+        } finally {
+            setIsSyncing(false);
         }
     }, [preferences, isSyncing]);
 
@@ -206,8 +219,6 @@ export const SettingsHome: React.FC = () => {
 
             {/* About Section */}
             <SettingsAbout />
-
-            <SyncOverlay visible={isSyncing} />
         </ScrollView>
     );
 };
