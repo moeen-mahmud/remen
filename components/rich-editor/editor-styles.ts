@@ -6,7 +6,7 @@ export const editorStyles = StyleSheet.create({
     },
     editorInput: {
         width: "100%",
-        height: containerHeight,
+        minHeight: containerHeight,
         fontSize: 17,
         lineHeight: 28,
         paddingHorizontal: 16,

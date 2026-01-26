@@ -95,22 +95,34 @@ export const NoteCard: FC<NoteCardProps> = ({
     const scale = useSharedValue(1);
     const shadowOpacity = useSharedValue(0.1);
     const borderAnim = useSharedValue(0);
+    const borderWidthAnim = useSharedValue(0);
+    const selectedBorderWidth = useSharedValue(0);
 
     const animatedStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],
         shadowOpacity: shadowOpacity.value,
     }));
 
-    const borderStyle = useAnimatedStyle(() => ({
-        borderWidth: isProcessing ? 2 : isSelected ? 2 : 0,
-        borderColor: isProcessing
-            ? `rgba(${isDark ? "57, 255, 20" : "0, 183, 0"}, ${borderAnim.value})`
-            : isSelected
-              ? selectedBorderColor
-              : isDark
-                ? "#333"
-                : "#e5e5e5",
-    }));
+    const borderStyle = useAnimatedStyle(() => {
+        const processingColor = `rgba(${isDark ? "57, 255, 20" : "0, 183, 0"}, ${borderAnim.value})`;
+        const selectedColor = selectedBorderColor;
+        const defaultColor = isDark ? "#333" : "#e5e5e5";
+
+        // Priority: processing > selected > default
+        const borderColor = isProcessing
+            ? processingColor
+            : selectedBorderWidth.value > 0
+              ? selectedColor
+              : defaultColor;
+
+        // Combine border widths (processing takes priority visually)
+        const totalBorderWidth = borderWidthAnim.value > 0 ? borderWidthAnim.value : selectedBorderWidth.value;
+
+        return {
+            borderWidth: totalBorderWidth,
+            borderColor,
+        };
+    });
 
     const handlePressIn = () => {
         scale.value = withSpring(scaleValues.pressedIn, springConfigs.stiff);
@@ -143,13 +155,28 @@ export const NoteCard: FC<NoteCardProps> = ({
     // Animate border when processing
     useEffect(() => {
         if (isProcessing) {
+            // Animate border width in
+            borderWidthAnim.value = withTiming(2, { duration: 300 });
+            // Animate opacity with pulsing effect
             borderAnim.value = withTiming(1, { duration: 500 }, () => {
                 borderAnim.value = withRepeat(withTiming(0.3, { duration: 1000 }), -1, true);
             });
         } else {
+            // Animate border width out
+            borderWidthAnim.value = withTiming(0, { duration: 300 });
+            // Fade out opacity
             borderAnim.value = withTiming(0, { duration: 300 });
         }
-    }, [isProcessing]);
+    }, [isProcessing, borderAnim, borderWidthAnim]);
+
+    // Animate border when selected
+    useEffect(() => {
+        if (isSelected) {
+            selectedBorderWidth.value = withTiming(2, { duration: 200 });
+        } else {
+            selectedBorderWidth.value = withTiming(0, { duration: 200 });
+        }
+    }, [isSelected, selectedBorderWidth]);
 
     const selectedBorderColor = isDark ? "#39FF14" : "#00B700";
 

@@ -20,25 +20,19 @@ export const NotesSearchHelper: React.FC<NotesSearchHelperProps> = ({
         <Box className="mx-4 my-2">
             {interpretedQuery ? (
                 <Box className="p-4 rounded-lg bg-brand/10">
-                    <Text style={{ color: isDark ? "#39FF14" : "#00B700" }} className="font-semibold text-brand">
+                    <Text style={{ color: isDark ? "#39FF14" : "#00B700" }} className="font-semibold">
                         Interpreted as: &ldquo;{interpretedQuery}&rdquo;
                     </Text>
                 </Box>
             ) : temporalFilterDescription ? (
                 <Box className="p-4 rounded-lg bg-brand/10">
-                    <Text
-                        style={{ color: isDark ? "#39FF14" : "#00B700" }}
-                        className="text-sm font-semibold text-brand"
-                    >
+                    <Text style={{ color: isDark ? "#39FF14" : "#00B700" }} className="text-sm font-semibold">
                         Showing notes from: {temporalFilterDescription}
                     </Text>
                 </Box>
             ) : !searchQuery ? (
                 <Box className="p-4 rounded-lg bg-brand/10">
-                    <Text
-                        style={{ color: isDark ? "#39FF14" : "#00B700" }}
-                        className="text-sm font-semibold text-brand"
-                    >
+                    <Text style={{ color: isDark ? "#39FF14" : "#00B700" }} className="text-sm font-semibold">
                         {`Try asking questions like "What I wrote about work last week" or "Find my ideas about travel"`}
                     </Text>
                 </Box>

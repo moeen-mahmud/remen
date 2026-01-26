@@ -17,7 +17,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { ListIcon, SearchIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, FlatList, RefreshControl, Share } from "react-native";
+import { Alert, FlatList, LayoutAnimation, RefreshControl, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface NoteWithTags extends Note {
@@ -55,10 +55,26 @@ export const NotesHome: React.FC = () => {
         selectedIds,
         selectedCount,
         enterSelectionMode,
-        exitSelectionMode,
+        exitSelectionMode: originalExitSelectionMode,
         toggleSelection,
         isSelected,
     } = useSelectionMode();
+
+    // Wrap exitSelectionMode with layout animation
+    const exitSelectionMode = useCallback(() => {
+        LayoutAnimation.configureNext({
+            duration: 300,
+            create: {
+                type: LayoutAnimation.Types.easeInEaseOut,
+                property: LayoutAnimation.Properties.opacity,
+            },
+            update: {
+                type: LayoutAnimation.Types.easeInEaseOut,
+                property: LayoutAnimation.Properties.scaleXY,
+            },
+        });
+        originalExitSelectionMode();
+    }, [originalExitSelectionMode]);
 
     // Load notes with tags
     const loadNotes = useCallback(async () => {
@@ -226,6 +242,17 @@ export const NotesHome: React.FC = () => {
     // Handle long press to enter selection mode
     const handleLongPress = useCallback(
         (note: Note) => {
+            LayoutAnimation.configureNext({
+                duration: 300,
+                create: {
+                    type: LayoutAnimation.Types.easeInEaseOut,
+                    property: LayoutAnimation.Properties.opacity,
+                },
+                update: {
+                    type: LayoutAnimation.Types.easeInEaseOut,
+                    property: LayoutAnimation.Properties.scaleXY,
+                },
+            });
             enterSelectionMode(note.id);
         },
         [enterSelectionMode],
@@ -234,6 +261,16 @@ export const NotesHome: React.FC = () => {
     // Handle toggle selection
     const handleToggleSelect = useCallback(
         (note: Note) => {
+            LayoutAnimation.configureNext({
+                duration: 200,
+                create: {
+                    type: LayoutAnimation.Types.easeInEaseOut,
+                    property: LayoutAnimation.Properties.opacity,
+                },
+                update: {
+                    type: LayoutAnimation.Types.easeInEaseOut,
+                },
+            });
             toggleSelection(note.id);
         },
         [toggleSelection],
@@ -396,6 +433,12 @@ export const NotesHome: React.FC = () => {
                 refreshControl={
                     <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={"grey"} />
                 }
+                // Enable layout animations for selection mode changes
+                getItemLayout={(_data: any, index: number) => ({
+                    length: 150, // Approximate item height
+                    offset: 150 * index,
+                    index,
+                })}
             />
         </Box>
     );

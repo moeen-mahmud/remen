@@ -1,6 +1,5 @@
 import { NotesTitle } from "@/components/notes/notes-title";
 import { Box } from "@/components/ui/box";
-import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
@@ -15,7 +14,7 @@ import { findRelatedNotes, type SearchResult } from "@/lib/search";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { MicIcon, ScanIcon, Sparkles, XCircle } from "lucide-react-native";
+import { ClockIcon, MicIcon, ScanIcon, Sparkles, XCircle } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
@@ -272,11 +271,76 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                     ))}
                 </Box>
 
-                {/* Timestamp */}
-                <Box className="px-4 mb-4">
-                    <Text className="text-sm text-neutral-500 dark:text-neutral-400">
-                        {formatFullDate(note.created_at)}
-                    </Text>
+                {/* Timestamp and processing status */}
+                <Box className="flex-col justify-start items-start px-4 mb-4">
+                    <Box className="flex-row gap-2 items-center">
+                        <Icon as={ClockIcon} size="sm" className="text-neutral-500 dark:text-neutral-400" />
+                        <Text className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+                            {formatFullDate(note.created_at)}
+                        </Text>
+                    </Box>
+                    {(note.is_processed ||
+                        isProcessingThisNote ||
+                        note.ai_status === "queued" ||
+                        note.ai_status === "failed" ||
+                        note.ai_status === "cancelled") && (
+                        <Box className="flex-row items-center pt-2 mt-2">
+                            {isProcessingThisNote ? (
+                                <>
+                                    <Spinner className="mr-2" size="small" color="grey" />
+                                    <Text className="text-sm font-semibold text-success-500">AI organizing...</Text>
+                                </>
+                            ) : note.ai_status === "queued" ? (
+                                <>
+                                    <Spinner className="mr-2" size="small" color="grey" />
+                                    <Text className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+                                        Queued for AI…
+                                    </Text>
+                                </>
+                            ) : note.ai_status === "cancelled" ? (
+                                <>
+                                    <Icon as={XCircle} className="mr-2" color={isDark ? "#666" : "#999"} />
+                                    <Text className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+                                        AI cancelled
+                                    </Text>
+                                </>
+                            ) : note.ai_status === "failed" ? (
+                                <>
+                                    <Icon as={XCircle} className="mr-2" color={isDark ? "#E7000B" : "#F9423C"} />
+                                    <Text
+                                        className="text-sm font-semibold"
+                                        style={{ color: isDark ? "#E7000B" : "#F9423C" }}
+                                    >
+                                        AI organization failed
+                                    </Text>
+                                </>
+                            ) : (
+                                <Box className="flex-row flex-grow gap-2 justify-between items-center">
+                                    <Box className="flex-row gap-1 items-center">
+                                        <Box className="mr-2 w-2 h-2 rounded-full bg-primary-600 dark:bg-primary-400" />
+                                        <Text className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">
+                                            AI organized
+                                        </Text>
+                                    </Box>
+                                    <Pressable
+                                        hitSlop={20}
+                                        onPress={handleReorganizeWithAI}
+                                        disabled={isProcessingThisNote}
+                                        className="flex-row gap-2 items-center"
+                                    >
+                                        <Icon
+                                            size="sm"
+                                            as={Sparkles}
+                                            className="text-primary-600 dark:text-primary-400"
+                                        />
+                                        <Text className="text-sm font-semibold text-primary-600 dark:text-primary-400">
+                                            Re-organize with AI
+                                        </Text>
+                                    </Pressable>
+                                </Box>
+                            )}
+                        </Box>
+                    )}
                 </Box>
 
                 <Divider className="mb-4" />
@@ -287,74 +351,14 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                 </Pressable>
 
                 {/* Processing status */}
-                {(note.is_processed ||
-                    isProcessingThisNote ||
-                    note.ai_status === "queued" ||
-                    note.ai_status === "failed" ||
-                    note.ai_status === "cancelled") && (
-                    <Box className="flex-row items-center px-4 pt-2 mt-2">
-                        {isProcessingThisNote ? (
-                            <>
-                                <Spinner className="mr-2" size="small" color="grey" />
-                                <Text className="text-sm text-success-500">AI organizing...</Text>
-                            </>
-                        ) : note.ai_status === "queued" ? (
-                            <>
-                                <Spinner className="mr-2" size="small" color="grey" />
-                                <Text className="text-sm text-neutral-500 dark:text-neutral-400">Queued for AI…</Text>
-                            </>
-                        ) : note.ai_status === "cancelled" ? (
-                            <>
-                                <Icon as={XCircle} className="mr-2" color={isDark ? "#666" : "#999"} />
-                                <Text className="text-sm text-neutral-500 dark:text-neutral-400">AI cancelled</Text>
-                            </>
-                        ) : note.ai_status === "failed" ? (
-                            <>
-                                <Icon as={XCircle} className="mr-2" color={isDark ? "#E7000B" : "#F9423C"} />
-                                <Text className="text-sm" style={{ color: isDark ? "#E7000B" : "#F9423C" }}>
-                                    AI organization failed
-                                </Text>
-                            </>
-                        ) : (
-                            <Box className="flex-row flex-grow gap-2 justify-between items-center">
-                                <Box className="flex-row gap-1 items-center">
-                                    <Box className="mr-2 w-2 h-2 rounded-full bg-success-500" />
-                                    <Text className="text-sm text-neutral-500 dark:text-neutral-400">AI organized</Text>
-                                </Box>
-                                <Button
-                                    action="secondary"
-                                    variant="outline"
-                                    size="sm"
-                                    onPress={handleReorganizeWithAI}
-                                    disabled={isProcessingThisNote}
-                                >
-                                    <ButtonIcon as={Sparkles} />
-                                    <ButtonText>Shuffle</ButtonText>
-                                </Button>
-                            </Box>
-                        )}
-                    </Box>
-                )}
 
-                {note.ai_status === "failed" && note.ai_error ? (
+                {/* {note.ai_status === "failed" && note.ai_error ? (
                     <Box className="px-4 pt-2">
                         <Text className="text-xs text-neutral-500 dark:text-neutral-400" numberOfLines={3}>
                             {note.ai_error}
                         </Text>
                     </Box>
-                ) : null}
-
-                {/* Re-organize */}
-                {/* <Pressable
-                    onPress={handleReorganizeWithAI}
-                    disabled={isProcessingThisNote}
-                    className="flex-row gap-2 justify-center items-center p-3 mx-4 mt-6 rounded-lg bg-neutral-200 dark:bg-neutral-900"
-                >
-                    <Icon as={RefreshCwIcon} color={isDark ? "#fff" : "#000"} />
-                    <Text className="font-medium text-typography-900 dark:text-typography-0">
-                        {note.ai_status === "failed" ? "Try AI re-organization again" : "Re-organize with AI"}
-                    </Text>
-                </Pressable> */}
+                ) : null} */}
 
                 {/* Related Notes */}
                 {relatedNotes.length > 0 && (

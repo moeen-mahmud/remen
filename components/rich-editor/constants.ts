@@ -45,4 +45,4 @@ export const DEFAULT_LINK_STATE: CurrentLinkState = {
 
 export const LINK_REGEX = /^(?:enriched:\/\/\S+|(?:https?:\/\/)?(?:www\.)?swmansion\.com(?:\/\S*)?)$/i;
 
-export const AUTOSAVE_DELAY = 3000;
+export const AUTOSAVE_DELAY = 100;

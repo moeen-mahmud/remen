@@ -17,7 +17,6 @@ import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
 import { createNote, getNoteById, updateNote } from "@/lib/database";
 import { useFocusEffect } from "@react-navigation/native";
-import * as Haptics from "expo-haptics";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Keyboard, type LayoutChangeEvent } from "react-native";
@@ -180,7 +179,7 @@ export default function RichEditor({
                     aiQueue.setModels({ llm, embeddings });
                     aiQueue.add({ noteId: note.id, content: noteContent }, true);
 
-                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    // await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     return note.id;
                 }
             } catch (error) {
@@ -373,16 +372,21 @@ export default function RichEditor({
                 contentInsetAdjustmentBehavior="automatic"
                 keyboardDismissMode="interactive"
                 showsVerticalScrollIndicator={false}
-                // contentContainerStyle={{
-                //     paddingBottom: Math.max(bottomBarHeight, bottom + 16),
-                // }}
+                contentContainerStyle={{
+                    paddingBottom: Math.max(bottomBarHeight, bottom + 16),
+                }}
                 keyboardShouldPersistTaps="handled"
                 onContentSizeChange={handleContentSizeChange}
             >
                 <EnrichedTextInput
                     ref={ref}
                     nativeID="rich-editor"
-                    style={[editorStyles.editorInput, { color: isDark ? "#ffffff" : "#000000" }] as any}
+                    style={
+                        [
+                            editorStyles.editorInput,
+                            { paddingBottom: bottom + 120, color: isDark ? "#ffffff" : "#000000" },
+                        ] as any
+                    }
                     htmlStyle={htmlStyle}
                     defaultValue={initialContent}
                     placeholder={placeholder}

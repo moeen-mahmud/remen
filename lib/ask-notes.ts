@@ -46,8 +46,9 @@ Respond with ONLY valid JSON in this exact format (no extra text, no markdown):
 
 Guidelines:
 - Extract concrete search terms that would appear in notes
-- Recognize temporal expressions like "yesterday", "last month", "this week", "recently"
+- Recognize temporal expressions like "yesterday", "last month", "this week", "recently and all other time-related expressions"
 - Identify topics like "work", "personal", "ideas", "meeting"
+- Prioritize and parse all kinds of W/H questions
 - Keep interpreted query concise but clear
 - If no temporal hint, use null
 - Focus on what the user wants to find, not how to find it`;
