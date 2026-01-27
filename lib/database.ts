@@ -19,6 +19,8 @@ export interface Note {
     is_archived: boolean;
     is_deleted: boolean;
     deleted_at: number | null;
+    reminder_at: number | null;
+    notification_id: string | null;
 }
 
 export type NoteType = "note" | "meeting" | "task" | "idea" | "journal" | "reference" | "voice" | "scan";
@@ -62,6 +64,8 @@ export interface UpdateNoteInput {
     ai_status?: Note["ai_status"];
     ai_error?: string | null;
     embedding?: string | null;
+    reminder_at?: number | null;
+    notification_id?: string | null;
 }
 
 // Database singleton
@@ -96,7 +100,9 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
             audio_file TEXT,
             is_archived INTEGER DEFAULT 0,
             is_deleted INTEGER DEFAULT 0,
-            deleted_at INTEGER
+            deleted_at INTEGER,
+            reminder_at INTEGER,
+            notification_id TEXT
         );
 
         CREATE TABLE IF NOT EXISTS tags (
@@ -150,6 +156,16 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
     } catch {
         // Column already exists
     }
+    try {
+        await database.execAsync(`ALTER TABLE notes ADD COLUMN reminder_at INTEGER`);
+    } catch {
+        // Column already exists
+    }
+    try {
+        await database.execAsync(`ALTER TABLE notes ADD COLUMN notification_id TEXT`);
+    } catch {
+        // Column already exists
+    }
 }
 
 // Note CRUD Operations
@@ -173,11 +189,13 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
         is_archived: false,
         is_deleted: false,
         deleted_at: null,
+        reminder_at: null,
+        notification_id: null,
     };
 
     await database.runAsync(
-        `INSERT INTO notes (id, content, html, title, type, created_at, updated_at, is_processed, ai_status, ai_error, embedding, original_image, audio_file, is_archived, is_deleted, deleted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO notes (id, content, html, title, type, created_at, updated_at, is_processed, ai_status, ai_error, embedding, original_image, audio_file, is_archived, is_deleted, deleted_at, reminder_at, notification_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             note.id,
             note.content,
@@ -195,6 +213,8 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
             note.is_archived ? 1 : 0,
             note.is_deleted ? 1 : 0,
             note.deleted_at,
+            note.reminder_at,
+            note.notification_id,
         ],
     );
 
@@ -219,6 +239,8 @@ interface NoteRow {
     is_archived: number;
     is_deleted: number;
     deleted_at: number | null;
+    reminder_at: number | null;
+    notification_id: string | null;
 }
 
 // Helper to convert row to Note
@@ -301,11 +323,13 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
         ai_status: input.ai_status ?? existing.ai_status,
         ai_error: input.ai_error !== undefined ? input.ai_error : existing.ai_error,
         embedding: input.embedding !== undefined ? input.embedding : existing.embedding,
+        reminder_at: input.reminder_at !== undefined ? input.reminder_at : existing.reminder_at,
+        notification_id: input.notification_id !== undefined ? input.notification_id : existing.notification_id,
         updated_at: Date.now(),
     };
 
     await database.runAsync(
-        `UPDATE notes SET content = ?, html = ?, title = ?, type = ?, is_processed = ?, ai_status = ?, ai_error = ?, embedding = ?, updated_at = ? WHERE id = ?`,
+        `UPDATE notes SET content = ?, html = ?, title = ?, type = ?, is_processed = ?, ai_status = ?, ai_error = ?, embedding = ?, reminder_at = ?, notification_id = ?, updated_at = ? WHERE id = ?`,
         [
             updated.content,
             updated.html,
@@ -315,6 +339,8 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
             updated.ai_status,
             updated.ai_error,
             updated.embedding,
+            updated.reminder_at,
+            updated.notification_id,
             updated.updated_at,
             id,
         ],

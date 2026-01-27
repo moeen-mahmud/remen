@@ -168,7 +168,9 @@ export function ModelDownloadOverlay({
                 <Text bold size="4xl" style={styles.title}>
                     Setting up AI...
                 </Text>
-                <Text style={styles.subtitle}>Downloading models for on-device intelligence</Text>
+                <Text className="text-background-500 dark:text-background-600">
+                    Downloading models for on-device intelligence
+                </Text>
             </View>
 
             {/* Progress section */}

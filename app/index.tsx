@@ -2,10 +2,14 @@ import { SpeedDial, type FabAction } from "@/components/fab";
 import { PageWrapper } from "@/components/page-wrapper";
 import RichEditor from "@/components/rich-editor";
 import { EditorHeader } from "@/components/rich-editor/editor-header";
+import { createNote } from "@/lib/database";
+import { requestNotificationPermissions, scheduleReminder } from "@/lib/reminders";
+import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { CameraIcon, MicIcon } from "lucide-react-native";
+import { Bell, CameraIcon, MicIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback } from "react";
+import { Alert, Platform } from "react-native";
 import { KeyboardController } from "react-native-keyboard-controller";
 
 export default function Index() {
@@ -21,6 +25,121 @@ export default function Index() {
         router.push("/scan" as any);
     }, [router]);
 
+    const createReminderNoteWithDate = useCallback(
+        async (reminderDate: Date) => {
+            if (reminderDate.getTime() <= Date.now()) {
+                Alert.alert("Invalid Date", "Reminder time must be in the future");
+                return;
+            }
+
+            try {
+                // Request permissions first
+                const hasPermission = await requestNotificationPermissions();
+                if (!hasPermission) {
+                    Alert.alert("Permission Required", "Please enable notifications in Settings to set reminders.");
+                    return;
+                }
+
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+                // Create note with placeholder content
+                const note = await createNote({
+                    content: "Reminder",
+                    type: "task",
+                });
+
+                // Schedule the reminder
+                const notificationId = await scheduleReminder(note.id, reminderDate);
+                if (!notificationId) {
+                    Alert.alert("Error", "Failed to set reminder. Please try again.");
+                    return;
+                }
+
+                // Navigate to the note so user can edit it
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                router.push(`/notes/${note.id}` as any);
+            } catch (error) {
+                console.error("Error creating reminder note:", error);
+                Alert.alert("Error", "Failed to create reminder. Please try again.");
+            }
+        },
+        [router],
+    );
+
+    const createReminderNote = useCallback(
+        async (hours: number) => {
+            const date = new Date();
+            date.setHours(date.getHours() + hours);
+            await createReminderNoteWithDate(date);
+        },
+        [createReminderNoteWithDate],
+    );
+
+    const handleReminderCapture = useCallback(() => {
+        // Show alert with quick options
+        const options: any[] = [
+            { text: "Cancel", style: "cancel" as const },
+            {
+                text: "In 1 hour",
+                onPress: () => createReminderNote(1),
+            },
+            {
+                text: "In 2 hours",
+                onPress: () => createReminderNote(2),
+            },
+            {
+                text: "Tomorrow at 9 AM",
+                onPress: () => {
+                    const date = new Date();
+                    date.setDate(date.getDate() + 1);
+                    date.setHours(9, 0, 0, 0);
+                    createReminderNoteWithDate(date);
+                },
+            },
+            {
+                text: "Tomorrow at 6 PM",
+                onPress: () => {
+                    const date = new Date();
+                    date.setDate(date.getDate() + 1);
+                    date.setHours(18, 0, 0, 0);
+                    createReminderNoteWithDate(date);
+                },
+            },
+        ];
+
+        // Add custom option for iOS only
+        if (Platform.OS === "ios" && Alert.prompt) {
+            options.push({
+                text: "Custom",
+                onPress: () => {
+                    Alert.prompt(
+                        "Custom Reminder",
+                        "Enter date and time (e.g., 2024-01-15 14:30)",
+                        [
+                            { text: "Cancel", style: "cancel" },
+                            {
+                                text: "Set",
+                                onPress: (text: string | undefined) => {
+                                    if (text) {
+                                        const date = new Date(text);
+                                        if (!isNaN(date.getTime())) {
+                                            createReminderNoteWithDate(date);
+                                        } else {
+                                            Alert.alert("Invalid Date", "Please enter a valid date and time");
+                                        }
+                                    }
+                                },
+                            },
+                        ],
+                        "plain-text",
+                    );
+                },
+            });
+        }
+
+        Alert.alert("Set Reminder", "Choose when to be reminded", options, { cancelable: true });
+    }, [createReminderNote, createReminderNoteWithDate]);
+
     const fabActions: FabAction[] = [
         {
             id: "scan",
@@ -35,6 +154,14 @@ export default function Index() {
             label: "Voice",
             icon: MicIcon,
             onPress: handleVoiceCapture,
+            backgroundColor: isDark ? "#1A1A1B" : "#fff",
+            color: isDark ? "#fff" : "#000",
+        },
+        {
+            id: "reminder",
+            label: "Reminder",
+            icon: Bell,
+            onPress: handleReminderCapture,
             backgroundColor: isDark ? "#1A1A1B" : "#fff",
             color: isDark ? "#fff" : "#000",
         },

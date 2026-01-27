@@ -27,15 +27,17 @@ export const NotesHeader: React.FC<NotesHeaderProps> = ({
         <Box style={{ paddingTop: top }} className="p-4 mb-6 bg-background-0">
             {isSelectionMode ? (
                 <Box className="flex-row justify-between items-center">
-                    <Pressable hitSlop={10} onPress={exitSelectionMode}>
+                    <Pressable className="flex-row gap-2 items-center" hitSlop={40} onPress={exitSelectionMode}>
                         <Icon size="xl" as={XIcon} />
+                        <Text className="text-xl font-semibold">
+                            {selectedCount} note{selectedCount !== 1 ? "s" : ""} selected
+                        </Text>
                     </Pressable>
-                    <Text className="font-semibold">{selectedCount} selected</Text>
                     <Box className="flex-row gap-4">
-                        <Pressable onPress={handleShareSelected}>
+                        <Pressable hitSlop={10} onPress={handleShareSelected}>
                             <Icon size="xl" as={Share2Icon} />
                         </Pressable>
-                        <Pressable onPress={handleBulkDelete}>
+                        <Pressable hitSlop={10} onPress={handleBulkDelete}>
                             <Icon size="xl" as={LucideRecycle} />
                         </Pressable>
                     </Box>

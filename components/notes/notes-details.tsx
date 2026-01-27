@@ -1,4 +1,5 @@
 import { NotesTitle } from "@/components/notes/notes-title";
+import { ReminderPicker } from "@/components/notes/reminder-picker";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { Heading } from "@/components/ui/heading";
@@ -247,6 +248,21 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                     handleTitlePress={handleTitlePress}
                     note={note}
                 />
+
+                {/* Reminder */}
+                {note && (
+                    <Box className="px-4 mb-4">
+                        <ReminderPicker
+                            noteId={note.id}
+                            currentReminder={note.reminder_at}
+                            onReminderSet={(reminderAt) => {
+                                if (note) {
+                                    setNote({ ...note, reminder_at: reminderAt });
+                                }
+                            }}
+                        />
+                    </Box>
+                )}
 
                 {/* Unified Type + Tags Row */}
                 <Box className="flex-row flex-wrap gap-2 items-center px-4 mb-4">
