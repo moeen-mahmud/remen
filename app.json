@@ -17,7 +17,7 @@
         "NSSpeechRecognitionUsageDescription": "Remen uses speech recognition to transcribe voice notes",
         "NSLocationWhenInUseUsageDescription": "Remen uses WebView to render the rich editor, sometimes it needs to use the location to render the map"
       },
-      "appleTeamId": "255Y279A23"
+      "appleTeamId": "M333T6NJKB"
     },
     "android": {
       "adaptiveIcon": {
@@ -101,12 +101,18 @@
           }
         }
       ],
-      "react-native-cloud-storage",
-      // "@react-native-community/datetimepicker"
+      "react-native-cloud-storage"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e06444c6-047b-4269-afa2-aa643f3d4ace"
+      }
+    },
+    "owner": "world-television"
   }
 }
