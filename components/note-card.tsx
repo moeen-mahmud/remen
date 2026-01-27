@@ -1,15 +1,16 @@
 import { Box } from "@/components/ui/box";
 import { Heading } from "@/components/ui/heading";
+import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { getNoteTypeBadge } from "@/lib/ai/classify";
 import { scaleValues, springConfigs, timingConfigs } from "@/lib/animation-config";
 
 import type { Note, Tag } from "@/lib/database";
 import * as Haptics from "expo-haptics";
-import { CircleCheck, CircleIcon, MicIcon, Pin, ScanIcon } from "lucide-react-native";
+import { CircleCheckIcon, CircleIcon, MicIcon, Pin, ScanIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useEffect, type FC } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import Animated, {
     useAnimatedStyle,
     useSharedValue,
@@ -191,32 +192,25 @@ export const NoteCard: FC<NoteCardProps> = ({
             style={[animatedStyle, borderStyle, styles.container]}
         >
             {/* Header with selection indicator and timestamp */}
-            <View style={styles.header}>
-                <View style={styles.headerLeft}>
+            <Box style={styles.header}>
+                <Box style={styles.headerLeft}>
                     {isSelectionMode && (
-                        <View style={styles.selectionIndicator}>
+                        <Box>
                             {isSelected ? (
-                                <CircleCheck size={22} color={isDark ? "#39FF14" : "#00B700"} />
+                                <Icon as={CircleCheckIcon} size="sm" color={isDark ? "#39FF14" : "#00B700"} />
                             ) : (
-                                <CircleIcon size={22} color={isDark ? "#666" : "#ccc"} />
+                                <Icon as={CircleIcon} size="sm" color={isDark ? "#666" : "#ccc"} />
                             )}
-                        </View>
+                        </Box>
                     )}
-                    {note.is_pinned && (
-                        <Pin
-                            size={14}
-                            color={isDark ? "#39FF14" : "#00B700"}
-                            style={{ marginLeft: isSelectionMode ? 8 : 0 }}
-                        />
-                    )}
-                </View>
+                    {note.is_pinned && <Icon as={Pin} color={isDark ? "#39FF14" : "#00B700"} size="sm" />}
+                </Box>
                 <Text style={[styles.timestamp, { color: isDark ? "#888" : "#666" }]}>
                     {formatRelativeTime(note.created_at)}
                 </Text>
-            </View>
-
+            </Box>
             {/* Title */}
-            <Heading size="sm" style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
+            <Heading size="sm" className="flex-wrap" style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
                 {displayTitle}
             </Heading>
 
@@ -271,9 +265,6 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         gap: 8,
-    },
-    selectionIndicator: {
-        marginRight: 8,
     },
     timestamp: {
         fontSize: 12,
