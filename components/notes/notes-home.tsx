@@ -374,7 +374,7 @@ export const NotesHome: React.FC = () => {
         return {
             icon: <ListIcon size={56} color={isDark ? "#444" : "#ccc"} />,
             title: "No notes yet",
-            description: "Tap the + button to capture your first thought",
+            description: "Tap the button to capture your first thought",
         };
     }, [isSearching, searchQuery, isDark]);
 

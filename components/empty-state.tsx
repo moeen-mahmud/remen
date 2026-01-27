@@ -50,9 +50,9 @@ export const EmptyState: FC<EmptyStateProps> = ({ icon, title, description }) =>
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const iconAnimatedStyle = useAnimatedStyle(() => ({
-        transform: [{ scale: iconScale.value }, { rotate: `${iconRotation.value}deg` }],
-    }));
+    // const iconAnimatedStyle = useAnimatedStyle(() => ({
+    //     transform: [{ scale: iconScale.value }, { rotate: `${iconRotation.value}deg` }],
+    // }));
 
     const contentAnimatedStyle = useAnimatedStyle(() => ({
         opacity: contentOpacity.value,
@@ -61,13 +61,13 @@ export const EmptyState: FC<EmptyStateProps> = ({ icon, title, description }) =>
 
     return (
         <View style={styles.container}>
-            <Animated.Text style={[styles.icon, iconAnimatedStyle]}>{icon}</Animated.Text>
+            <Animated.Text style={styles.icon}>{icon}</Animated.Text>
 
-            <Animated.View style={contentAnimatedStyle}>
-                <Heading size="md" style={[styles.title, { color: isDark ? "#fff" : "#000" }]}>
+            <Animated.View className="justify-center items-center" style={contentAnimatedStyle}>
+                <Heading size="md" className="text-background-500 dark:text-background-900">
                     {title}
                 </Heading>
-                <Text style={[styles.description, { color: isDark ? "#888" : "#666" }]}>{description}</Text>
+                <Text className="text-background-500 dark:text-background-600">{description}</Text>
             </Animated.View>
         </View>
     );
@@ -82,10 +82,9 @@ const styles = StyleSheet.create({
     },
     icon: {
         fontSize: 64,
-        marginBottom: 24,
+        marginBottom: 10,
     },
     title: {
-        marginBottom: 8,
         textAlign: "center",
     },
     description: {
