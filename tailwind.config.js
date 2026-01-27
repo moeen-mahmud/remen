@@ -188,13 +188,13 @@ module.exports = {
                 highlight: "rgb(var(--color-primary-400)/<alpha-value>)",
             },
             fontFamily: {
-                "heading": undefined,
-                "body": undefined,
-                "mono": undefined,
-                "jakarta": ["var(--font-plus-jakarta-sans)"],
-                "roboto": ["var(--font-roboto)"],
-                "code": ["var(--font-source-code-pro)"],
-                "inter": ["var(--font-inter)"],
+                heading: undefined,
+                body: undefined,
+                mono: undefined,
+                jakarta: ["var(--font-plus-jakarta-sans)"],
+                roboto: ["var(--font-roboto)"],
+                code: ["var(--font-source-code-pro)"],
+                inter: ["var(--font-inter)"],
                 "space-mono": ["var(--font-space-mono)"],
             },
             fontWeight: {
@@ -216,4 +216,4 @@ module.exports = {
             },
         },
     },
-}
+};

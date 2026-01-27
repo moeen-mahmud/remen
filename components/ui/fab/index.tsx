@@ -64,11 +64,11 @@ const fabLabelStyle = tva({
         },
         size: {
             "2xs": "text-2xs",
-            "xs": "text-xs",
-            "sm": "text-sm",
-            "md": "text-base",
-            "lg": "text-lg",
-            "xl": "text-xl",
+            xs: "text-xs",
+            sm: "text-sm",
+            md: "text-base",
+            lg: "text-lg",
+            xl: "text-xl",
             "2xl": "text-2xl",
             "3xl": "text-3xl",
             "4xl": "text-4xl",
@@ -99,11 +99,11 @@ const fabIconStyle = tva({
     variants: {
         size: {
             "2xs": "h-3 w-3",
-            "xs": "h-3.5 w-3.5",
-            "sm": "h-4 w-4",
-            "md": "w-[18px] h-[18px]",
-            "lg": "h-5 w-5",
-            "xl": "h-6 w-6",
+            xs: "h-3.5 w-3.5",
+            sm: "h-4 w-4",
+            md: "w-[18px] h-[18px]",
+            lg: "h-5 w-5",
+            xl: "h-6 w-6",
         },
     },
 });

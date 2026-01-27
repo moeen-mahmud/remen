@@ -31,7 +31,7 @@ export const springConfigs = {
         damping: 25,
         stiffness: 300,
     },
-}
+};
 
 // Spring configs for Animated.spring (friction/tension based)
 export const animatedSpringConfigs = {
@@ -62,7 +62,7 @@ export const animatedSpringConfigs = {
         tension: 50,
         useNativeDriver: true,
     },
-}
+};
 
 // Timing configs for withTiming
 export const timingConfigs = {
@@ -80,31 +80,31 @@ export const timingConfigs = {
     slow: {
         duration: 400,
     },
-}
+};
 
 // Haptic feedback intensity mapping
 export const hapticIntensity = {
     light: "Light" as const,
     medium: "Medium" as const,
     heavy: "Heavy" as const,
-}
+};
 
 // Swipe gesture thresholds
 export const gestureThresholds = {
     swipeActionThreshold: 0.3, // 30% of screen width
     longPressDelay: 400, // ms
-}
+};
 
 // Scale values for press states
 export const scaleValues = {
     pressedIn: 0.97,
     pressedOut: 1,
     selected: 1.02,
-}
+};
 
 // Opacity values
 export const opacityValues = {
     disabled: 0.5,
     pressed: 0.8,
     normal: 1,
-}
+};

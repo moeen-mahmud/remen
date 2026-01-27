@@ -19,28 +19,26 @@ The theme uses oklch color values converted to RGB:
 
 ```tsx
 <View className="bg-background-0 dark:bg-background-0">
-  <Text className="text-foreground dark:text-foreground">
-    Hello World
-  </Text>
+    <Text className="text-foreground dark:text-foreground">Hello World</Text>
 </View>
 ```
 
 #### Using GluestackUI Components
 
 ```tsx
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 
 <Button>
-  <ButtonText>Click me</ButtonText>
-</Button>
+    <ButtonText>Click me</ButtonText>
+</Button>;
 ```
 
 #### Using Design System Helpers
 
 ```tsx
-import { getThemeColors, colors } from "@/lib/design"
+import { getThemeColors, colors } from "@/lib/design";
 
-const themeColors = getThemeColors(isDark)
+const themeColors = getThemeColors(isDark);
 // themeColors.background, themeColors.text, etc.
 ```
 
@@ -79,8 +77,8 @@ All colors have scales from 0 (lightest) to 950 (darkest):
 To add new oklch colors:
 
 ```typescript
-import { oklchToRgbString } from "@/lib/theme/oklch-to-rgb"
+import { oklchToRgbString } from "@/lib/theme/oklch-to-rgb";
 
-const newColor = oklchToRgbString("oklch(0.67 0.25 141.53)")
+const newColor = oklchToRgbString("oklch(0.67 0.25 141.53)");
 // Returns: "0 183 0"
 ```

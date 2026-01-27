@@ -136,18 +136,18 @@ Camera workflow:
 - Structured text parsing (lists, tables)
 
 function analyzeTextStructure(blocks) {
-  // Detect bullet points, numbered lists, headings
-  const lines = blocks.map(block => ({
-    text: block.text,
-    isBullet: /^[•\-*]\s/.test(block.text),
-    isNumbered: /^\d+\.\s/.test(block.text),
-    isHeading: block.text.length < 50 && block.text === block.text.toUpperCase()
-  }));
-  
-  return lines;
+// Detect bullet points, numbered lists, headings
+const lines = blocks.map(block => ({
+text: block.text,
+isBullet: /^[•\-*]\s/.test(block.text),
+isNumbered: /^\d+\.\s/.test(block.text),
+isHeading: block.text.length < 50 && block.text === block.text.toUpperCase()
+}));
+
+return lines;
 }
 
-```
+````
 
 #### 1.4 Entity-Based Auto-Tagging
 
@@ -166,32 +166,32 @@ After note is saved, extract:
 ```javascript
 async function autoTagFromEntities(noteText) {
   const entities = await EntityExtraction.extractEntities(noteText);
-  
+
   const tags = [];
-  
+
   // Date-based tags
   entities.filter(e => e.type === 'DATE').forEach(date => {
     tags.push(`📅 ${formatDate(date.value)}`);
   });
-  
+
   // Person tags
   entities.filter(e => e.type === 'PERSON').forEach(person => {
     tags.push(`👤 ${person.value}`);
   });
-  
+
   // Location tags
   entities.filter(e => e.type === 'ADDRESS').forEach(loc => {
     tags.push(`📍 ${loc.value}`);
   });
-  
+
   // URL = reference material
   if (entities.some(e => e.type === 'URL')) {
     tags.push('🔗 reference');
   }
-  
+
   return tags;
 }
-```
+````
 
 ---
 
@@ -217,15 +217,15 @@ bun install react-native-executorch
 **Model Setup:**
 
 ```javascript
-import { EdgeAI } from '@google/generative-ai-edge';
+import { EdgeAI } from "@google/generative-ai-edge";
 
 // Initialize on app start
 const edgeAI = new EdgeAI({
-  modelName: 'gemini-nano',
-  options: {
-    temperature: 0.3, // More deterministic for classification
-    maxOutputTokens: 50
-  }
+    modelName: "gemini-nano",
+    options: {
+        temperature: 0.3, // More deterministic for classification
+        maxOutputTokens: 50,
+    },
 });
 ```
 
@@ -238,17 +238,17 @@ When user taps "Capture":
 1. Save note to database immediately
 2. Show brief loading: "Organizing..." (0.5s)
 3. Process in background with Gemini Nano:
-   - Generate title
-   - Classify note type
-   - Extract tasks
-   - Suggest tags
-   - Detect sentiment
+    - Generate title
+    - Classify note type
+    - Extract tasks
+    - Suggest tags
+    - Detect sentiment
 4. Update note with AI metadata
 5. Return to blank capture screen
 
 **Processing Functions:**
 
-```javascript
+````javascript
 // Title Generation
 async function generateTitle(noteContent) {
   const prompt = `Generate a concise, descriptive title (max 50 characters) for this note. Return ONLY the title, no quotes or extra text.
@@ -281,7 +281,7 @@ Category:`;
 
   const result = await edgeAI.generateText(prompt);
   const type = result.text.trim().toLowerCase();
-  
+
   const validTypes = ['meeting', 'task', 'idea', 'journal', 'reference', 'note'];
   return validTypes.includes(type) ? type : 'note';
 }
@@ -321,7 +321,7 @@ Tags:`;
     .map(tag => tag.trim().toLowerCase())
     .filter(tag => tag.length > 0 && tag.length < 20)
     .slice(0, 4);
-  
+
   return tags;
 }
 
@@ -335,13 +335,13 @@ async function processNoteWithAI(noteId, noteContent) {
       extractTasks(noteContent),
       suggestTags(noteContent)
     ]);
-    
+
     // Also get ML Kit entities
     const entityTags = await autoTagFromEntities(noteContent);
-    
+
     // Combine AI tags + entity tags
     const allTags = [...new Set([...aiTags, ...entityTags])];
-    
+
     // Update note in database
     await database.updateNote(noteId, {
       title,
@@ -351,7 +351,7 @@ async function processNoteWithAI(noteId, noteContent) {
       processedAt: new Date(),
       isProcessed: true
     });
-    
+
     return true;
   } catch (error) {
     console.error('AI processing failed:', error);
@@ -377,55 +377,55 @@ For semantic "find notes about X" search, we need embeddings.
 
 ```bash
 bun install @xenova/transformers
-```
+````
 
 ```javascript
-import { pipeline } from '@xenova/transformers';
+import { pipeline } from "@xenova/transformers";
 
 // Load model once on app start
-const embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+const embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
 
 async function generateEmbedding(text) {
-  const result = await embedder(text, { pooling: 'mean', normalize: true });
-  return Array.from(result.data);
+    const result = await embedder(text, { pooling: "mean", normalize: true });
+    return Array.from(result.data);
 }
 
 // When saving a note
 async function saveNoteWithEmbedding(noteContent) {
-  const embedding = await generateEmbedding(noteContent);
-  
-  await database.saveNote({
-    content: noteContent,
-    embedding: JSON.stringify(embedding), // Store as JSON in SQLite
-    // ... other fields
-  });
+    const embedding = await generateEmbedding(noteContent);
+
+    await database.saveNote({
+        content: noteContent,
+        embedding: JSON.stringify(embedding), // Store as JSON in SQLite
+        // ... other fields
+    });
 }
 
 // Search with semantic similarity
 async function searchNotes(query) {
-  const queryEmbedding = await generateEmbedding(query);
-  
-  // Get all notes
-  const allNotes = await database.getAllNotes();
-  
-  // Calculate cosine similarity
-  const results = allNotes.map(note => ({
-    ...note,
-    similarity: cosineSimilarity(queryEmbedding, JSON.parse(note.embedding))
-  }));
-  
-  // Sort by similarity
-  return results
-    .filter(r => r.similarity > 0.5)
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, 20);
+    const queryEmbedding = await generateEmbedding(query);
+
+    // Get all notes
+    const allNotes = await database.getAllNotes();
+
+    // Calculate cosine similarity
+    const results = allNotes.map((note) => ({
+        ...note,
+        similarity: cosineSimilarity(queryEmbedding, JSON.parse(note.embedding)),
+    }));
+
+    // Sort by similarity
+    return results
+        .filter((r) => r.similarity > 0.5)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, 20);
 }
 
 function cosineSimilarity(vecA, vecB) {
-  const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
-  const magA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
-  const magB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
-  return dotProduct / (magA * magB);
+    const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
+    const magA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
+    const magB = Math.sqrt(vecB.reduce((sum, b) => sum + b * b, 0));
+    return dotProduct / (magA * magB);
 }
 ```
 
@@ -433,8 +433,8 @@ function cosineSimilarity(vecA, vecB) {
 
 ```javascript
 async function generateEmbeddingWithGemini(text) {
-  const result = await edgeAI.embed(text);
-  return result.embedding;
+    const result = await edgeAI.embed(text);
+    return result.embedding;
 }
 ```
 
@@ -444,54 +444,54 @@ Search interface that understands natural queries:
 
 ```javascript
 const SearchScreen = () => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
+    const [query, setQuery] = useState("");
+    const [results, setResults] = useState([]);
+    const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = async (searchQuery) => {
-    if (!searchQuery.trim()) return;
-    
-    setIsSearching(true);
-    
-    // Combine semantic + keyword search
-    const semanticResults = await searchNotes(searchQuery);
-    const keywordResults = await keywordSearch(searchQuery);
-    
-    // Merge and deduplicate
-    const merged = mergeSearchResults(semanticResults, keywordResults);
-    
-    setResults(merged);
-    setIsSearching(false);
-  };
+    const handleSearch = async (searchQuery) => {
+        if (!searchQuery.trim()) return;
 
-  return (
-    <View>
-      <SearchBar
-        placeholder="What are you looking for?"
-        value={query}
-        onChangeText={setQuery}
-        onSubmitEditing={() => handleSearch(query)}
-      />
-      
-      {/* Suggested searches */}
-      {!query && (
+        setIsSearching(true);
+
+        // Combine semantic + keyword search
+        const semanticResults = await searchNotes(searchQuery);
+        const keywordResults = await keywordSearch(searchQuery);
+
+        // Merge and deduplicate
+        const merged = mergeSearchResults(semanticResults, keywordResults);
+
+        setResults(merged);
+        setIsSearching(false);
+    };
+
+    return (
         <View>
-          <Text>Try searching for:</Text>
-          <TouchableOpacity onPress={() => handleSearch('work notes from last week')}>
-            <Text>"work notes from last week"</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleSearch('ideas about AI')}>
-            <Text>"ideas about AI"</Text>
-          </TouchableOpacity>
+            <SearchBar
+                placeholder="What are you looking for?"
+                value={query}
+                onChangeText={setQuery}
+                onSubmitEditing={() => handleSearch(query)}
+            />
+
+            {/* Suggested searches */}
+            {!query && (
+                <View>
+                    <Text>Try searching for:</Text>
+                    <TouchableOpacity onPress={() => handleSearch("work notes from last week")}>
+                        <Text>"work notes from last week"</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleSearch("ideas about AI")}>
+                        <Text>"ideas about AI"</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
+            {/* Results */}
+            {results.map((note) => (
+                <NoteCard key={note.id} note={note} />
+            ))}
         </View>
-      )}
-      
-      {/* Results */}
-      {results.map(note => (
-        <NoteCard key={note.id} note={note} />
-      ))}
-    </View>
-  );
+    );
 };
 ```
 
@@ -501,22 +501,22 @@ Show related notes automatically:
 
 ```javascript
 async function findRelatedNotes(noteId, limit = 5) {
-  const note = await database.getNote(noteId);
-  const noteEmbedding = JSON.parse(note.embedding);
-  
-  const allNotes = await database.getAllNotes();
-  
-  const related = allNotes
-    .filter(n => n.id !== noteId)
-    .map(n => ({
-      ...n,
-      similarity: cosineSimilarity(noteEmbedding, JSON.parse(n.embedding))
-    }))
-    .filter(n => n.similarity > 0.6)
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, limit);
-  
-  return related;
+    const note = await database.getNote(noteId);
+    const noteEmbedding = JSON.parse(note.embedding);
+
+    const allNotes = await database.getAllNotes();
+
+    const related = allNotes
+        .filter((n) => n.id !== noteId)
+        .map((n) => ({
+            ...n,
+            similarity: cosineSimilarity(noteEmbedding, JSON.parse(n.embedding)),
+        }))
+        .filter((n) => n.similarity > 0.6)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, limit);
+
+    return related;
 }
 ```
 
@@ -542,11 +542,11 @@ For users who want advanced features:
 const isPremium = await checkPremiumStatus();
 
 if (isPremium && userOptedIn) {
-  // Use Claude API for advanced features
-  const insights = await claudeAPI.analyzeNotes(notes);
+    // Use Claude API for advanced features
+    const insights = await claudeAPI.analyzeNotes(notes);
 } else {
-  // Use on-device AI only
-  const insights = await generateLocalInsights(notes);
+    // Use on-device AI only
+    const insights = await generateLocalInsights(notes);
 }
 ```
 
@@ -555,34 +555,36 @@ if (isPremium && userOptedIn) {
 ```javascript
 // Only called for premium users
 async function generateWeeklyInsights(notes) {
-  const weekNotes = notes.filter(n => isFromThisWeek(n.createdAt));
-  
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY // Stored securely
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 1000,
-      messages: [{
-        role: 'user',
-        content: `Analyze these notes from this week and provide insights:
+    const weekNotes = notes.filter((n) => isFromThisWeek(n.createdAt));
 
-${weekNotes.map(n => n.content).join('\n\n---\n\n')}
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-api-key": process.env.ANTHROPIC_API_KEY, // Stored securely
+        },
+        body: JSON.stringify({
+            model: "claude-sonnet-4-5-20250929",
+            max_tokens: 1000,
+            messages: [
+                {
+                    role: "user",
+                    content: `Analyze these notes from this week and provide insights:
+
+${weekNotes.map((n) => n.content).join("\n\n---\n\n")}
 
 Provide:
 1. Main themes
 2. Recurring topics
 3. Action items to follow up on
-4. Interesting connections`
-      }]
-    })
-  });
-  
-  const data = await response.json();
-  return data.content[0].text;
+4. Interesting connections`,
+                },
+            ],
+        }),
+    });
+
+    const data = await response.json();
+    return data.content[0].text;
 }
 ```
 
@@ -609,11 +611,11 @@ Provide:
 
 ```javascript
 // In-app purchases
-import * as InAppPurchases from 'expo-in-app-purchases';
+import * as InAppPurchases from "expo-in-app-purchases";
 
 async function subscribeToPremium() {
-  await InAppPurchases.purchaseItemAsync('premium_monthly');
-  // Grant access to cloud features
+    await InAppPurchases.purchaseItemAsync("premium_monthly");
+    // Grant access to cloud features
 }
 ```
 
@@ -626,8 +628,8 @@ async function subscribeToPremium() {
 **Mobile Framework:**
 
 - **React Native** (0.73+)
-  - Expo for easier development
-  - Can eject if needed for native modules
+    - Expo for easier development
+    - Can eject if needed for native modules
 
 **Database:**
 
@@ -679,33 +681,33 @@ CREATE INDEX idx_notes_type ON notes(type);
 **AI Services:**
 
 - **ML Kit** (text recognition, entity extraction)
-  - `react-native-executorch`
-  - `react-native-executorch`
+    - `react-native-executorch`
+    - `react-native-executorch`
 - **Gemini Nano** (Android on-device LLM)
-  - `@google/generative-ai-edge`
+    - `@google/generative-ai-edge`
 - **ExecuTorch** (iOS fallback LLM)
-  - `react-native-executorch` with SmolLM 360M
+    - `react-native-executorch` with SmolLM 360M
 - **Transformers.js** (on-device embeddings)
-  - `@xenova/transformers`
+    - `@xenova/transformers`
 - **Claude API** (premium features only)
-  - Anthropic SDK
+    - Anthropic SDK
 
 **Other Dependencies:**
 
 ```json
 {
-  "dependencies": {
-    "react-native": "^0.73.0",
-    "expo": "~50.0.0",
-    "@react-native-voice/voice": "^3.2.4",
-    "react-native-vision-camera": "^3.8.0",
-    "@google/generative-ai-edge": "^0.1.0",
-    "react-native-executorch": "^0.3.0",
-    "@xenova/transformers": "^2.10.0",
-    "react-native-sqlite-storage": "^6.0.1",
-    "expo-in-app-purchases": "~14.5.0",
-    "@anthropic-ai/sdk": "^0.20.0"
-  }
+    "dependencies": {
+        "react-native": "^0.73.0",
+        "expo": "~50.0.0",
+        "@react-native-voice/voice": "^3.2.4",
+        "react-native-vision-camera": "^3.8.0",
+        "@google/generative-ai-edge": "^0.1.0",
+        "react-native-executorch": "^0.3.0",
+        "@xenova/transformers": "^2.10.0",
+        "react-native-sqlite-storage": "^6.0.1",
+        "expo-in-app-purchases": "~14.5.0",
+        "@anthropic-ai/sdk": "^0.20.0"
+    }
 }
 ```
 

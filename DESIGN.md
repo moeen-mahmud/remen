@@ -12,13 +12,13 @@
 
 ### **Color Palette**
 
-| Token | Use | Value
-|-----|-----|-----
-| **Primary** | Subtle accent, interactive hints | Slate/Soft Grey (`#6B7280`)
-| **Accent** | Action states, voice/scan buttons | Warm Neutral (`#D97706`) or Subtle Blue (`#3B82F6`)
-| **Background** | Main canvas, pristine white | `#FFFFFF` / `#FAFAF9` (dark mode)
-| **Text/Foreground** | Primary text | `#1F2937` (light) / `#F3F4F6` (dark)
-| **Subtle Border** | Dividers, hints | `#E5E7EB`
+| Token               | Use                               | Value                                               |
+| ------------------- | --------------------------------- | --------------------------------------------------- |
+| **Primary**         | Subtle accent, interactive hints  | Slate/Soft Grey (`#6B7280`)                         |
+| **Accent**          | Action states, voice/scan buttons | Warm Neutral (`#D97706`) or Subtle Blue (`#3B82F6`) |
+| **Background**      | Main canvas, pristine white       | `#FFFFFF` / `#FAFAF9` (dark mode)                   |
+| **Text/Foreground** | Primary text                      | `#1F2937` (light) / `#F3F4F6` (dark)                |
+| **Subtle Border**   | Dividers, hints                   | `#E5E7EB`                                           |
 
 ---
 

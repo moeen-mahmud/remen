@@ -1,0 +1,2 @@
+# .husky/post-merge
+bun prepare && bun install

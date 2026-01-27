@@ -1,74 +1,74 @@
-import * as Haptics from "expo-haptics"
-import { useCallback, useState } from "react"
+import * as Haptics from "expo-haptics";
+import { useCallback, useState } from "react";
 
 export interface UseSelectionModeResult {
-    isSelectionMode: boolean
-    selectedIds: Set<string>
-    selectedCount: number
-    enterSelectionMode: (initialId?: string) => void
-    exitSelectionMode: () => void
-    toggleSelection: (id: string) => void
-    selectAll: (ids: string[]) => void
-    clearSelection: () => void
-    isSelected: (id: string) => boolean
+    isSelectionMode: boolean;
+    selectedIds: Set<string>;
+    selectedCount: number;
+    enterSelectionMode: (initialId?: string) => void;
+    exitSelectionMode: () => void;
+    toggleSelection: (id: string) => void;
+    selectAll: (ids: string[]) => void;
+    clearSelection: () => void;
+    isSelected: (id: string) => boolean;
 }
 
 export function useSelectionMode(): UseSelectionModeResult {
-    const [isSelectionMode, setIsSelectionMode] = useState(false)
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+    const [isSelectionMode, setIsSelectionMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
     const enterSelectionMode = useCallback(async (initialId?: string) => {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
-        setIsSelectionMode(true)
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setIsSelectionMode(true);
         if (initialId) {
-            setSelectedIds(new Set([initialId]))
+            setSelectedIds(new Set([initialId]));
         }
-    }, [])
+    }, []);
 
     const exitSelectionMode = useCallback(() => {
-        setIsSelectionMode(false)
-        setSelectedIds(new Set())
-    }, [])
+        setIsSelectionMode(false);
+        setSelectedIds(new Set());
+    }, []);
 
     const toggleSelection = useCallback(
         async (id: string) => {
-            if (!isSelectionMode) return
+            if (!isSelectionMode) return;
 
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setSelectedIds((prev) => {
-                const next = new Set(prev)
+                const next = new Set(prev);
                 if (next.has(id)) {
-                    next.delete(id)
+                    next.delete(id);
                 } else {
-                    next.add(id)
+                    next.add(id);
                 }
 
                 // Exit selection mode if no items selected
                 if (next.size === 0) {
-                    setIsSelectionMode(false)
+                    setIsSelectionMode(false);
                 }
 
-                return next
-            })
+                return next;
+            });
         },
         [isSelectionMode],
-    )
+    );
 
     const selectAll = useCallback(async (ids: string[]) => {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-        setSelectedIds(new Set(ids))
-    }, [])
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setSelectedIds(new Set(ids));
+    }, []);
 
     const clearSelection = useCallback(() => {
-        setSelectedIds(new Set())
-    }, [])
+        setSelectedIds(new Set());
+    }, []);
 
     const isSelected = useCallback(
         (id: string) => {
-            return selectedIds.has(id)
+            return selectedIds.has(id);
         },
         [selectedIds],
-    )
+    );
 
     return {
         isSelectionMode,
@@ -80,5 +80,5 @@ export function useSelectionMode(): UseSelectionModeResult {
         selectAll,
         clearSelection,
         isSelected,
-    }
+    };
 }
