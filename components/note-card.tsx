@@ -6,7 +6,7 @@ import { scaleValues, springConfigs, timingConfigs } from "@/lib/animation-confi
 
 import type { Note, Tag } from "@/lib/database";
 import * as Haptics from "expo-haptics";
-import { CircleCheck, CircleIcon, MicIcon, ScanIcon } from "lucide-react-native";
+import { CircleCheck, CircleIcon, MicIcon, Pin, ScanIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useEffect, type FC } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
@@ -192,15 +192,24 @@ export const NoteCard: FC<NoteCardProps> = ({
         >
             {/* Header with selection indicator and timestamp */}
             <View style={styles.header}>
-                {isSelectionMode && (
-                    <View style={styles.selectionIndicator}>
-                        {isSelected ? (
-                            <CircleCheck size={22} color={isDark ? "#39FF14" : "#00B700"} />
-                        ) : (
-                            <CircleIcon size={22} color={isDark ? "#666" : "#ccc"} />
-                        )}
-                    </View>
-                )}
+                <View style={styles.headerLeft}>
+                    {isSelectionMode && (
+                        <View style={styles.selectionIndicator}>
+                            {isSelected ? (
+                                <CircleCheck size={22} color={isDark ? "#39FF14" : "#00B700"} />
+                            ) : (
+                                <CircleIcon size={22} color={isDark ? "#666" : "#ccc"} />
+                            )}
+                        </View>
+                    )}
+                    {note.is_pinned && (
+                        <Pin
+                            size={14}
+                            color={isDark ? "#39FF14" : "#00B700"}
+                            style={{ marginLeft: isSelectionMode ? 8 : 0 }}
+                        />
+                    )}
+                </View>
                 <Text style={[styles.timestamp, { color: isDark ? "#888" : "#666" }]}>
                     {formatRelativeTime(note.created_at)}
                 </Text>
@@ -257,6 +266,11 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         alignItems: "center",
         marginBottom: 8,
+    },
+    headerLeft: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
     },
     selectionIndicator: {
         marginRight: 8,

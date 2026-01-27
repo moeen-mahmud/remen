@@ -1,3 +1,4 @@
+import { DatePickerModal } from "@/components/date-picker-modal";
 import { SpeedDial, type FabAction } from "@/components/fab";
 import { PageWrapper } from "@/components/page-wrapper";
 import RichEditor from "@/components/rich-editor";
@@ -8,14 +9,18 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Bell, CameraIcon, MicIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
-import { useCallback } from "react";
-import { Alert, Platform } from "react-native";
+import { useCallback, useState } from "react";
+import { Alert } from "react-native";
 import { KeyboardController } from "react-native-keyboard-controller";
 
 export default function Index() {
     const router = useRouter();
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === "dark";
+    const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+    const [selectedReminderDate, setSelectedReminderDate] = useState<Date>(
+        new Date(Date.now() + 60 * 60 * 1000), // Default to 1 hour from now
+    );
 
     const handleVoiceCapture = useCallback(() => {
         router.push("/voice" as any);
@@ -105,37 +110,14 @@ export default function Index() {
                     createReminderNoteWithDate(date);
                 },
             },
-        ];
-
-        // Add custom option for iOS only
-        if (Platform.OS === "ios" && Alert.prompt) {
-            options.push({
+            {
                 text: "Custom",
                 onPress: () => {
-                    Alert.prompt(
-                        "Custom Reminder",
-                        "Enter date and time (e.g., 2024-01-15 14:30)",
-                        [
-                            { text: "Cancel", style: "cancel" },
-                            {
-                                text: "Set",
-                                onPress: (text: string | undefined) => {
-                                    if (text) {
-                                        const date = new Date(text);
-                                        if (!isNaN(date.getTime())) {
-                                            createReminderNoteWithDate(date);
-                                        } else {
-                                            Alert.alert("Invalid Date", "Please enter a valid date and time");
-                                        }
-                                    }
-                                },
-                            },
-                        ],
-                        "plain-text",
-                    );
+                    setSelectedReminderDate(new Date(Date.now() + 60 * 60 * 1000)); // 1 hour from now
+                    setIsDatePickerOpen(true);
                 },
-            });
-        }
+            },
+        ];
 
         Alert.alert("Set Reminder", "Choose when to be reminded", options, { cancelable: true });
     }, [createReminderNote, createReminderNoteWithDate]);
@@ -176,11 +158,34 @@ export default function Index() {
         KeyboardController.dismiss();
     };
 
+    const handleReminderDateChange = useCallback((date: Date) => {
+        setSelectedReminderDate(date);
+    }, []);
+
+    const handleReminderDateConfirm = useCallback(
+        (date: Date) => {
+            setIsDatePickerOpen(false);
+            createReminderNoteWithDate(date);
+        },
+        [createReminderNoteWithDate],
+    );
+
     return (
         <PageWrapper disableBottomPadding>
             <EditorHeader isEditing={false} handleBack={handleBack} handleViewNotes={handleViewNotes} />
             <RichEditor />
             <SpeedDial actions={fabActions} position="bottom-right" />
+            <DatePickerModal
+                visible={isDatePickerOpen}
+                date={selectedReminderDate}
+                onDateChange={handleReminderDateChange}
+                onConfirm={handleReminderDateConfirm}
+                onCancel={() => setIsDatePickerOpen(false)}
+                minimumDate={new Date()}
+                title="Set Reminder"
+                confirmText="Create"
+                cancelText="Cancel"
+            />
         </PageWrapper>
     );
 }

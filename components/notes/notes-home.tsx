@@ -7,17 +7,27 @@ import { SettingsNoteCounter } from "@/components/settings/settings-note-counter
 import { SwipeableNoteCard } from "@/components/swipeable-note-card";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
+import { Text } from "@/components/ui/text";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { aiQueue } from "@/lib/ai";
 import { useAI, useAILLM } from "@/lib/ai/provider";
-import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, type Note, type Tag } from "@/lib/database";
+import {
+    archiveNote,
+    getAllNotes,
+    getTagsForNote,
+    moveToTrash,
+    pinNote,
+    unpinNote,
+    type Note,
+    type Tag,
+} from "@/lib/database";
 import { askNotesSearch } from "@/lib/search";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ListIcon, SearchIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, FlatList, LayoutAnimation, RefreshControl, Share } from "react-native";
+import { Alert, LayoutAnimation, RefreshControl, SectionList, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface NoteWithTags extends Note {
@@ -40,6 +50,7 @@ export const NotesHome: React.FC = () => {
 
     const [notes, setNotes] = useState<NoteWithTags[]>([]);
     const [filteredNotes, setFilteredNotes] = useState<NoteWithTags[]>([]);
+    const [sections, setSections] = useState<{ title: string; data: NoteWithTags[] }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -91,6 +102,17 @@ export const NotesHome: React.FC = () => {
 
             setNotes(notesWithTags);
             setFilteredNotes(notesWithTags);
+            // Organize notes into sections
+            const pinnedNotes = notesWithTags.filter((note) => note.is_pinned);
+            const unpinnedNotes = notesWithTags.filter((note) => !note.is_pinned);
+            const newSections: { title: string; data: NoteWithTags[] }[] = [];
+            if (pinnedNotes.length > 0) {
+                newSections.push({ title: "Pinned items", data: pinnedNotes });
+            }
+            if (unpinnedNotes.length > 0) {
+                newSections.push({ title: "", data: unpinnedNotes });
+            }
+            setSections(newSections);
         } catch (error) {
             console.error("Failed to load notes:", error);
         } finally {
@@ -152,6 +174,17 @@ export const NotesHome: React.FC = () => {
             setIsSearching(false);
             setIsUsingLLM(false);
             setInterpretedQuery(null);
+            // Organize notes into sections when search is cleared
+            const pinnedNotes = notes.filter((note) => note.is_pinned);
+            const unpinnedNotes = notes.filter((note) => !note.is_pinned);
+            const newSections: { title: string; data: NoteWithTags[] }[] = [];
+            if (pinnedNotes.length > 0) {
+                newSections.push({ title: "Pinned items", data: pinnedNotes });
+            }
+            if (unpinnedNotes.length > 0) {
+                newSections.push({ title: "", data: unpinnedNotes });
+            }
+            setSections(newSections);
             return;
         }
 
@@ -185,6 +218,12 @@ export const NotesHome: React.FC = () => {
                 return aIndex - bIndex;
             });
             setFilteredNotes(filtered);
+            // For search results, don't separate by pinned status
+            const searchSections: { title: string; data: NoteWithTags[] }[] = [];
+            if (filtered.length > 0) {
+                searchSections.push({ title: "Search results", data: filtered });
+            }
+            setSections(searchSections);
         } catch (error) {
             console.error("❌ [Search] Search failed:", error);
             setTemporalFilterDescription(null);
@@ -199,6 +238,12 @@ export const NotesHome: React.FC = () => {
                     note.tags.some((tag) => tag.name.toLowerCase().includes(query)),
             );
             setFilteredNotes(filtered);
+            // For search results, don't separate by pinned status
+            const searchSections: { title: string; data: NoteWithTags[] }[] = [];
+            if (filtered.length > 0) {
+                searchSections.push({ title: "Search results", data: filtered });
+            }
+            setSections(searchSections);
         } finally {
             setIsSearching(false);
         }
@@ -219,20 +264,35 @@ export const NotesHome: React.FC = () => {
     );
 
     // Handle archive note
-    const handleArchiveNote = useCallback(async (noteId: string) => {
-        await archiveNote(noteId);
-        // Remove from local state
-        setNotes((prev) => prev.filter((n) => n.id !== noteId));
-        setFilteredNotes((prev) => prev.filter((n) => n.id !== noteId));
-    }, []);
+    const handleArchiveNote = useCallback(
+        async (noteId: string) => {
+            await archiveNote(noteId);
+            // Remove from local state
+            setNotes((prev) => prev.filter((n) => n.id !== noteId));
+            setFilteredNotes((prev) => prev.filter((n) => n.id !== noteId));
+            // Reload notes to update sections
+            await loadNotes();
+        },
+        [loadNotes],
+    );
 
-    // Handle trash note
-    const handleTrashNote = useCallback(async (noteId: string) => {
-        await moveToTrash(noteId);
-        // Remove from local state
-        setNotes((prev) => prev.filter((n) => n.id !== noteId));
-        setFilteredNotes((prev) => prev.filter((n) => n.id !== noteId));
-    }, []);
+    // Handle pin/unpin note
+    const handlePinNote = useCallback(
+        async (noteId: string) => {
+            const note = notes.find((n) => n.id === noteId);
+            if (!note) return;
+
+            if (note.is_pinned) {
+                await unpinNote(noteId);
+            } else {
+                await pinNote(noteId);
+            }
+
+            // Reload notes to reflect pin status and reordering
+            await loadNotes();
+        },
+        [notes, loadNotes],
+    );
 
     // Handle settings
     const handleSettings = useCallback(() => {
@@ -327,7 +387,8 @@ export const NotesHome: React.FC = () => {
                 tags={item.tags}
                 onPress={handleNotePress}
                 onArchive={() => handleArchiveNote(item.id)}
-                onTrash={() => handleTrashNote(item.id)}
+                onPin={() => handlePinNote(item.id)}
+                isPinned={item.is_pinned}
                 onLongPress={handleLongPress}
                 isSelectionMode={isSelectionMode}
                 isSelected={isSelected(item.id)}
@@ -338,7 +399,7 @@ export const NotesHome: React.FC = () => {
         [
             handleNotePress,
             handleArchiveNote,
-            handleTrashNote,
+            handlePinNote,
             handleLongPress,
             isSelectionMode,
             isSelected,
@@ -346,6 +407,18 @@ export const NotesHome: React.FC = () => {
             processingNoteIds,
         ],
     );
+
+    const renderSectionHeader = useCallback(({ section }: { section: { title: string; data: NoteWithTags[] } }) => {
+        // Don't show section header for search results or empty titles
+        if (section.title === "Search results" || section.title === "") {
+            return null;
+        }
+        return (
+            <Box className="px-4 py-2">
+                <Text className="text-sm font-medium text-typography-500">{section.title}</Text>
+            </Box>
+        );
+    }, []);
 
     // Key extractor
     const keyExtractor = useCallback((item: Note) => item.id, []);
@@ -421,8 +494,8 @@ export const NotesHome: React.FC = () => {
             <SettingsNoteCounter notes={filteredNotes} />
 
             {/* Notes List */}
-            <FlatList
-                data={filteredNotes}
+            <SectionList
+                sections={sections}
                 renderItem={renderNote}
                 keyExtractor={keyExtractor}
                 contentContainerClassName="flex-grow"
@@ -433,12 +506,7 @@ export const NotesHome: React.FC = () => {
                 refreshControl={
                     <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={"grey"} />
                 }
-                // Enable layout animations for selection mode changes
-                getItemLayout={(_data: any, index: number) => ({
-                    length: 150, // Approximate item height
-                    offset: 150 * index,
-                    index,
-                })}
+                stickySectionHeadersEnabled={false}
             />
         </Box>
     );

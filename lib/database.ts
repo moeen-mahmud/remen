@@ -21,6 +21,7 @@ export interface Note {
     deleted_at: number | null;
     reminder_at: number | null;
     notification_id: string | null;
+    is_pinned: boolean;
 }
 
 export type NoteType = "note" | "meeting" | "task" | "idea" | "journal" | "reference" | "voice" | "scan";
@@ -102,7 +103,8 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
             is_deleted INTEGER DEFAULT 0,
             deleted_at INTEGER,
             reminder_at INTEGER,
-            notification_id TEXT
+            notification_id TEXT,
+            is_pinned INTEGER DEFAULT 0
         );
 
         CREATE TABLE IF NOT EXISTS tags (
@@ -166,6 +168,11 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
     } catch {
         // Column already exists
     }
+    try {
+        await database.execAsync(`ALTER TABLE notes ADD COLUMN is_pinned INTEGER DEFAULT 0`);
+    } catch {
+        // Column already exists
+    }
 }
 
 // Note CRUD Operations
@@ -191,11 +198,12 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
         deleted_at: null,
         reminder_at: null,
         notification_id: null,
+        is_pinned: false,
     };
 
     await database.runAsync(
-        `INSERT INTO notes (id, content, html, title, type, created_at, updated_at, is_processed, ai_status, ai_error, embedding, original_image, audio_file, is_archived, is_deleted, deleted_at, reminder_at, notification_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO notes (id, content, html, title, type, created_at, updated_at, is_processed, ai_status, ai_error, embedding, original_image, audio_file, is_archived, is_deleted, deleted_at, reminder_at, notification_id, is_pinned)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             note.id,
             note.content,
@@ -215,6 +223,7 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
             note.deleted_at,
             note.reminder_at,
             note.notification_id,
+            note.is_pinned ? 1 : 0,
         ],
     );
 
@@ -241,6 +250,7 @@ interface NoteRow {
     deleted_at: number | null;
     reminder_at: number | null;
     notification_id: string | null;
+    is_pinned: number;
 }
 
 // Helper to convert row to Note
@@ -253,6 +263,7 @@ function rowToNote(row: NoteRow): Note {
         ai_error: row.ai_error ?? null,
         is_archived: row.is_archived === 1,
         is_deleted: row.is_deleted === 1,
+        is_pinned: row.is_pinned === 1,
     };
 }
 
@@ -268,7 +279,7 @@ export async function getNoteById(id: string): Promise<Note | null> {
 export async function getAllNotes(): Promise<Note[]> {
     const database = await getDatabase();
     const results = await database.getAllAsync<NoteRow>(
-        "SELECT * FROM notes WHERE is_archived = 0 AND is_deleted = 0 ORDER BY created_at DESC",
+        "SELECT * FROM notes WHERE is_archived = 0 AND is_deleted = 0 ORDER BY is_pinned DESC, created_at DESC",
     );
 
     return results.map(rowToNote);
@@ -409,6 +420,27 @@ export async function emptyTrash(): Promise<number> {
     const database = await getDatabase();
     const result = await database.runAsync("DELETE FROM notes WHERE is_deleted = 1");
     return result.changes;
+}
+
+// Pin Operations
+export async function pinNote(id: string): Promise<Note | null> {
+    const database = await getDatabase();
+    const existing = await getNoteById(id);
+    if (!existing) return null;
+
+    await database.runAsync("UPDATE notes SET is_pinned = 1, updated_at = ? WHERE id = ?", [Date.now(), id]);
+
+    return { ...existing, is_pinned: true, updated_at: Date.now() };
+}
+
+export async function unpinNote(id: string): Promise<Note | null> {
+    const database = await getDatabase();
+    const existing = await getNoteById(id);
+    if (!existing) return null;
+
+    await database.runAsync("UPDATE notes SET is_pinned = 0, updated_at = ? WHERE id = ?", [Date.now(), id]);
+
+    return { ...existing, is_pinned: false, updated_at: Date.now() };
 }
 
 // Get counts for archives and trash

@@ -2,7 +2,7 @@ import { NoteCard, type NoteCardProps } from "@/components/note-card";
 import { Icon } from "@/components/ui/icon";
 import { gestureThresholds, timingConfigs } from "@/lib/animation-config";
 import * as Haptics from "expo-haptics";
-import { ArchiveIcon, Trash2Icon, UndoIcon } from "lucide-react-native";
+import { ArchiveIcon, Pin, PinOff, UndoIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { type FC, useCallback } from "react";
 import { Dimensions, StyleSheet, Text, View } from "react-native";
@@ -14,10 +14,11 @@ const SWIPE_THRESHOLD = SCREEN_WIDTH * gestureThresholds.swipeActionThreshold;
 
 interface SwipeableNoteCardProps extends NoteCardProps {
     onArchive?: () => void;
-    onTrash?: () => void;
+    onPin?: () => void;
     onRestore?: () => void;
     isArchived?: boolean;
     isTrashed?: boolean;
+    isPinned?: boolean;
     showRightAction?: boolean;
     showLeftAction?: boolean;
     // Selection mode props are passed through to NoteCard
@@ -28,10 +29,11 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
     tags,
     onPress,
     onArchive,
-    onTrash,
+    onPin,
     onRestore,
     isArchived = false,
     isTrashed = false,
+    isPinned = false,
     showRightAction = true,
     showLeftAction = true,
     onLongPress,
@@ -54,9 +56,9 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
         onArchive?.();
     }, [onArchive]);
 
-    const handleTrash = useCallback(() => {
-        onTrash?.();
-    }, [onTrash]);
+    const handlePin = useCallback(() => {
+        onPin?.();
+    }, [onPin]);
 
     const handleRestore = useCallback(() => {
         onRestore?.();
@@ -79,28 +81,23 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
                 runOnJS(triggerHaptic)();
                 if (isTrashed) {
                     runOnJS(handleRestore)();
-                } else if (isArchived) {
-                    runOnJS(handleTrash)();
                 } else {
                     runOnJS(handleArchive)();
                 }
                 isRemoving.value = true;
                 translateX.value = withTiming(-SCREEN_WIDTH, timingConfigs.fast);
             } else if (shouldTriggerRight) {
-                // Swipe right - Trash (or Restore if archived)
-                runOnJS(triggerHaptic)();
-                if (isArchived) {
+                // Swipe right - Pin/Unpin (only for non-archived, non-trashed notes)
+                if (!isArchived && !isTrashed) {
+                    runOnJS(triggerHaptic)();
+                    runOnJS(handlePin)();
+                } else if (isArchived) {
+                    runOnJS(triggerHaptic)();
                     runOnJS(handleRestore)();
-                } else if (isTrashed) {
-                    runOnJS(handleArchive)();
-                } else {
-                    runOnJS(handleTrash)();
                 }
-                isRemoving.value = true;
-                translateX.value = withTiming(SCREEN_WIDTH, timingConfigs.slow);
+                translateX.value = withTiming(0, timingConfigs.normal);
             } else {
                 // Snap back
-                // translateX.value = withSpring(0, springConfigs.gentle)
                 translateX.value = withTiming(0, timingConfigs.normal);
             }
         });
@@ -124,28 +121,30 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
     });
 
     // Determine action colors and icons based on context
-    const leftActionColor = isArchived ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#E7000B" : "#F9423C";
-    const rightActionColor = isTrashed
+    // Left action (visible when swiping right) = Pin/Unpin
+    // Right action (visible when swiping left) = Archive
+    const leftActionColor = isArchived
         ? isDark
             ? "#39FF14"
             : "#00B700"
-        : isArchived
+        : isPinned
           ? isDark
               ? "#E7000B"
               : "#F9423C"
           : isDark
             ? "#39FF14"
             : "#00B700";
+    const rightActionColor = isArchived ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#E7000B" : "#F9423C";
 
-    const LeftIcon = isArchived ? UndoIcon : Trash2Icon;
-    const RightIcon = isTrashed ? UndoIcon : isArchived ? Trash2Icon : ArchiveIcon;
+    const LeftIcon = isArchived ? UndoIcon : isPinned ? PinOff : Pin;
+    const RightIcon = isArchived ? UndoIcon : ArchiveIcon;
 
-    const leftLabel = isArchived ? "Restore" : isTrashed ? "Permanent Delete" : "Trash";
-    const rightLabel = isTrashed ? "Restore" : isArchived ? "Trash" : "Archive";
+    const leftLabel = isArchived ? "Restore" : isPinned ? "Unpin" : "Pin";
+    const rightLabel = isArchived ? "Restore" : "Archive";
 
     return (
         <View style={styles.container}>
-            {/* Left Action (Trash/Restore) - visible when swiping right */}
+            {/* Left Action (Pin/Unpin/Restore) - visible when swiping right */}
             {showLeftAction ? (
                 <Animated.View style={[styles.actionContainer, styles.leftAction, leftActionStyle]}>
                     <View
