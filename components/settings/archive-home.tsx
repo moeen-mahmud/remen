@@ -77,7 +77,7 @@ export const ArchivesHome: React.FC = () => {
                 onPress={handleNotePress}
                 onRestore={() => handleRestore(item.id)}
                 onTrash={() => handleTrash(item.id)}
-                isArchived={true}
+                pageContext="archive"
             />
         ),
         [handleNotePress, handleRestore, handleTrash],

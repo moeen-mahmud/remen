@@ -394,6 +394,7 @@ export const NotesHome: React.FC = () => {
                 isSelected={isSelected(item.id)}
                 onToggleSelect={handleToggleSelect}
                 isProcessing={processingNoteIds.has(item.id)}
+                pageContext="notes"
             />
         ),
         [

@@ -2,26 +2,28 @@ import { NoteCard, type NoteCardProps } from "@/components/note-card";
 import { Icon } from "@/components/ui/icon";
 import { gestureThresholds, timingConfigs } from "@/lib/animation-config";
 import * as Haptics from "expo-haptics";
-import { ArchiveIcon, Pin, PinOff, UndoIcon } from "lucide-react-native";
+import { ArchiveIcon, Pin, PinOff, Trash2, UndoIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { type FC, useCallback } from "react";
-import { Dimensions, StyleSheet, Text, View } from "react-native";
+import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const SWIPE_THRESHOLD = SCREEN_WIDTH * gestureThresholds.swipeActionThreshold;
 
+type PageContext = "notes" | "archive" | "trash";
+
 interface SwipeableNoteCardProps extends NoteCardProps {
     onArchive?: () => void;
     onPin?: () => void;
     onRestore?: () => void;
-    isArchived?: boolean;
-    isTrashed?: boolean;
+    onTrash?: () => void;
+    onPermanentDelete?: () => void;
     isPinned?: boolean;
+    pageContext: PageContext; // Required to determine swipe behavior
     showRightAction?: boolean;
     showLeftAction?: boolean;
-    // Selection mode props are passed through to NoteCard
 }
 
 export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
@@ -31,9 +33,10 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
     onArchive,
     onPin,
     onRestore,
-    isArchived = false,
-    isTrashed = false,
+    onTrash,
+    onPermanentDelete,
     isPinned = false,
+    pageContext,
     showRightAction = true,
     showLeftAction = true,
     onLongPress,
@@ -52,17 +55,46 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }, []);
 
-    const handleArchive = useCallback(() => {
-        onArchive?.();
-    }, [onArchive]);
+    const handleLeftAction = useCallback(() => {
+        switch (pageContext) {
+            case "notes":
+                onPin?.();
+                break;
+            case "archive":
+            case "trash":
+                onRestore?.();
+                break;
+        }
+    }, [pageContext, onPin, onRestore]);
 
-    const handlePin = useCallback(() => {
-        onPin?.();
-    }, [onPin]);
-
-    const handleRestore = useCallback(() => {
-        onRestore?.();
-    }, [onRestore]);
+    const handleRightAction = useCallback(() => {
+        switch (pageContext) {
+            case "notes":
+                onArchive?.();
+                break;
+            case "archive":
+                onTrash?.();
+                break;
+            case "trash":
+                // Show confirmation alert before permanent deletion
+                Alert.alert(
+                    "Delete Permanently",
+                    "Are you sure you want to permanently delete this note? This action cannot be undone.",
+                    [
+                        {
+                            text: "Cancel",
+                            style: "cancel",
+                        },
+                        {
+                            text: "Delete",
+                            style: "destructive",
+                            onPress: () => onPermanentDelete?.(),
+                        },
+                    ],
+                );
+                break;
+        }
+    }, [pageContext, onArchive, onTrash, onPermanentDelete]);
 
     const panGesture = Gesture.Pan()
         .activeOffsetX([-10, 10])
@@ -73,29 +105,34 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
             translateX.value = clampedX;
         })
         .onEnd((event) => {
-            const shouldTriggerLeft = translateX.value < -SWIPE_THRESHOLD;
-            const shouldTriggerRight = translateX.value > SWIPE_THRESHOLD;
+            const shouldTriggerLeft = translateX.value > SWIPE_THRESHOLD;
+            const shouldTriggerRight = translateX.value < -SWIPE_THRESHOLD;
 
-            if (shouldTriggerLeft) {
-                // Swipe left - Archive (or Restore if in trash)
+            if (shouldTriggerLeft && showLeftAction) {
+                // Swipe left to right
                 runOnJS(triggerHaptic)();
-                if (isTrashed) {
-                    runOnJS(handleRestore)();
+                runOnJS(handleLeftAction)();
+
+                // Only animate removal for non-pin actions
+                if (pageContext !== "notes") {
+                    isRemoving.value = true;
+                    translateX.value = withTiming(SCREEN_WIDTH, timingConfigs.fast);
                 } else {
-                    runOnJS(handleArchive)();
+                    translateX.value = withTiming(0, timingConfigs.normal);
                 }
-                isRemoving.value = true;
-                translateX.value = withTiming(-SCREEN_WIDTH, timingConfigs.fast);
-            } else if (shouldTriggerRight) {
-                // Swipe right - Pin/Unpin (only for non-archived, non-trashed notes)
-                if (!isArchived && !isTrashed) {
-                    runOnJS(triggerHaptic)();
-                    runOnJS(handlePin)();
-                } else if (isArchived) {
-                    runOnJS(triggerHaptic)();
-                    runOnJS(handleRestore)();
+            } else if (shouldTriggerRight && showRightAction) {
+                // Swipe right to left
+                runOnJS(triggerHaptic)();
+
+                // For trash page, we need to show alert first
+                if (pageContext === "trash") {
+                    runOnJS(handleRightAction)();
+                    translateX.value = withTiming(0, timingConfigs.normal);
+                } else {
+                    runOnJS(handleRightAction)();
+                    isRemoving.value = true;
+                    translateX.value = withTiming(-SCREEN_WIDTH, timingConfigs.fast);
                 }
-                translateX.value = withTiming(0, timingConfigs.normal);
             } else {
                 // Snap back
                 translateX.value = withTiming(0, timingConfigs.normal);
@@ -120,59 +157,88 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
         };
     });
 
-    // Determine action colors and icons based on context
-    // Left action (visible when swiping right) = Pin/Unpin
-    // Right action (visible when swiping left) = Archive
-    const leftActionColor = isArchived
-        ? isDark
-            ? "#39FF14"
-            : "#00B700"
-        : isPinned
-          ? isDark
-              ? "#E7000B"
-              : "#F9423C"
-          : isDark
-            ? "#39FF14"
-            : "#00B700";
-    const rightActionColor = isArchived ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#E7000B" : "#F9423C";
+    // Determine action colors, icons, and labels based on page context
+    const getLeftActionConfig = () => {
+        switch (pageContext) {
+            case "notes":
+                return {
+                    color: isPinned
+                        ? isDark
+                            ? "#E7000B"
+                            : "#F9423C" // Danger color for unpin
+                        : isDark
+                          ? "#3B82F6"
+                          : "#2563EB", // Blue for pin
+                    icon: isPinned ? PinOff : Pin,
+                    label: isPinned ? "Unpin" : "Pin",
+                };
+            case "archive":
+            case "trash":
+                return {
+                    color: isDark ? "#39FF14" : "#00B700", // Success color for restore
+                    icon: UndoIcon,
+                    label: "Restore",
+                };
+        }
+    };
 
-    const LeftIcon = isArchived ? UndoIcon : isPinned ? PinOff : Pin;
-    const RightIcon = isArchived ? UndoIcon : ArchiveIcon;
+    const getRightActionConfig = () => {
+        switch (pageContext) {
+            case "notes":
+                return {
+                    color: isDark ? "#F59E0B" : "#D97706", // Orange for archive
+                    icon: ArchiveIcon,
+                    label: "Archive",
+                };
+            case "archive":
+                return {
+                    color: isDark ? "#E7000B" : "#F9423C", // Danger color for trash
+                    icon: Trash2,
+                    label: "Trash",
+                };
+            case "trash":
+                return {
+                    color: isDark ? "#E7000B" : "#F9423C", // Danger color for delete
+                    icon: Trash2,
+                    label: "Delete",
+                };
+        }
+    };
 
-    const leftLabel = isArchived ? "Restore" : isPinned ? "Unpin" : "Pin";
-    const rightLabel = isArchived ? "Restore" : "Archive";
+    const leftConfig = getLeftActionConfig();
+    const rightConfig = getRightActionConfig();
 
     return (
         <View style={styles.container}>
-            {/* Left Action (Pin/Unpin/Restore) - visible when swiping right */}
-            {showLeftAction ? (
+            {/* Left Action - visible when swiping left to right */}
+            {showLeftAction && (
                 <Animated.View style={[styles.actionContainer, styles.leftAction, leftActionStyle]}>
                     <View
                         style={[
                             styles.actionContent,
-                            { backgroundColor: leftActionColor, justifyContent: "flex-start" },
+                            { backgroundColor: leftConfig.color, justifyContent: "flex-start" },
                         ]}
                     >
-                        <Icon as={LeftIcon} size="md" color="#000" />
-                        <Text style={styles.actionText}>{leftLabel}</Text>
+                        <Icon as={leftConfig.icon} size="md" color="#000" />
+                        <Text style={styles.actionText}>{leftConfig.label}</Text>
                     </View>
                 </Animated.View>
-            ) : null}
+            )}
 
-            {/* Right Action (Archive/Restore) - visible when swiping left */}
-            {showRightAction ? (
+            {/* Right Action - visible when swiping right to left */}
+            {showRightAction && (
                 <Animated.View style={[styles.actionContainer, styles.rightAction, rightActionStyle]}>
                     <View
                         style={[
                             styles.actionContent,
-                            { backgroundColor: rightActionColor, justifyContent: "flex-end" },
+                            { backgroundColor: rightConfig.color, justifyContent: "flex-end" },
                         ]}
                     >
-                        <Icon as={RightIcon} size="md" color="#000" />
-                        <Text style={styles.actionText}>{rightLabel}</Text>
+                        <Text style={styles.actionText}>{rightConfig.label}</Text>
+                        <Icon as={rightConfig.icon} size="md" color="#000" />
                     </View>
                 </Animated.View>
-            ) : null}
+            )}
 
             {/* Card */}
             <GestureDetector gesture={panGesture}>
@@ -223,11 +289,11 @@ const styles = StyleSheet.create({
         gap: 8,
         minWidth: 200,
         paddingHorizontal: 16,
-        // paddingVertical: 12,
         borderRadius: 12,
     },
     actionText: {
         fontSize: 14,
         fontWeight: "600",
+        color: "#000",
     },
 });

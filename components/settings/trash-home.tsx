@@ -105,7 +105,7 @@ export const TrashHome: React.FC = () => {
                 onPress={handleNotePress}
                 onRestore={() => handleRestore(item.id)}
                 onArchive={() => handlePermanentDelete(item.id)}
-                isTrashed={true}
+                pageContext="trash"
             />
         ),
         [handleNotePress, handleRestore, handlePermanentDelete],
