@@ -4,11 +4,14 @@
         "slug": "remen",
         "version": "0.0.1",
         "orientation": "portrait",
-        "icon": "./assets/images/icon.png",
         "scheme": "remen",
         "userInterfaceStyle": "automatic",
         "newArchEnabled": true,
         "ios": {
+            "icon": {
+                "dark": "./assets/remen/remen-ios-dark.png",
+                "light": "./assets/remen/remen-ios-light.png",
+            },
             "supportsTablet": false,
             "bundleIdentifier": "com.remennote.app",
             "infoPlist": {
@@ -21,22 +24,22 @@
             },
             "appleTeamId": "M333T6NJKB"
         },
-        "android": {
-            "adaptiveIcon": {
-                "backgroundColor": "#E6F4FE",
-                "foregroundImage": "./assets/images/android-icon-foreground.png",
-                "backgroundImage": "./assets/images/android-icon-background.png",
-                "monochromeImage": "./assets/images/android-icon-monochrome.png"
-            },
-            "edgeToEdgeEnabled": true,
-            "predictiveBackGestureEnabled": false,
-            "permissions": [
-                "android.permission.RECORD_AUDIO",
-                "android.permission.CAMERA",
-                "android.permission.RECORD_AUDIO",
-                "android.permission.CAMERA"
-            ]
-        },
+        // "android": {
+        //     "adaptiveIcon": {
+        //         "backgroundColor": "#E6F4FE",
+        //         "foregroundImage": "./assets/images/android-icon-foreground.png",
+        //         "backgroundImage": "./assets/images/android-icon-background.png",
+        //         "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        //     },
+        //     "edgeToEdgeEnabled": true,
+        //     "predictiveBackGestureEnabled": false,
+        //     "permissions": [
+        //         "android.permission.RECORD_AUDIO",
+        //         "android.permission.CAMERA",
+        //         "android.permission.RECORD_AUDIO",
+        //         "android.permission.CAMERA"
+        //     ]
+        // },
         "web": {
             "output": "static",
             "favicon": "./assets/images/favicon.png"
@@ -74,20 +77,21 @@
             [
                 "expo-splash-screen",
                 {
-                    "image": "./assets/images/splash-icon.png",
+                    "image": "./assets/remen/remen-splash-icon-light.png",
                     "imageWidth": 200,
                     "resizeMode": "contain",
                     "backgroundColor": "#ffffff",
                     "dark": {
-                        "backgroundColor": "#000000"
+                        "backgroundColor": "#000000",
+                        "image": "./assets/remen/remen-splash-icon-dark.png"
                     }
                 }
             ],
             [
                 "expo-notifications",
                 {
-                    "icon": "./assets/images/icon.png",
-                    "color": "#ffffff",
+                    "icon": "./assets/remen/remen-ios-dark.png",
+                    "color": "#000000",
                     "sounds": [],
                     "mode": "production"
                 }
