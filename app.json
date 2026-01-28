@@ -1,113 +1,128 @@
 {
-    "expo": {
-        "name": "Remen",
-        "slug": "remen",
-        "version": "0.0.1",
-        "orientation": "portrait",
-        "icon": "./assets/images/icon.png",
-        "scheme": "remen",
-        "userInterfaceStyle": "automatic",
-        "newArchEnabled": true,
-        "ios": {
-            "supportsTablet": false,
-            "bundleIdentifier": "com.remen.app",
-            "infoPlist": {
-                "NSCameraUsageDescription": "Remen uses the camera to scan documents and handwritten notes",
-                "NSMicrophoneUsageDescription": "Remen uses the microphone for voice note capture",
-                "NSSpeechRecognitionUsageDescription": "Remen uses speech recognition to transcribe voice notes",
-                "NSLocationWhenInUseUsageDescription": "Remen uses WebView to render the rich editor, sometimes it needs to use the location to render the map"
-            },
-            "appleTeamId": "M333T6NJKB"
-        },
-        "android": {
-            "adaptiveIcon": {
-                "backgroundColor": "#E6F4FE",
-                "foregroundImage": "./assets/images/android-icon-foreground.png",
-                "backgroundImage": "./assets/images/android-icon-background.png",
-                "monochromeImage": "./assets/images/android-icon-monochrome.png"
-            },
-            "edgeToEdgeEnabled": true,
-            "predictiveBackGestureEnabled": false,
-            "permissions": ["android.permission.RECORD_AUDIO", "android.permission.CAMERA"]
-        },
-        "web": {
-            "output": "static",
-            "favicon": "./assets/images/favicon.png"
-        },
-        "plugins": [
-            "expo-router",
-            [
-                "expo-sqlite",
-                {
-                    "enableFTS": true,
-                    "useSQLCipher": true,
-                    "android": {
-                        "enableFTS": false,
-                        "useSQLCipher": false
-                    },
-                    "ios": {
-                        "customBuildFlags": ["-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"]
-                    }
-                }
-            ],
-            [
-                "@react-native-voice/voice",
-                {
-                    "microphonePermission": "Remen uses the microphone for voice note capture",
-                    "speechRecognitionPermission": "Remen uses speech recognition to transcribe voice notes"
-                }
-            ],
-            [
-                "react-native-vision-camera",
-                {
-                    "cameraPermissionText": "Remen uses the camera to scan documents and handwritten notes",
-                    "enableMicrophonePermission": false
-                }
-            ],
-            [
-                "expo-splash-screen",
-                {
-                    "image": "./assets/images/splash-icon.png",
-                    "imageWidth": 200,
-                    "resizeMode": "contain",
-                    "backgroundColor": "#ffffff",
-                    "dark": {
-                        "backgroundColor": "#000000"
-                    }
-                }
-            ],
-            [
-                "expo-notifications",
-                {
-                    "icon": "./assets/images/icon.png",
-                    "color": "#ffffff",
-                    "sounds": [],
-                    "mode": "production"
-                }
-            ],
-            [
-                "expo-build-properties",
-                {
-                    "ios": {
-                        "deploymentTarget": "17.0",
-                        "entitlements": {
-                            "aps-environment": "development"
-                        }
-                    }
-                }
-            ],
-            "react-native-cloud-storage"
-        ],
-        "experiments": {
-            "typedRoutes": true,
-            "reactCompiler": true
-        },
-        "extra": {
-            "router": {},
-            "eas": {
-                "projectId": "e06444c6-047b-4269-afa2-aa643f3d4ace"
+  "expo": {
+    "name": "Remen",
+    "slug": "remen",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "remen",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.remennote.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Remen uses the camera to scan documents and handwritten notes",
+        "NSMicrophoneUsageDescription": "Remen uses the microphone for voice note capture",
+        "NSSpeechRecognitionUsageDescription": "Remen uses speech recognition to transcribe voice notes",
+        "NSPhotoLibraryUsageDescription": "Remen uses the photo library to save images and documents",
+        "NSLocationWhenInUseUsageDescription": "Remen uses WebView to render the rich editor, sometimes it needs to use the location to render the map",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "appleTeamId": "M333T6NJKB"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ]
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-sqlite",
+        {
+          "enableFTS": true,
+          "useSQLCipher": true,
+          "android": {
+            "enableFTS": false,
+            "useSQLCipher": false
+          },
+          "ios": {
+            "customBuildFlags": [
+              "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"
+            ]
+          }
+        }
+      ],
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Remen uses the microphone for voice note capture",
+          "speechRecognitionPermission": "Remen uses speech recognition to transcribe voice notes"
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Remen uses the camera to scan documents and handwritten notes",
+          "enableMicrophonePermission": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#ffffff",
+          "sounds": [],
+          "mode": "production"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.0",
+            "entitlements": {
+              "aps-environment": "development"
             }
-        },
-        "owner": "world-television"
+          }
+        }
+      ],
+      "react-native-cloud-storage"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e06444c6-047b-4269-afa2-aa643f3d4ace"
+      }
+    },
+    "owner": "world-television",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e06444c6-047b-4269-afa2-aa643f3d4ace"
     }
+  }
 }
