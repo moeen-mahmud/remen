@@ -1,11 +1,11 @@
-import { MemoryErrorOverlay } from "@/components/memory-error-overlay";
 import { ModelDownloadOverlay } from "@/components/model-download-overlay";
 import { Onboarding } from "@/components/onboarding";
 import { useAI } from "@/lib/ai";
 import { aiQueue } from "@/lib/ai/queue";
 import { getDatabase, getUnprocessedNotes } from "@/lib/database";
 import { getPreferences, savePreferences } from "@/lib/preferences";
-import { SplashScreen } from "expo-router";
+import * as Notifications from "expo-notifications";
+import { router, SplashScreen } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
@@ -15,7 +15,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     const [downloadOverlayMinimized, setDownloadOverlayMinimized] = useState(false);
     const [modelsDownloadedPreviously, setModelsDownloadedPreviously] = useState<boolean | null>(null);
     const [, setOnboardingCompleted] = useState<boolean | null>(null);
-    const { llm, embeddings, ocr, isInitializing, overallProgress, error, hasMemoryError } = useAI();
+    const { llm, embeddings, ocr, isInitializing, overallProgress, error } = useAI();
 
     // Track previous state to avoid duplicate logs
     const prevStateRef = useRef({ llmReady: false, embeddingsReady: false, lastProgress: 0 });
@@ -73,7 +73,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     // Mark models as downloaded when all are ready (only if no memory error)
     useEffect(() => {
         async function markModelsDownloaded() {
-            if (allModelsReady && modelsDownloadedPreviously === false && !hasMemoryError) {
+            if (allModelsReady && modelsDownloadedPreviously === false) {
                 console.log("[App] All models downloaded, saving preference...");
                 await savePreferences({ modelsDownloaded: true });
                 setTimeout(() => {
@@ -82,7 +82,45 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
             }
         }
         markModelsDownloaded();
-    }, [allModelsReady, modelsDownloadedPreviously, hasMemoryError]);
+    }, [allModelsReady, modelsDownloadedPreviously]);
+
+    // Handle notification taps to open the respective note
+    useEffect(() => {
+        let subscription: Notifications.EventSubscription | null = null;
+        if (isReady) {
+            // Helper to navigate to a note if we have a valid ID
+            const handleNavigateToNote = (noteId: unknown) => {
+                if (typeof noteId !== "string" || !noteId) return;
+                try {
+                    router.push(`/notes/${noteId}` as any);
+                } catch (error) {
+                    console.error("[Notifications] Failed to navigate to note from notification:", error);
+                }
+            };
+
+            (async () => {
+                try {
+                    const lastResponse = await Notifications.getLastNotificationResponseAsync();
+                    if (lastResponse) {
+                        const noteId = (lastResponse.notification.request.content.data as any)?.noteId;
+                        handleNavigateToNote(noteId);
+                    }
+                } catch (error) {
+                    console.error("[Notifications] Error checking last notification response:", error);
+                }
+            })();
+
+            // Listen for taps while the app is in foreground/background
+            subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+                const noteId = (response.notification.request.content.data as any)?.noteId;
+                handleNavigateToNote(noteId);
+            });
+        }
+
+        return () => {
+            subscription?.remove();
+        };
+    }, [isReady]);
 
     // Handle onboarding completion
     const handleOnboardingComplete = useCallback(async () => {
@@ -170,13 +208,13 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
             {showOnboarding ? <Onboarding onComplete={handleOnboardingComplete} onSkip={handleOnboardingSkip} /> : null}
 
             {/* Show download overlay after onboarding while models are downloading (only if no memory error) */}
-            {showDownloadOverlay && !hasMemoryError ? (
+            {showDownloadOverlay ? (
                 <ModelDownloadOverlay
                     progress={overallProgress}
                     llmProgress={llm?.downloadProgress || 0}
                     embeddingsProgress={embeddings?.downloadProgress || 0}
                     ocrProgress={ocr?.downloadProgress || 0}
-                    isVisible={showDownloadOverlay && isInitializing && !hasMemoryError}
+                    isVisible={showDownloadOverlay && isInitializing}
                     onMinimize={handleDownloadOverlayMinimize}
                     onClose={handleDownloadOverlayClose}
                     isMinimized={downloadOverlayMinimized}
@@ -184,7 +222,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
             ) : null}
 
             {/* Show memory error overlay if models failed due to memory issues */}
-            {hasMemoryError ? <MemoryErrorOverlay isVisible={hasMemoryError} /> : null}
+            {/* {hasMemoryError ? <MemoryErrorOverlay isVisible={hasMemoryError} /> : null} */}
         </>
     );
 }
