@@ -10,7 +10,7 @@
         "ios": {
             "icon": {
                 "dark": "./assets/remen/remen-ios-dark.png",
-                "light": "./assets/remen/remen-ios-light.png",
+                "light": "./assets/remen/remen-ios-light.png"
             },
             "supportsTablet": false,
             "bundleIdentifier": "com.remennote.app",
