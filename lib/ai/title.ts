@@ -8,22 +8,17 @@
 import type { NoteType } from "@/lib/database";
 import type { LLMModel, Message } from "./provider";
 
-const MAX_TITLE_LENGTH = 50;
+const MAX_TITLE_LENGTH = 30;
 
 /**
  * Generate a title for the given note content using AI
  */
 export async function generateTitle(content: string, llm: LLMModel | null, noteType?: NoteType): Promise<string> {
-    // Skip AI for very short content
-    if (content.trim().length < 20) {
-        return getFallbackTitle(content, noteType);
-    }
-
     // Try AI generation if model is ready and not busy
     if (llm?.isReady && !llm.isGenerating) {
         try {
             const aiTitle = await generateTitleWithAI(content, llm, noteType);
-            if (aiTitle && aiTitle.length > 3) {
+            if (aiTitle && aiTitle.length > 3 && !isExampleTitle(aiTitle)) {
                 return aiTitle;
             }
         } catch (error) {
@@ -42,42 +37,45 @@ export async function generateTitle(content: string, llm: LLMModel | null, noteT
 }
 
 /**
+ * Check if the generated title looks like an example that was copied
+ */
+function isExampleTitle(title: string): boolean {
+    const lowerTitle = title.toLowerCase();
+
+    // Common example indicators
+    const examplePatterns = [
+        /^example/i,
+        /\bexample\b/i,
+        /^e\.g\./i,
+        /^like\b/i,
+        /^such as\b/i,
+        // Specific examples that might get copied
+        /team sync|design review|daily tasks|finish report/i,
+        /ai automation|gratitude today|react hooks guide/i,
+        /meeting notes|project ideas/i,
+    ];
+
+    return examplePatterns.some((pattern) => pattern.test(lowerTitle));
+}
+
+/**
  * Generate title using LLM (SmolLM 360M via ExecutorTorch)
  */
 async function generateTitleWithAI(content: string, llm: LLMModel, noteType?: NoteType): Promise<string | null> {
-    // Simplified prompt for small models - shorter content and clearer examples
-    const contentPreview = content.substring(0, 350).trim();
+    // Truncate very long content to save tokens and improve focus
+    const truncatedContent = content.length > 500 ? content.substring(0, 500) + "..." : content;
 
-    // Type-specific examples for better guidance
-    let examples = "";
-    switch (noteType) {
-        case "meeting":
-            examples = "Example: 'Team Sync' or 'Design Review'";
-            break;
-        case "task":
-            examples = "Example: 'Daily Tasks' or 'Finish Report'";
-            break;
-        case "idea":
-            examples = "Example: 'AI Automation Idea'";
-            break;
-        case "journal":
-            examples = "Example: 'Gratitude Today'";
-            break;
-        case "reference":
-            examples = "Example: 'React Hooks Guide'";
-            break;
-        default:
-            examples = "Example: 'Meeting Notes' or 'Project Ideas'";
-    }
+    // Build a clearer, more direct prompt
+    const systemPrompt = buildSystemPrompt(noteType);
 
     const messages: Message[] = [
         {
             role: "system",
-            content: `Create a short title (max 50 chars). ${examples} Reply with title only, no quotes.`,
+            content: systemPrompt,
         },
         {
             role: "user",
-            content: contentPreview,
+            content: `Content:\n${truncatedContent}`,
         },
     ];
 
@@ -85,31 +83,91 @@ async function generateTitleWithAI(content: string, llm: LLMModel, noteType?: No
         const response = await llm.generate(messages);
 
         // Clean up the response
-        let title = response
-            .trim()
-            .replace(/^["']|["']$/g, "") // Remove surrounding quotes
-            .replace(/^(Title|Subject|Name):\s*/i, "") // Remove common prefixes
-            .replace(/\n.*/g, "") // Take only first line
-            .replace(/\s+/g, " ") // Normalize spaces
-            .trim();
+        let title = cleanGeneratedTitle(response);
 
-        // Ensure it's within length limits
-        if (title.length > MAX_TITLE_LENGTH) {
-            // Try to break at a word boundary
-            const truncated = title.substring(0, MAX_TITLE_LENGTH - 3);
-            const lastSpace = truncated.lastIndexOf(" ");
-            if (lastSpace > MAX_TITLE_LENGTH * 0.5) {
-                title = truncated.substring(0, lastSpace) + "...";
-            } else {
-                title = truncated + "...";
-            }
+        // Validate the title
+        if (!title || title.length < 3 || isExampleTitle(title)) {
+            return null;
         }
 
-        return title || null;
+        // Ensure it's within length limits
+        title = truncateTitle(title);
+
+        return title;
     } catch (error) {
         console.error("LLM title generation error:", error);
         return null;
     }
+}
+
+/**
+ * Build a better system prompt based on note type
+ */
+function buildSystemPrompt(noteType?: NoteType): string {
+    const baseInstruction =
+        "You are a title generator. Read the content and create a short, descriptive title (maximum 30 characters).";
+
+    const rules = [
+        "Output ONLY the title text",
+        "No quotes, no punctuation at the end",
+        "No prefixes like 'Title:' or 'Subject:'",
+        "Be specific to the actual content",
+    ];
+
+    let typeGuidance = "";
+    switch (noteType) {
+        case "meeting":
+            typeGuidance = "Focus on who met or what was discussed.";
+            break;
+        case "task":
+            typeGuidance = "Focus on the main action or task.";
+            break;
+        case "idea":
+            typeGuidance = "Capture the core concept briefly.";
+            break;
+        case "journal":
+            typeGuidance = "Reflect the main theme or feeling.";
+            break;
+        case "reference":
+            typeGuidance = "Describe what the reference is about.";
+            break;
+    }
+
+    return `${baseInstruction}\n\n${rules.join("\n")}${typeGuidance ? `\n\n${typeGuidance}` : ""}`;
+}
+
+/**
+ * Clean up the generated title response
+ */
+function cleanGeneratedTitle(response: string): string {
+    return response
+        .trim()
+        .split("\n")[0] // Take only first line
+        .replace(/^["'`]|["'`]$/g, "") // Remove surrounding quotes
+        .replace(/^(Title|Subject|Name|Heading|Topic):\s*/i, "") // Remove common prefixes
+        .replace(/^\s*[-–—]\s*/, "") // Remove leading dashes
+        .replace(/\s+/g, " ") // Normalize spaces
+        .replace(/[.!?,;:]$/, "") // Remove trailing punctuation
+        .trim();
+}
+
+/**
+ * Truncate title to max length at word boundary
+ */
+function truncateTitle(title: string): string {
+    if (title.length <= MAX_TITLE_LENGTH) {
+        return title;
+    }
+
+    // Try to break at a word boundary
+    const truncated = title.substring(0, MAX_TITLE_LENGTH - 3);
+    const lastSpace = truncated.lastIndexOf(" ");
+
+    if (lastSpace > MAX_TITLE_LENGTH * 0.5) {
+        return truncated.substring(0, lastSpace) + "...";
+    }
+
+    return truncated + "...";
 }
 
 /**
@@ -185,16 +243,7 @@ function getFallbackTitle(content: string, noteType?: NoteType): string {
     }
 
     // Truncate with ellipsis if needed
-    if (cleaned.length > MAX_TITLE_LENGTH) {
-        // Try to break at a word boundary
-        const truncated = cleaned.substring(0, MAX_TITLE_LENGTH - 3);
-        const lastSpace = truncated.lastIndexOf(" ");
-        if (lastSpace > MAX_TITLE_LENGTH * 0.5) {
-            cleaned = truncated.substring(0, lastSpace) + "...";
-        } else {
-            cleaned = truncated + "...";
-        }
-    }
+    cleaned = truncateTitle(cleaned);
 
     return cleaned || "Untitled Note";
 }

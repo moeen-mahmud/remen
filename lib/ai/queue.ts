@@ -147,11 +147,23 @@ class AIProcessingQueue {
     add(job: NoteJob, fromEditor = false) {
         // If from editor and currently on editing page, add to pending queue
         if (fromEditor && this.isOnEditingPage) {
-            // Check if job already exists in pending queue
-            if (!this.pendingQueue.some((j) => j.noteId === job.noteId)) {
+            // If a job for this note already exists in the pending queue,
+            // update its content so we always process the latest version.
+            const existingIndex = this.pendingQueue.findIndex((j) => j.noteId === job.noteId);
+            if (existingIndex !== -1) {
+                this.pendingQueue[existingIndex] = job;
+                console.log(
+                    `📋 [Queue] Updated pending job with latest content: ${job.noteId.substring(
+                        0,
+                        8,
+                    )}... (pending: ${this.pendingQueue.length})`,
+                );
+            } else {
                 this.pendingQueue.push(job);
                 console.log(
-                    `📋 [Queue] Added note to pending queue: ${job.noteId.substring(0, 8)}... (pending: ${this.pendingQueue.length})`,
+                    `📋 [Queue] Added note to pending queue: ${job.noteId.substring(0, 8)}... (pending: ${
+                        this.pendingQueue.length
+                    })`,
                 );
             }
             return;

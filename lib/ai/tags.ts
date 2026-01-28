@@ -9,6 +9,8 @@ import type { NoteType } from "@/lib/database";
 import type { LLMModel, Message } from "./provider";
 
 const MAX_TAGS = 5;
+const MIN_TAG_LENGTH = 2;
+const MAX_TAG_LENGTH = 20;
 
 /**
  * Extract tags from note content using AI
@@ -23,7 +25,7 @@ export async function extractTags(content: string, llm: LLMModel | null, noteTyp
     if (llm?.isReady && !llm.isGenerating) {
         try {
             const aiTags = await extractTagsWithAI(content, llm, noteType);
-            if (aiTags && aiTags.length > 0) {
+            if (aiTags && aiTags.length > 0 && !containsExampleTags(aiTags)) {
                 // Combine AI tags with entity-based tags for comprehensive tagging
                 const entityTags = extractEntities(content);
                 const combined = [...new Set([...aiTags, ...entityTags])];
@@ -39,78 +41,201 @@ export async function extractTags(content: string, llm: LLMModel | null, noteTyp
 }
 
 /**
+ * Check if tags look like copied examples
+ */
+function containsExampleTags(tags: string[]): boolean {
+    const exampleWords = new Set([
+        "example",
+        "team",
+        "planning",
+        "design", // meeting examples
+        "urgent",
+        "work",
+        "deadline", // task examples
+        "product",
+        "innovation",
+        "future", // idea examples
+        "gratitude",
+        "health",
+        "reflection", // journal examples
+        "coding",
+        "tutorial",
+        "docs", // reference examples
+        "important",
+        "project", // default examples
+    ]);
+
+    // If 2+ tags are from example set, likely copied
+    const exampleMatches = tags.filter((tag) => exampleWords.has(tag.toLowerCase()));
+    return exampleMatches.length >= 2;
+}
+
+/**
  * AI-based tag extraction using LLM
  */
 async function extractTagsWithAI(content: string, llm: LLMModel, noteType?: NoteType): Promise<string[]> {
-    // Simplified prompts for small models - focus on examples
-    const contentPreview = content.substring(0, 300).trim();
+    // Truncate content to focus model on key parts
+    const contentPreview = content.length > 400 ? content.substring(0, 400).trim() : content.trim();
 
-    // Build simple examples based on note type
-    let examples = "";
-    switch (noteType) {
-        case "meeting":
-            examples = "Example: 'team, planning, design'";
-            break;
-        case "task":
-            examples = "Example: 'urgent, work, deadline'";
-            break;
-        case "idea":
-            examples = "Example: 'product, innovation, future'";
-            break;
-        case "journal":
-            examples = "Example: 'gratitude, health, reflection'";
-            break;
-        case "reference":
-            examples = "Example: 'coding, tutorial, docs'";
-            break;
-        default:
-            examples = "Example: 'work, important, project'";
-    }
+    const systemPrompt = buildTagSystemPrompt(noteType);
 
     const messages: Message[] = [
         {
             role: "system",
-            content: `Extract 2-4 tags. ${examples} Reply with comma-separated words only.`,
+            content: systemPrompt,
         },
         {
             role: "user",
-            content: contentPreview,
+            content: `Content:\n${contentPreview}`,
         },
     ];
 
     try {
         const response = await llm.generate(messages);
 
-        // Parse the response
-        const tags = response
-            .trim()
-            .toLowerCase()
-            .replace(/^tags?:?\s*/i, "") // Remove "Tags:" prefix
-            .replace(/[\[\]"']/g, "") // Remove brackets and quotes
-            .replace(/^[-•*]\s*/gm, "") // Remove bullet points
-            .split(/[,\n]+/) // Split by comma or newline
-            .map(
-                (tag) =>
-                    tag
-                        .trim()
-                        .replace(/^#/, "") // Remove hashtags
-                        .replace(/[^a-z0-9-]/g, "") // Keep only alphanumeric and hyphens
-                        .replace(/^-+|-+$/g, ""), // Remove leading/trailing hyphens
-            )
-            .filter((tag) => {
-                // Filter out invalid tags
-                if (tag.length < 2 || tag.length > 20) return false;
-                // Don't duplicate the note type as a tag
-                if (noteType && tag === noteType) return false;
-                return true;
-            })
-            .slice(0, MAX_TAGS);
+        // Parse and validate tags
+        const tags = parseTagResponse(response, noteType);
 
         return tags;
     } catch (error) {
         console.error("LLM tag extraction error:", error);
         return [];
     }
+}
+
+/**
+ * Build system prompt for tag extraction
+ */
+function buildTagSystemPrompt(noteType?: NoteType): string {
+    const baseInstruction = "You are a tag extractor. Read the content and identify 2-4 relevant topic tags.";
+
+    const rules = [
+        "Output ONLY comma-separated words",
+        "No hashtags, no quotes, no explanations",
+        "Single words or short phrases only",
+        "Be specific to the actual content topics",
+    ];
+
+    let typeGuidance = "";
+    switch (noteType) {
+        case "meeting":
+            typeGuidance = "Focus on: who attended, what was discussed, action items.";
+            break;
+        case "task":
+            typeGuidance = "Focus on: priority level, category, deadline status.";
+            break;
+        case "idea":
+            typeGuidance = "Focus on: domain, novelty, purpose.";
+            break;
+        case "journal":
+            typeGuidance = "Focus on: main themes, emotions, activities.";
+            break;
+        case "reference":
+            typeGuidance = "Focus on: subject area, type of information.";
+            break;
+        default:
+            typeGuidance = "Focus on: main topics and categories.";
+    }
+
+    return `${baseInstruction}\n\n${rules.join("\n")}\n\n${typeGuidance}`;
+}
+
+/**
+ * Parse and clean tag response from LLM
+ */
+function parseTagResponse(response: string, noteType?: NoteType): string[] {
+    // Clean and parse the response
+    const tags = response
+        .trim()
+        .toLowerCase()
+        .split("\n")[0] // Take only first line
+        .replace(/^(tags?|keywords?|topics?):\s*/i, "") // Remove prefixes
+        .replace(/[\[\]"'`]/g, "") // Remove brackets and quotes
+        .replace(/^[-•*]\s*/gm, "") // Remove bullet points
+        .split(/[,\n;]+/) // Split by common separators
+        .map((tag) => cleanTag(tag))
+        .filter((tag) => isValidTag(tag, noteType));
+
+    return tags.slice(0, MAX_TAGS);
+}
+
+/**
+ * Clean individual tag
+ */
+function cleanTag(tag: string): string {
+    return tag
+        .trim()
+        .replace(/^#/, "") // Remove hashtags
+        .replace(/[^a-z0-9\s-]/g, "") // Keep only alphanumeric, spaces, hyphens
+        .replace(/\s+/g, "-") // Convert spaces to hyphens
+        .replace(/^-+|-+$/g, "") // Remove leading/trailing hyphens
+        .replace(/-{2,}/g, "-"); // Collapse multiple hyphens
+}
+
+/**
+ * Validate if tag is acceptable
+ */
+function isValidTag(tag: string, noteType?: NoteType): boolean {
+    // Length check
+    if (tag.length < MIN_TAG_LENGTH || tag.length > MAX_TAG_LENGTH) {
+        return false;
+    }
+
+    // Don't duplicate the note type as a tag
+    if (noteType && tag === noteType) {
+        return false;
+    }
+
+    // Filter out common stopwords that aren't useful as tags
+    const stopwords = new Set([
+        "the",
+        "and",
+        "or",
+        "but",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "with",
+        "by",
+        "from",
+        "up",
+        "about",
+        "into",
+        "through",
+        "during",
+        "before",
+        "after",
+        "above",
+        "below",
+        "between",
+        "this",
+        "that",
+        "these",
+        "those",
+        "then",
+        "than",
+        "very",
+        "note",
+        "notes",
+        "content",
+        "text",
+        "item",
+        "example",
+    ]);
+
+    if (stopwords.has(tag)) {
+        return false;
+    }
+
+    // Must contain at least one letter
+    if (!/[a-z]/.test(tag)) {
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -154,26 +279,31 @@ function getTypeSpecificTags(content: string, noteType: NoteType): string[] {
             if (/\b(action|follow-?up|todo)\b/i.test(content)) tags.push("actionable");
             if (/\b(decision|decided|approved)\b/i.test(content)) tags.push("decision");
             if (/\b(review|feedback|retrospective)\b/i.test(content)) tags.push("review");
+            if (/\b(standup|sync|1:1|one-on-one)\b/i.test(content)) tags.push("recurring");
             break;
         case "task":
-            if (/\b(urgent|asap|priority|critical)\b/i.test(content)) tags.push("urgent");
-            if (/\b(deadline|due|by)\b/i.test(content)) tags.push("deadline");
-            if (/\b(blocked|waiting|pending)\b/i.test(content)) tags.push("blocked");
+            if (/\b(urgent|asap|priority|critical|high-priority)\b/i.test(content)) tags.push("urgent");
+            if (/\b(deadline|due|by|before)\b/i.test(content)) tags.push("deadline");
+            if (/\b(blocked|waiting|pending|on-hold)\b/i.test(content)) tags.push("blocked");
+            if (/\b(quick|easy|simple|5-min)\b/i.test(content)) tags.push("quick-win");
             break;
         case "idea":
-            if (/\b(feature|product|design)\b/i.test(content)) tags.push("product");
-            if (/\b(experiment|test|try)\b/i.test(content)) tags.push("experimental");
-            if (/\b(improvement|optimize|enhance)\b/i.test(content)) tags.push("improvement");
+            if (/\b(feature|product|design|ui|ux)\b/i.test(content)) tags.push("product");
+            if (/\b(experiment|test|try|prototype)\b/i.test(content)) tags.push("experimental");
+            if (/\b(improvement|optimize|enhance|refactor)\b/i.test(content)) tags.push("improvement");
+            if (/\b(brainstorm|explore|consider|maybe)\b/i.test(content)) tags.push("exploratory");
             break;
         case "journal":
-            if (/\b(goal|resolution|intention)\b/i.test(content)) tags.push("goals");
-            if (/\b(grateful|thankful|appreciate)\b/i.test(content)) tags.push("gratitude");
-            if (/\b(learned|insight|realization)\b/i.test(content)) tags.push("learning");
+            if (/\b(goal|resolution|intention|plan)\b/i.test(content)) tags.push("goals");
+            if (/\b(grateful|thankful|appreciate|blessing)\b/i.test(content)) tags.push("gratitude");
+            if (/\b(learned|insight|realization|discovery)\b/i.test(content)) tags.push("learning");
+            if (/\b(challenge|struggle|difficult|hard)\b/i.test(content)) tags.push("reflection");
             break;
         case "reference":
-            if (/\b(code|programming|function)\b/i.test(content)) tags.push("coding");
-            if (/\b(guide|tutorial|how-?to)\b/i.test(content)) tags.push("tutorial");
-            if (/\b(documentation|docs|api)\b/i.test(content)) tags.push("docs");
+            if (/\b(code|programming|function|class|method)\b/i.test(content)) tags.push("coding");
+            if (/\b(guide|tutorial|how-?to|step-by-step)\b/i.test(content)) tags.push("tutorial");
+            if (/\b(documentation|docs|api|reference)\b/i.test(content)) tags.push("docs");
+            if (/\b(example|sample|template|boilerplate)\b/i.test(content)) tags.push("example");
             break;
     }
 
@@ -189,7 +319,7 @@ function extractHashtags(content: string): string[] {
 
     return matches
         .map((tag) => tag.substring(1).toLowerCase()) // Remove # and lowercase
-        .filter((tag) => tag.length >= 2);
+        .filter((tag) => tag.length >= MIN_TAG_LENGTH && tag.length <= MAX_TAG_LENGTH);
 }
 
 /**
