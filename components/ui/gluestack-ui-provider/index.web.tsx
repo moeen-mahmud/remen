@@ -18,7 +18,7 @@ const createStyle = (styleTagId: string) => {
 
 export const useSafeLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-export function GluestackUIProvider({ mode = "light", ...props }: { mode?: ModeType; children?: React.ReactNode }) {
+export function GluestackUIProvider({ mode = "system", ...props }: { mode?: ModeType; children?: React.ReactNode }) {
     let cssVariablesWithMode = ``;
     Object.keys(config).forEach((configKey) => {
         cssVariablesWithMode += configKey === "dark" ? `\n .dark {\n ` : `\n:root {\n`;
