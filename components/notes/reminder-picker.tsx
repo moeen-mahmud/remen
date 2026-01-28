@@ -19,15 +19,13 @@ export const ReminderPicker: React.FC<ReminderPickerProps> = ({ noteId, currentR
     const isDark = colorScheme === "dark";
     const [isSetting, setIsSetting] = useState(false);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-    const [selectedDate, setSelectedDate] = useState<Date>(
-        currentReminder ? new Date(currentReminder) : new Date(Date.now() + 60 * 60 * 1000), // Default to 1 hour from now
-    );
+    const [selectedDate, setSelectedDate] = useState<Date>(currentReminder ? new Date(currentReminder) : new Date());
 
     const handleOpenDatePicker = () => {
         if (currentReminder) {
             setSelectedDate(new Date(currentReminder));
         } else {
-            setSelectedDate(new Date(Date.now() + 60 * 60 * 1000)); // 1 hour from now
+            setSelectedDate(new Date());
         }
         setIsDatePickerOpen(true);
     };
@@ -76,11 +74,6 @@ export const ReminderPicker: React.FC<ReminderPickerProps> = ({ noteId, currentR
         <>
             <Pressable onPress={handleOpenDatePicker} disabled={isSetting}>
                 <Box className="flex-row gap-2 items-center px-4 py-3 rounded-lg bg-background-50 dark:bg-background-100">
-                    {/* <Icon
-                        as={currentReminder ? Bell : Calendar}
-                        size="sm"
-                        color={currentReminder ? (isDark ? "#39FF14" : "#00B700") : undefined}
-                    /> */}
                     <Box className="flex-1">
                         {currentReminder ? (
                             <>

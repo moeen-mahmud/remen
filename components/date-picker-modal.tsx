@@ -50,9 +50,9 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
                             <Pressable onPress={onCancel}>
                                 <Text className="text-base text-typography-500">{cancelText}</Text>
                             </Pressable>
-                            <Text className="text-base font-semibold text-typography-900 dark:text-typography-0">
+                            {/* <Text className="text-base font-semibold text-typography-900 dark:text-typography-0">
                                 {title}
-                            </Text>
+                            </Text> */}
                             <Pressable
                                 onPress={() => {
                                     if (date.getTime() > Date.now()) {
@@ -68,19 +68,23 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
                                 </Text>
                             </Pressable>
                         </Box>
-                        <DateTimePicker
-                            value={date}
-                            mode="datetime"
-                            display="spinner"
-                            onChange={(event, selectedDate) => {
-                                if (selectedDate) {
-                                    onDateChange(selectedDate);
-                                }
-                            }}
-                            minimumDate={minimumDate}
-                            themeVariant={isDark ? "dark" : "light"}
-                            style={{ backgroundColor: isDark ? "#1A1A1B" : "#fff" }}
-                        />
+                        <Box className="flex-row justify-center items-center">
+                            <DateTimePicker
+                                value={date}
+                                mode="datetime"
+                                display="spinner"
+                                onChange={(_, selectedDate) => {
+                                    if (selectedDate) {
+                                        onDateChange(selectedDate);
+                                    }
+                                }}
+                                minimumDate={minimumDate}
+                                themeVariant={isDark ? "dark" : "light"}
+                                style={{
+                                    backgroundColor: isDark ? "#1A1A1B" : "#fff",
+                                }}
+                            />
+                        </Box>
                     </Pressable>
                 </Pressable>
             </Modal>

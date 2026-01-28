@@ -18,9 +18,7 @@ export default function Index() {
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === "dark";
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-    const [selectedReminderDate, setSelectedReminderDate] = useState<Date>(
-        new Date(Date.now() + 60 * 60 * 1000), // Default to 1 hour from now
-    );
+    const [selectedReminderDate, setSelectedReminderDate] = useState<Date>(new Date());
 
     const handleVoiceCapture = useCallback(() => {
         router.push("/voice" as any);
@@ -113,7 +111,7 @@ export default function Index() {
             {
                 text: "Custom",
                 onPress: () => {
-                    setSelectedReminderDate(new Date(Date.now() + 60 * 60 * 1000)); // 1 hour from now
+                    setSelectedReminderDate(new Date());
                     setIsDatePickerOpen(true);
                 },
             },
