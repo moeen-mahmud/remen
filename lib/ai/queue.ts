@@ -284,16 +284,21 @@ class AIProcessingQueue {
             }
 
             // ===== STEP 2: Generate title with type context (uses LLM) =====
-            console.log(`  📝 Generating title...`);
+            // Only generate title if note doesn't already have one (preserve user-set titles)
             let title = note.title || "";
-            if (llmReady && llm) {
-                // Pass the classified type to generateTitle for context-aware generation
-                title = await generateTitle(content, llm, type);
-                await new Promise((resolve) => setTimeout(resolve, AI_OPERATION_DELAY));
+            if (!title) {
+                console.log(`  📝 Generating title...`);
+                if (llmReady && llm) {
+                    // Pass the classified type to generateTitle for context-aware generation
+                    title = await generateTitle(content, llm, type);
+                    await new Promise((resolve) => setTimeout(resolve, AI_OPERATION_DELAY));
+                } else {
+                    title = await generateTitle(content, null, type); // Fallback with type
+                }
+                console.log(`  📝 Title: "${title}"`);
             } else {
-                title = await generateTitle(content, null, type); // Fallback with type
+                console.log(`  📝 Title preserved (user-set): "${title}"`);
             }
-            console.log(`  📝 Title: "${title}"`);
             if (isCancelled()) {
                 await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" });
                 return;
@@ -324,14 +329,19 @@ class AIProcessingQueue {
             }
 
             // Update note with AI-generated metadata and embedding
-            await updateNote(noteId, {
-                title,
+            // Only update title if we generated a new one (preserve existing user-set titles)
+            const updateData: any = {
                 type,
                 is_processed: true,
                 ai_status: "organized",
                 ai_error: null,
                 embedding: JSON.stringify(embedding),
-            });
+            };
+            // Only update title if it was empty before (i.e., we generated it)
+            if (!note.title) {
+                updateData.title = title;
+            }
+            await updateNote(noteId, updateData);
 
             // Replace existing auto tags (keep any user/manual tags)
             const existingTags = await getTagsForNote(noteId);

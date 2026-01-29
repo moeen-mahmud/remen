@@ -475,6 +475,8 @@ export const NotesHome: React.FC = () => {
             {/* Search Bar */}
             <NotesSearch
                 searchQuery={searchQuery}
+                setInterpretedQuery={setInterpretedQuery}
+                setTemporalFilterDescription={setTemporalFilterDescription}
                 setSearchQuery={setSearchQuery}
                 handleSearch={handleSearch}
                 isSearching={isSearching}

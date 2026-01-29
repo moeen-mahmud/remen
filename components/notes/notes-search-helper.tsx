@@ -16,6 +16,9 @@ export const NotesSearchHelper: React.FC<NotesSearchHelperProps> = ({
 }) => {
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === "dark";
+
+    console.log("searchQuery", searchQuery);
+
     return (
         <Box className="mx-4 my-2">
             {interpretedQuery ? (
@@ -30,13 +33,13 @@ export const NotesSearchHelper: React.FC<NotesSearchHelperProps> = ({
                         Showing notes from: {temporalFilterDescription}
                     </Text>
                 </Box>
-            ) : !searchQuery ? (
+            ) : searchQuery ? null : (
                 <Box className="p-4 rounded-lg bg-brand/10">
                     <Text style={{ color: isDark ? "#39FF14" : "#00B700" }} className="text-sm font-semibold">
                         {`Try asking questions like "What I wrote about work last week" or "Find my ideas about travel"`}
                     </Text>
                 </Box>
-            ) : null}
+            )}
         </Box>
     );
 };

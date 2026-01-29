@@ -53,7 +53,11 @@ export const NotesTitle: React.FC<NotesTitleProps> = ({
                 <Box>
                     <Box className="flex-row gap-2 items-center">
                         <TextInput
-                            className="flex-1 -mt-1 text-xl font-semibold text-left text-typography-900 dark:text-typography-0"
+                            style={{
+                                borderWidth: 1,
+                                lineHeight: 0,
+                            }}
+                            className="flex-1 text-xl font-semibold text-left text-typography-900 dark:text-typography-0"
                             value={editingTitle}
                             onChangeText={setEditingTitle}
                             placeholder="Enter title..."
@@ -70,7 +74,7 @@ export const NotesTitle: React.FC<NotesTitleProps> = ({
                         </Pressable>
                         )} */}
                     </Box>
-                    <Text className="mt-[5px] text-xs opacity-60 text-typography-400">Tap outside to save</Text>
+                    <Text className="text-xs opacity-60 text-typography-400">Tap outside to save</Text>
                 </Box>
             ) : (
                 <Pressable onPress={handleTitlePress}>
@@ -78,7 +82,7 @@ export const NotesTitle: React.FC<NotesTitleProps> = ({
                         {note.title ? (
                             <>
                                 <Text className="text-xl font-semibold text-left">{note.title}</Text>
-                                <Text className="mt-0.5 text-xs text-typography-400 opacity-60">Tap to edit</Text>
+                                <Text className="text-xs opacity-60 text-typography-400">Tap to edit</Text>
                             </>
                         ) : (
                             <Text className="text-xl font-semibold text-left text-typography-500">Add a title...</Text>

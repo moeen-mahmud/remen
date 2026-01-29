@@ -8,6 +8,8 @@ import { Pressable, TextInput } from "react-native";
 
 type NotesSearchProps = {
     searchQuery: string;
+    setInterpretedQuery: (query: string | null) => void;
+    setTemporalFilterDescription: (description: string | null) => void;
     setSearchQuery: (query: string) => void;
     handleSearch: () => void;
     refetchNotes: () => void;
@@ -17,6 +19,8 @@ type NotesSearchProps = {
 
 export const NotesSearch: React.FC<NotesSearchProps> = ({
     searchQuery,
+    setInterpretedQuery,
+    setTemporalFilterDescription,
     setSearchQuery,
     handleSearch,
     refetchNotes,
@@ -28,6 +32,8 @@ export const NotesSearch: React.FC<NotesSearchProps> = ({
 
     const handleClearSearch = () => {
         setSearchQuery("");
+        setInterpretedQuery(null);
+        setTemporalFilterDescription(null);
         refetchNotes();
     };
 

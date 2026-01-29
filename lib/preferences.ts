@@ -11,6 +11,7 @@ export interface Preferences {
     downloadOverlayMinimized: boolean; // tracks if download overlay has been minimized
     iCloudSyncEnabled: boolean; // tracks if iCloud sync is enabled
     lastICloudSync: number | null; // tracks the last sync time
+    autoAIProcessing: boolean; // tracks if AI should automatically process notes on edit
 }
 
 const DEFAULT_PREFERENCES: Preferences = {
@@ -22,6 +23,7 @@ const DEFAULT_PREFERENCES: Preferences = {
     downloadOverlayMinimized: false,
     iCloudSyncEnabled: false,
     lastICloudSync: null,
+    autoAIProcessing: true, // Default to enabled
 };
 
 export async function getPreferences(): Promise<Preferences> {

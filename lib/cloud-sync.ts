@@ -1,6 +1,17 @@
 import { Platform } from "react-native";
 import { CloudStorage, CloudStorageScope } from "react-native-cloud-storage";
-import { createNote, getAllNotes, getNoteById, Note, updateNote } from "./database";
+import {
+    addTagToNote,
+    createNote,
+    getAllNotes,
+    getNoteById,
+    getTagsForNote,
+    Note,
+    pinNote,
+    removeTagFromNote,
+    unpinNote,
+    updateNote,
+} from "./database";
 import { getPreferences, savePreferences } from "./preferences";
 
 // Constants
@@ -17,10 +28,14 @@ export interface SyncResult {
     timestamp?: number;
 }
 
+interface NoteWithTags extends Note {
+    tags: string[]; // Tag names for this note
+}
+
 interface BackupData {
     version: number;
     timestamp: number;
-    notes: Note[];
+    notes: NoteWithTags[];
 }
 
 /**
@@ -73,11 +88,22 @@ export async function syncNotesToCloud(): Promise<SyncResult> {
 
         console.log(`[Sync] Backing up ${notes.length} notes to iCloud`);
 
+        // Get tags for each note
+        const notesWithTags: NoteWithTags[] = await Promise.all(
+            notes.map(async (note) => {
+                const tags = await getTagsForNote(note.id);
+                return {
+                    ...note,
+                    tags: tags.map((tag) => tag.name),
+                };
+            }),
+        );
+
         // Create backup data
         const backupData: BackupData = {
             version: 1,
             timestamp: Date.now(),
-            notes,
+            notes: notesWithTags,
         };
 
         // Ensure backup directory exists
@@ -154,7 +180,7 @@ export async function syncNotesFromCloud(): Promise<SyncResult> {
 
                 if (!localNote) {
                     // Note doesn't exist locally (was permanently deleted or never existed), restore it
-                    await createNote({
+                    const restoredNote = await createNote({
                         id: cloudNote.id,
                         content: cloudNote.content,
                         html: cloudNote.html,
@@ -165,6 +191,26 @@ export async function syncNotesFromCloud(): Promise<SyncResult> {
                         created_at: cloudNote.created_at,
                         updated_at: cloudNote.updated_at,
                     });
+
+                    // Restore tags
+                    if (cloudNote.tags && Array.isArray(cloudNote.tags)) {
+                        for (const tagName of cloudNote.tags) {
+                            try {
+                                await addTagToNote(restoredNote.id, tagName);
+                            } catch (tagError) {
+                                console.warn(
+                                    `[Sync] Failed to restore tag "${tagName}" for note ${cloudNote.id}:`,
+                                    tagError,
+                                );
+                            }
+                        }
+                    }
+
+                    // Restore pinned status
+                    if (cloudNote.is_pinned) {
+                        await pinNote(restoredNote.id);
+                    }
+
                     restoredCount++;
                     createdCount++;
                     console.log(`[Sync] Restored note: ${cloudNote.id}`);
@@ -177,6 +223,39 @@ export async function syncNotesFromCloud(): Promise<SyncResult> {
                             title: cloudNote.title,
                             type: cloudNote.type,
                         });
+
+                        // Restore tags (replace existing auto tags)
+                        if (cloudNote.tags && Array.isArray(cloudNote.tags)) {
+                            const existingTags = await getTagsForNote(cloudNote.id);
+                            const existingAutoTags = existingTags.filter((t) => t.is_auto);
+                            // Remove existing auto tags
+                            for (const tag of existingAutoTags) {
+                                try {
+                                    await removeTagFromNote(cloudNote.id, tag.id);
+                                } catch {
+                                    // Ignore errors
+                                }
+                            }
+                            // Add cloud tags
+                            for (const tagName of cloudNote.tags) {
+                                try {
+                                    await addTagToNote(cloudNote.id, tagName);
+                                } catch (tagError) {
+                                    console.warn(
+                                        `[Sync] Failed to restore tag "${tagName}" for note ${cloudNote.id}:`,
+                                        tagError,
+                                    );
+                                }
+                            }
+                        }
+
+                        // Restore pinned status
+                        if (cloudNote.is_pinned && !localNote.is_pinned) {
+                            await pinNote(cloudNote.id);
+                        } else if (!cloudNote.is_pinned && localNote.is_pinned) {
+                            await unpinNote(cloudNote.id);
+                        }
+
                         restoredCount++;
                         updatedCount++;
                         console.log(`[Sync] Updated note: ${cloudNote.id}`);

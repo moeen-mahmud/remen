@@ -3,7 +3,6 @@ import { SettingsAI } from "@/components/settings/settings-home/settings-ai";
 import { SettingsAppearance } from "@/components/settings/settings-home/settings-appearance";
 import { SettingsData } from "@/components/settings/settings-home/settings-data";
 import { SettingsICloud } from "@/components/settings/settings-home/settings-icloud";
-import { SettingsPreference } from "@/components/settings/settings-home/settings-preference";
 import { PageLoader } from "@/components/ui/page-loader";
 
 import { useAI } from "@/lib/ai/provider";
@@ -70,17 +69,16 @@ export const SettingsHome: React.FC = () => {
         [preferences, setColorScheme],
     );
 
-    const handleHapticToggle = useCallback(
+    const handleAutoAIToggle = useCallback(
         async (value: boolean) => {
             if (!preferences) return;
-            await savePreferences({ hapticFeedback: value });
-            setPreferences({ ...preferences, hapticFeedback: value });
-            if (value) {
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }
+            await savePreferences({ autoAIProcessing: value });
+            setPreferences({ ...preferences, autoAIProcessing: value });
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         },
         [preferences],
     );
+
     const handleArchives = useCallback(() => {
         router.push("/settings/archives" as any);
     }, []);
@@ -185,7 +183,7 @@ export const SettingsHome: React.FC = () => {
             <SettingsAppearance handleThemeChange={handleThemeChange} preferences={preferences} />
 
             {/* Preferences Section */}
-            <SettingsPreference handleHapticToggle={handleHapticToggle} preferences={preferences} />
+            {/* <SettingsPreference handleAutoAIToggle={handleAutoAIToggle} preferences={preferences} /> */}
 
             {/* Data Section */}
             <SettingsData
