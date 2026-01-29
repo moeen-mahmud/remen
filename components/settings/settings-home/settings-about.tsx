@@ -1,6 +1,7 @@
 import { RemenLogo } from "@/components/brand/logo";
 import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
+import { nativeApplicationVersion } from "expo-application";
 
 export const SettingsAbout: React.FC = () => {
     return (
@@ -9,8 +10,8 @@ export const SettingsAbout: React.FC = () => {
 
             <Box className="rounded-lg bg-background-0">
                 <Box className="flex-row justify-between items-center p-4">
-                    <RemenLogo size="sm" showIcon={true} />
-                    <Text className="text-typography-500">Version 1.0.0</Text>
+                    <RemenLogo size="sm" showIcon={false} animated={true} />
+                    <Text className="text-typography-500">{nativeApplicationVersion}</Text>
                 </Box>
             </Box>
         </Box>

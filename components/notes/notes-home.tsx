@@ -7,7 +7,6 @@ import { SettingsNoteCounter } from "@/components/settings/settings-note-counter
 import { SwipeableNoteCard } from "@/components/swipeable-note-card";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
-import { Text } from "@/components/ui/text";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { aiQueue } from "@/lib/ai";
 import { useAI, useAILLM } from "@/lib/ai/provider";
@@ -409,17 +408,17 @@ export const NotesHome: React.FC = () => {
         ],
     );
 
-    const renderSectionHeader = useCallback(({ section }: { section: { title: string; data: NoteWithTags[] } }) => {
-        // Don't show section header for search results or empty titles
-        if (section.title === "Search results" || section.title === "") {
-            return null;
-        }
-        return (
-            <Box className="px-4 py-2">
-                <Text className="text-sm font-medium text-typography-500">{section.title}</Text>
-            </Box>
-        );
-    }, []);
+    // const renderSectionHeader = useCallback(({ section }: { section: { title: string; data: NoteWithTags[] } }) => {
+    //     // Don't show section header for search results or empty titles
+    //     if (section.title === "Search results" || section.title === "") {
+    //         return null;
+    //     }
+    //     return (
+    //         <Box className="px-4 py-2">
+    //             <Text className="text-sm font-medium text-typography-500">{section.title}</Text>
+    //         </Box>
+    //     );
+    // }, []);
 
     // Key extractor
     const keyExtractor = useCallback((item: Note) => item.id, []);
@@ -500,6 +499,8 @@ export const NotesHome: React.FC = () => {
                 renderItem={renderNote}
                 keyExtractor={keyExtractor}
                 contentContainerClassName="flex-grow"
+                initialNumToRender={5}
+                maxToRenderPerBatch={10}
                 contentContainerStyle={{ paddingBottom: bottom + 16 }}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={renderEmptyState}

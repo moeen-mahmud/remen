@@ -148,7 +148,7 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
         >
             {/* Header */}
             <View style={styles.header}>
-                <RemenLogo size="sm" showIcon animated={false} />
+                <RemenLogo size="sm" showIcon={false} animated={true} />
                 <Pressable onPress={handleSkip}>
                     <Text className="text-neutral-500 dark:text-neutral-400">Skip</Text>
                 </Pressable>

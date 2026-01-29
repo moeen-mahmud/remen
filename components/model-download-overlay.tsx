@@ -1,4 +1,3 @@
-import { RemenLogo } from "@/components/brand/logo";
 import { Text } from "@/components/ui/text";
 import { Minimize2 } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
@@ -157,11 +156,6 @@ export function ModelDownloadOverlay({
                     <View />
                 </View>
             </View>
-
-            {/* Logo with pulse animation */}
-            <Animated.View style={[styles.logoContainer, { transform: [{ scale: pulseAnim }] }]}>
-                <RemenLogo size="lg" showIcon={true} animated={false} />
-            </Animated.View>
 
             {/* Main message */}
             <View style={styles.messageContainer}>
