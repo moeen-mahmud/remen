@@ -1,6 +1,7 @@
 import { detectUrls, LinkCard } from "@/components/notes/link-card";
 import { NotesTitle } from "@/components/notes/notes-title";
 import { ReminderPicker } from "@/components/notes/reminder-picker";
+import { TaskItem } from "@/components/notes/task-item";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { Heading } from "@/components/ui/heading";
@@ -13,6 +14,7 @@ import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
 import { getNoteById, getTagsForNote, updateNote, type Note, type Tag } from "@/lib/database";
 import { findRelatedNotes, type SearchResult } from "@/lib/search";
+import { parseTasksFromText, toggleTaskInText } from "@/lib/tasks";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -66,6 +68,7 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editingTitle, setEditingTitle] = useState("");
     const [detectedUrls, setDetectedUrls] = useState<string[]>([]);
+    const [parsedTasks, setParsedTasks] = useState<ReturnType<typeof parseTasksFromText>>([]);
 
     // Load note - don't depend on embeddings to avoid infinite loops
     const loadNote = useCallback(async () => {
@@ -86,6 +89,10 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                 // Detect URLs in content
                 const urls = detectUrls(fetchedNote.content);
                 setDetectedUrls(urls);
+
+                // Parse tasks from content
+                const tasks = parseTasksFromText(fetchedNote.content);
+                setParsedTasks(tasks);
             }
         } catch (error) {
             console.error("Failed to load note:", error);
@@ -210,6 +217,28 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
             ],
         );
     }, [note, isProcessingThisNote, loadNote]);
+
+    // Handle task toggle
+    const handleTaskToggle = useCallback(
+        async (taskLineIndex: number) => {
+            if (!note) return;
+
+            try {
+                const updatedContent = toggleTaskInText(note.content, taskLineIndex);
+                await updateNote(note.id, { content: updatedContent });
+                setNote({ ...note, content: updatedContent });
+
+                // Update parsed tasks
+                const tasks = parseTasksFromText(updatedContent);
+                setParsedTasks(tasks);
+
+                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            } catch (error) {
+                console.error("Failed to toggle task:", error);
+            }
+        },
+        [note],
+    );
 
     if (isLoading) {
         return <PageLoader />;
@@ -372,10 +401,39 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
 
                 <Divider className="mb-4" />
 
-                {/* Content */}
-                <Pressable className="px-4" onPress={handleEdit}>
-                    <Text className="text-lg text-typography-900 dark:text-typography-0">{note.content}</Text>
-                </Pressable>
+                {/* Tasks Section */}
+                {parsedTasks.length > 0 && (
+                    <Box className="px-4 mb-4">
+                        <Text className="mb-2 text-sm font-medium text-typography-500">TASKS</Text>
+                        {parsedTasks.map((task, index) => (
+                            <TaskItem
+                                key={`task-${task.lineIndex}-${index}`}
+                                content={task.content}
+                                isCompleted={task.isCompleted}
+                                indent={task.indent}
+                                onToggle={() => handleTaskToggle(task.lineIndex)}
+                            />
+                        ))}
+                    </Box>
+                )}
+
+                {/* Content - filter out task lines to avoid duplication */}
+                {(() => {
+                    const taskLineIndices = new Set(parsedTasks.map((t) => t.lineIndex));
+                    const contentLines = note.content.split("\n");
+                    const filteredContent = contentLines
+                        .map((line, index) => (taskLineIndices.has(index) ? "" : line))
+                        .join("\n")
+                        .trim();
+
+                    return filteredContent ? (
+                        <Pressable className="px-4" onPress={handleEdit}>
+                            <Text className="text-lg text-typography-900 dark:text-typography-0">
+                                {filteredContent}
+                            </Text>
+                        </Pressable>
+                    ) : null;
+                })()}
 
                 {/* Link Cards - Only shown when viewing, not editing */}
                 {detectedUrls.length > 0 && (

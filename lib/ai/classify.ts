@@ -206,7 +206,13 @@ function classifyWithRules(content: string): ClassificationResult {
     const bulletLines = lines.filter((l) => /^\s*[-•*]\s/.test(l)).length;
     const numberedLines = lines.filter((l) => /^\s*\d+[.)]\s/.test(l)).length;
     const checkboxLines = lines.filter((l) => /\[[\sx]\]/i.test(l)).length;
+    // Check for task pattern: - [ ] or - [x]
+    const taskPatternLines = lines.filter((l) => /^\s*-\s+\[[\sxX]\]\s+/.test(l)).length;
 
+    // Strong task detection - if we have task pattern, strongly classify as task
+    if (taskPatternLines > 0) {
+        scores.task += taskPatternLines * 10; // Very high weight for explicit task format
+    }
     if (checkboxLines > 0) {
         scores.task += checkboxLines * 3;
     }

@@ -1,7 +1,7 @@
 import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { ChevronLeft, ListIcon } from "lucide-react-native";
+import { CheckSquare, ChevronLeft, ListIcon } from "lucide-react-native";
 import { Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -9,9 +9,10 @@ type EditorHeaderProps = {
     isEditing: boolean;
     handleBack: () => void;
     handleViewNotes: () => void;
+    onInsertTask?: () => void;
 };
 
-export const EditorHeader: React.FC<EditorHeaderProps> = ({ isEditing, handleBack, handleViewNotes }) => {
+export const EditorHeader: React.FC<EditorHeaderProps> = ({ isEditing, handleBack, handleViewNotes, onInsertTask }) => {
     const { top } = useSafeAreaInsets();
     return (
         <Box style={{ paddingTop: top }} className="p-4 mb-6 bg-background-0">
@@ -25,10 +26,17 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({ isEditing, handleBac
                     <Text className="text-xl font-bold">Remen</Text>
                 )}
 
-                {/* Spacer for header alignment */}
-                <Pressable onPress={handleViewNotes} hitSlop={10}>
-                    <Icon as={ListIcon} size="xl" />
-                </Pressable>
+                {/* Action buttons */}
+                <Box className="flex-row gap-4 items-center">
+                    {onInsertTask && (
+                        <Pressable onPress={onInsertTask} hitSlop={10}>
+                            <Icon as={CheckSquare} size="xl" />
+                        </Pressable>
+                    )}
+                    <Pressable onPress={handleViewNotes} hitSlop={10}>
+                        <Icon as={ListIcon} size="xl" />
+                    </Pressable>
+                </Box>
             </Box>
         </Box>
     );

@@ -546,13 +546,13 @@ export async function getTagsForNote(noteId: string): Promise<Tag[]> {
 }
 
 // Task Operations
-export async function createTask(noteId: string, content: string): Promise<Task> {
+export async function createTask(noteId: string, content: string, isCompleted: boolean = false): Promise<Task> {
     const database = await getDatabase();
     const task: Task = {
         id: uuidv4(),
         note_id: noteId,
         content,
-        is_completed: false,
+        is_completed: isCompleted,
     };
 
     await database.runAsync("INSERT INTO tasks (id, note_id, content, is_completed) VALUES (?, ?, ?, ?)", [
@@ -597,6 +597,37 @@ export async function toggleTaskCompletion(taskId: string): Promise<Task | null>
     return {
         ...existing,
         is_completed: newStatus === 1,
+    };
+}
+
+export async function updateTask(
+    taskId: string,
+    updates: { content?: string; is_completed?: boolean },
+): Promise<Task | null> {
+    const database = await getDatabase();
+    const existing = await database.getFirstAsync<{
+        id: string;
+        note_id: string;
+        content: string;
+        is_completed: number;
+    }>("SELECT * FROM tasks WHERE id = ?", [taskId]);
+
+    if (!existing) return null;
+
+    const updatedContent = updates.content !== undefined ? updates.content : existing.content;
+    const updatedCompleted =
+        updates.is_completed !== undefined ? (updates.is_completed ? 1 : 0) : existing.is_completed;
+
+    await database.runAsync("UPDATE tasks SET content = ?, is_completed = ? WHERE id = ?", [
+        updatedContent,
+        updatedCompleted,
+        taskId,
+    ]);
+
+    return {
+        ...existing,
+        content: updatedContent,
+        is_completed: updatedCompleted === 1,
     };
 }
 
