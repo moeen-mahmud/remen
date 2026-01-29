@@ -15,6 +15,7 @@ import { aiQueue } from "@/lib/ai/queue";
 import { getNoteById, getTagsForNote, updateNote, type Note, type Tag } from "@/lib/database";
 import { findRelatedNotes, type SearchResult } from "@/lib/search";
 import { parseTasksFromText, toggleTaskInText } from "@/lib/tasks";
+import { formatFullDate } from "@/lib/utils/utils";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -23,19 +24,6 @@ import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// Format full date
-function formatFullDate(timestamp: number): string {
-    const date = new Date(timestamp);
-    return date.toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-    });
-}
 
 // Get icon for special note types
 function getNoteTypeIcon(type: Note["type"], color: string, size: number = 14) {

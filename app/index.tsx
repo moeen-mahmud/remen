@@ -142,14 +142,6 @@ export default function Index() {
 
     const fabActions: FabAction[] = [
         {
-            id: "task",
-            label: "Task",
-            icon: CheckSquare,
-            onPress: handleTaskCapture,
-            backgroundColor: isDark ? "#1A1A1B" : "#fff",
-            color: isDark ? "#fff" : "#000",
-        },
-        {
             id: "scan",
             label: "Scan",
             icon: CameraIcon,
@@ -170,6 +162,14 @@ export default function Index() {
             label: "Reminder",
             icon: BellPlus,
             onPress: handleReminderCapture,
+            backgroundColor: isDark ? "#1A1A1B" : "#fff",
+            color: isDark ? "#fff" : "#000",
+        },
+        {
+            id: "task",
+            label: "Task",
+            icon: CheckSquare,
+            onPress: handleTaskCapture,
             backgroundColor: isDark ? "#1A1A1B" : "#fff",
             color: isDark ? "#fff" : "#000",
         },

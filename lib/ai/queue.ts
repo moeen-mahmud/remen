@@ -266,25 +266,25 @@ class AIProcessingQueue {
             // ===== STEP 1: Classify type (uses LLM) =====
             // Skip if note type was explicitly set to voice/scan
             let type = note.type;
-            // if (note.type !== "voice" && note.type !== "scan") {
-            // Check if note has tasks - if so, classify as task type immediately
-            const hasTasks = /^\s*-\s+\[[\sxX]\]\s+/.test(content);
-            if (hasTasks) {
-                type = "task";
-                console.log(`  🏷️ Type: ${type} (has tasks)`);
-            } else {
-                console.log(`  🏷️ Classifying type...`);
-                if (llmReady && llm) {
-                    type = await classifyNoteType(content, llm);
-                    await new Promise((resolve) => setTimeout(resolve, AI_OPERATION_DELAY));
+            if (note.type !== "voice" && note.type !== "scan") {
+                // Check if note has tasks - if so, classify as task type immediately
+                const hasTasks = /^\s*-\s+\[[\sxX]\]\s+/.test(content);
+                if (hasTasks) {
+                    type = "task";
+                    console.log(`  🏷️ Type: ${type} (has tasks)`);
                 } else {
-                    type = await classifyNoteType(content, null); // Fallback
+                    console.log(`  🏷️ Classifying type...`);
+                    if (llmReady && llm) {
+                        type = await classifyNoteType(content, llm);
+                        await new Promise((resolve) => setTimeout(resolve, AI_OPERATION_DELAY));
+                    } else {
+                        type = await classifyNoteType(content, null); // Fallback
+                    }
+                    console.log(`  🏷️ Type: ${type}`);
                 }
-                console.log(`  🏷️ Type: ${type}`);
+            } else {
+                console.log(`  🏷️ Type: ${type} (explicit)`);
             }
-            // } else {
-            //     console.log(`  🏷️ Type: ${type} (explicit)`);
-            // }
             if (isCancelled()) {
                 await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" });
                 return;
