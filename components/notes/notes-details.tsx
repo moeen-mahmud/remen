@@ -1,3 +1,4 @@
+import { detectUrls, LinkCard } from "@/components/notes/link-card";
 import { NotesTitle } from "@/components/notes/notes-title";
 import { ReminderPicker } from "@/components/notes/reminder-picker";
 import { Box } from "@/components/ui/box";
@@ -64,6 +65,7 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
     const [isProcessingThisNote, setIsProcessingThisNote] = useState(false);
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [editingTitle, setEditingTitle] = useState("");
+    const [detectedUrls, setDetectedUrls] = useState<string[]>([]);
 
     // Load note - don't depend on embeddings to avoid infinite loops
     const loadNote = useCallback(async () => {
@@ -80,6 +82,10 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
 
                 // Load related notes in background (using embeddings ref)
                 findRelatedNotes(id, embeddingsRef.current, 3).then(setRelatedNotes).catch(console.error);
+
+                // Detect URLs in content
+                const urls = detectUrls(fetchedNote.content);
+                setDetectedUrls(urls);
             }
         } catch (error) {
             console.error("Failed to load note:", error);
@@ -370,6 +376,16 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
                 <Pressable className="px-4" onPress={handleEdit}>
                     <Text className="text-lg text-typography-900 dark:text-typography-0">{note.content}</Text>
                 </Pressable>
+
+                {/* Link Cards - Only shown when viewing, not editing */}
+                {detectedUrls.length > 0 && (
+                    <Box className="px-4 mt-4">
+                        <Text className="mb-2 text-sm font-medium text-typography-500">LINKS</Text>
+                        {detectedUrls.map((url, index) => (
+                            <LinkCard key={`${url}-${index}`} url={url} />
+                        ))}
+                    </Box>
+                )}
 
                 {/* Processing status */}
 

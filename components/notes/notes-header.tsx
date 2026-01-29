@@ -1,7 +1,7 @@
 import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { Cog, LucideRecycle, Share2Icon, XIcon } from "lucide-react-native";
+import { Cog, Recycle, Share2Icon, XIcon } from "lucide-react-native";
 import { Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -38,7 +38,7 @@ export const NotesHeader: React.FC<NotesHeaderProps> = ({
                             <Icon size="xl" as={Share2Icon} />
                         </Pressable>
                         <Pressable hitSlop={10} onPress={handleBulkDelete}>
-                            <Icon size="xl" as={LucideRecycle} />
+                            <Icon size="xl" as={Recycle} />
                         </Pressable>
                     </Box>
                 </Box>

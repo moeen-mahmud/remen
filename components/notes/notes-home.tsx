@@ -353,6 +353,9 @@ export const NotesHome: React.FC = () => {
                         }
                         setNotes((prev) => prev.filter((n) => !selectedIds.has(n.id)));
                         setFilteredNotes((prev) => prev.filter((n) => !selectedIds.has(n.id)));
+                        setSections((prev) =>
+                            prev.map((s) => ({ ...s, data: s.data.filter((n) => !selectedIds.has(n.id)) })),
+                        );
                         exitSelectionMode();
                         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                     },

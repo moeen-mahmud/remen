@@ -88,8 +88,21 @@ export const NoteCard: FC<NoteCardProps> = ({
     const isDark = colorScheme === "dark";
 
     const typeBadge = getNoteTypeBadge(note.type);
-    const displayTitle = note.title || truncateText(note.content, 50);
-    const preview = note.title ? truncateText(note.content, 100) : truncateText(note.content.substring(50), 100);
+    const hasContent = note.content.trim().length > 0;
+    const hasTitle = note.title && note.title.trim().length > 0;
+
+    // Display title: show title if exists, otherwise show content preview, or "Empty note" if both empty
+    const displayTitle = hasTitle ? note.title : hasContent ? truncateText(note.content, 50) : "Empty note";
+
+    // Preview: only show if there's content AND we're showing title (not content as title)
+    const preview =
+        hasTitle && hasContent
+            ? truncateText(note.content, 100)
+            : hasTitle
+              ? "" // Title exists but no content - no preview
+              : hasContent
+                ? truncateText(note.content.substring(50), 100) // Content as title, show rest as preview
+                : ""; // Empty note - no preview
     const typeIcon = getNoteTypeIcon(note.type, typeBadge.color);
 
     // Animation values

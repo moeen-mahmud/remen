@@ -1,6 +1,6 @@
+import Editor from "@/components/editor";
+import { EditorHeader } from "@/components/editor/editor-header";
 import { PageWrapper } from "@/components/page-wrapper";
-import RichEditor from "@/components/rich-editor";
-import { EditorHeader } from "@/components/rich-editor/editor-header";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { KeyboardController } from "react-native-keyboard-controller";
 
@@ -21,7 +21,7 @@ export default function EditNoteScreen() {
     return (
         <PageWrapper disableBottomPadding>
             <EditorHeader isEditing={true} handleBack={handleBack} handleViewNotes={handleViewNotes} />
-            <RichEditor noteId={id || null} />
+            <Editor noteId={id || null} />
         </PageWrapper>
     );
 }

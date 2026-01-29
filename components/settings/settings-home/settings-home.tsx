@@ -69,16 +69,6 @@ export const SettingsHome: React.FC = () => {
         [preferences, setColorScheme],
     );
 
-    const handleAutoAIToggle = useCallback(
-        async (value: boolean) => {
-            if (!preferences) return;
-            await savePreferences({ autoAIProcessing: value });
-            setPreferences({ ...preferences, autoAIProcessing: value });
-            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        },
-        [preferences],
-    );
-
     const handleArchives = useCallback(() => {
         router.push("/settings/archives" as any);
     }, []);

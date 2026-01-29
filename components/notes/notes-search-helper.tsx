@@ -17,8 +17,6 @@ export const NotesSearchHelper: React.FC<NotesSearchHelperProps> = ({
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === "dark";
 
-    console.log("searchQuery", searchQuery);
-
     return (
         <Box className="mx-4 my-2">
             {interpretedQuery ? (

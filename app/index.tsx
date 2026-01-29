@@ -1,8 +1,8 @@
 import { DatePickerModal } from "@/components/date-picker-modal";
+import Editor from "@/components/editor";
+import { EditorHeader } from "@/components/editor/editor-header";
 import { SpeedDial, type FabAction } from "@/components/fab";
 import { PageWrapper } from "@/components/page-wrapper";
-import RichEditor from "@/components/rich-editor";
-import { EditorHeader } from "@/components/rich-editor/editor-header";
 import { createNote } from "@/lib/database";
 import { requestNotificationPermissions, scheduleReminder } from "@/lib/reminders";
 import * as Haptics from "expo-haptics";
@@ -171,7 +171,7 @@ export default function Index() {
     return (
         <PageWrapper disableBottomPadding>
             <EditorHeader isEditing={false} handleBack={handleBack} handleViewNotes={handleViewNotes} />
-            <RichEditor />
+            <Editor />
             <SpeedDial actions={fabActions} position="bottom-right" />
             <DatePickerModal
                 visible={isDatePickerOpen}
