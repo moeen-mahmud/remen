@@ -1,20 +1,10 @@
-/**
- * Extract relevant tags from note content
- *
- * Uses SmolLM 360M via ExecutorTorch for intelligent tag extraction.
- * Falls back to rule-based extraction when the model isn't ready.
- */
-
 import type { NoteType } from "@/lib/database";
-import type { LLMModel, Message } from "./provider";
+import type { LLMModel, Message } from "./ai.types";
 
 const MAX_TAGS = 5;
 const MIN_TAG_LENGTH = 2;
 const MAX_TAG_LENGTH = 20;
 
-/**
- * Extract tags from note content using AI
- */
 export async function extractTags(content: string, llm: LLMModel | null, noteType?: NoteType): Promise<string[]> {
     // Skip AI for very short content
     if (content.trim().length < 20) {
@@ -40,9 +30,6 @@ export async function extractTags(content: string, llm: LLMModel | null, noteTyp
     return extractTagsFallback(content, noteType);
 }
 
-/**
- * Check if tags look like copied examples
- */
 function containsExampleTags(tags: string[]): boolean {
     const exampleWords = new Set([
         "example",
@@ -63,6 +50,63 @@ function containsExampleTags(tags: string[]): boolean {
         "docs", // reference examples
         "important",
         "project", // default examples
+        "actionable",
+        "decision",
+        "review",
+        "recurring",
+        "urgent",
+        "blocked",
+        "quick-win",
+        "product",
+        "experimental",
+        "improvement",
+        "exploratory",
+        "goals",
+        "gratitude",
+        "learning",
+        "reflection",
+        "coding",
+        "tutorial",
+        "docs",
+        "example",
+        "finance",
+        "contact",
+        "link",
+        "code",
+        "tutorial",
+        "docs",
+        "example",
+        "finance",
+        "contact",
+        "link",
+        "code",
+        "tutorial",
+        "docs",
+        "example",
+        "finance",
+        "contact",
+        "link",
+        "code",
+        "tutorial",
+        "docs",
+        "example",
+        "finance",
+        "contact",
+        "link",
+        "code",
+        "tutorial",
+        "docs",
+        "example",
+        "finance",
+        "contact",
+        "link",
+        "code",
+        "tutorial",
+        "docs",
+        "example",
+        "finance",
+        "contact",
+        "link",
     ]);
 
     // If 2+ tags are from example set, likely copied
@@ -424,6 +468,70 @@ function extractKeywords(content: string, noteType?: NoteType): string[] {
         urgent: {
             keywords: ["urgent", "asap", "important", "priority", "critical"],
             relevantTypes: ["task", "meeting"],
+        },
+        deadline: {
+            keywords: ["deadline", "due", "by", "before"],
+            relevantTypes: ["task", "meeting"],
+        },
+        blocked: {
+            keywords: ["blocked", "waiting", "pending", "on-hold"],
+            relevantTypes: ["task", "meeting"],
+        },
+        quickWin: {
+            keywords: ["quick", "easy", "simple", "5-min"],
+            relevantTypes: ["task", "meeting"],
+        },
+        experimental: {
+            keywords: ["experiment", "test", "try", "prototype"],
+            relevantTypes: ["idea", "task"],
+        },
+        improvement: {
+            keywords: ["improvement", "optimize", "enhance", "refactor"],
+            relevantTypes: ["idea", "task"],
+        },
+        exploratory: {
+            keywords: ["explore", "consider", "maybe"],
+            relevantTypes: ["idea", "task"],
+        },
+        goals: {
+            keywords: ["goal", "resolution", "intention", "plan"],
+            relevantTypes: ["journal", "task"],
+        },
+        gratitude: {
+            keywords: ["grateful", "thankful", "appreciate", "blessing"],
+            relevantTypes: ["journal", "task"],
+        },
+        reflection: {
+            keywords: ["reflection", "realization", "discovery"],
+            relevantTypes: ["journal", "task"],
+        },
+        coding: {
+            keywords: ["code", "programming", "function", "class", "method"],
+            relevantTypes: ["reference", "idea", "task"],
+        },
+        tutorial: {
+            keywords: ["tutorial", "how-to", "step-by-step"],
+            relevantTypes: ["reference", "idea", "task"],
+        },
+        docs: {
+            keywords: ["documentation", "docs", "api", "reference"],
+            relevantTypes: ["reference", "idea", "task"],
+        },
+        example: {
+            keywords: ["example", "sample", "template", "boilerplate"],
+            relevantTypes: ["reference", "idea", "task"],
+        },
+        contact: {
+            keywords: ["contact", "email", "phone", "address"],
+            relevantTypes: ["reference", "idea", "task"],
+        },
+        link: {
+            keywords: ["link", "url", "website", "web", "page"],
+            relevantTypes: ["reference", "idea", "task"],
+        },
+        code: {
+            keywords: ["code", "programming", "function", "class", "method"],
+            relevantTypes: ["reference", "idea", "task"],
         },
     };
 

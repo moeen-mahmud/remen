@@ -1,25 +1,9 @@
-/**
- * Classify the type of a note based on its content
- *
- * Uses SmolLM 360M via ExecutorTorch for intelligent classification.
- * Falls back to rule-based classification when the model isn't ready.
- * Voice and scan types are set explicitly when creating notes.
- */
-
+import { ClassificationResult } from "@/lib/ai/ai.types";
 import type { NoteType } from "@/lib/database";
-import type { LLMModel, Message } from "./provider";
+import type { LLMModel, Message } from "./ai.types";
 
-interface ClassificationResult {
-    type: NoteType;
-    confidence: number;
-}
-
-// Valid note types for classification (voice and scan are set explicitly)
 const VALID_TYPES: Exclude<NoteType, "voice" | "scan">[] = ["meeting", "task", "idea", "journal", "reference", "note"];
 
-/**
- * Get badge info for note types
- */
 export function getNoteTypeBadge(type: NoteType): { label: string; color: string; bgColor: string } {
     switch (type) {
         case "meeting":
@@ -41,9 +25,6 @@ export function getNoteTypeBadge(type: NoteType): { label: string; color: string
     }
 }
 
-/**
- * Classify a note into one of the predefined types using AI
- */
 export async function classifyNoteType(content: string, llm: LLMModel | null): Promise<NoteType> {
     // Skip AI for very short content
     if (content.trim().length < 20) {
@@ -66,9 +47,6 @@ export async function classifyNoteType(content: string, llm: LLMModel | null): P
     return classifyWithRules(content).type;
 }
 
-/**
- * AI-based classification using LLM
- */
 async function classifyWithAI(content: string, llm: LLMModel): Promise<NoteType | null> {
     // Truncate content for focus
     const contentPreview = content.length > 400 ? content.substring(0, 400).trim() : content.trim();
@@ -99,9 +77,6 @@ async function classifyWithAI(content: string, llm: LLMModel): Promise<NoteType 
     }
 }
 
-/**
- * Build classification system prompt without content examples
- */
 function buildClassificationPrompt(): string {
     const instruction =
         "You are a note classifier. Analyze the content and respond with exactly ONE word from this list:";
@@ -124,9 +99,6 @@ function buildClassificationPrompt(): string {
     return `${instruction}\n\n${typeDescriptions.join("\n")}\n\n${rules.join("\n")}`;
 }
 
-/**
- * Parse classification response from LLM
- */
 function parseClassificationResponse(response: string): NoteType | null {
     // Clean the response aggressively
     const cleaned = response
@@ -183,14 +155,10 @@ function parseClassificationResponse(response: string): NoteType | null {
     return null;
 }
 
-/**
- * Rule-based classification using keyword patterns and structural analysis (fallback)
- */
 function classifyWithRules(content: string): ClassificationResult {
     const lowerContent = content.toLowerCase();
     const lines = content.split("\n").filter((l) => l.trim().length > 0);
 
-    // Score each type based on keyword presence and structure
     const scores: Record<Exclude<NoteType, "voice" | "scan">, number> = {
         meeting: 0,
         task: 0,
@@ -200,8 +168,6 @@ function classifyWithRules(content: string): ClassificationResult {
         note: 0,
     };
 
-    // ===== STRUCTURAL ANALYSIS =====
-
     // Check for bullet/list structure (strong task indicator)
     const bulletLines = lines.filter((l) => /^\s*[-•*]\s/.test(l)).length;
     const numberedLines = lines.filter((l) => /^\s*\d+[.)]\s/.test(l)).length;
@@ -209,7 +175,6 @@ function classifyWithRules(content: string): ClassificationResult {
     // Check for task pattern: - [ ] or - [x]
     const taskPatternLines = lines.filter((l) => /^\s*-\s+\[[\sxX]\]\s+/.test(l)).length;
 
-    // Strong task detection - if we have task pattern, strongly classify as task
     if (taskPatternLines > 0) {
         scores.task += taskPatternLines * 10; // Very high weight for explicit task format
     }
@@ -255,8 +220,6 @@ function classifyWithRules(content: string): ClassificationResult {
         scores.journal += 1;
     }
 
-    // ===== KEYWORD ANALYSIS =====
-
     // Meeting indicators
     const meetingKeywords = [
         { word: "meeting", weight: 3 },
@@ -287,8 +250,8 @@ function classifyWithRules(content: string): ClassificationResult {
         { word: "todo", weight: 3 },
         { word: "to-do", weight: 3 },
         { word: "task", weight: 2.5 },
-        { word: "[ ]", weight: 3 },
-        { word: "[x]", weight: 3 },
+        { word: "- [ ]", weight: 3 },
+        { word: "- [x]", weight: 3 },
         { word: "due", weight: 2 },
         { word: "deadline", weight: 2.5 },
         { word: "need to", weight: 2 },

@@ -1,22 +1,6 @@
-/**
- * Embeddings module for semantic search
- *
- * Uses MiniLM (ALL_MINILM_L6_V2) via ExecutorTorch for real neural embeddings.
- * Falls back to TF-IDF-like approach when the model isn't ready.
- *
- * MiniLM produces 384-dimensional embeddings, which provide much better
- * semantic similarity compared to the fallback 256-dim hash vectors.
- */
+import { FALLBACK_EMBEDDING_DIM, NEURAL_EMBEDDING_DIM } from "@/lib/consts/consts";
+import type { EmbeddingsModel } from "./ai.types";
 
-import type { EmbeddingsModel } from "./provider";
-
-// Embedding dimensions
-export const NEURAL_EMBEDDING_DIM = 384; // MiniLM output dimension
-export const FALLBACK_EMBEDDING_DIM = 256; // TF-IDF fallback dimension
-
-/**
- * Generate an embedding vector for text using AI
- */
 export async function generateEmbedding(text: string, embeddingsModel: EmbeddingsModel | null): Promise<number[]> {
     // Try neural embeddings if model is ready and not busy
     if (embeddingsModel?.isReady && !embeddingsModel.isGenerating) {
@@ -39,11 +23,6 @@ export async function generateEmbedding(text: string, embeddingsModel: Embedding
     return fallback;
 }
 
-/**
- * Calculate cosine similarity between two embedding vectors
- * Note: Dimension mismatch (e.g., 256 vs 384) will give poor results!
- * Always regenerate embeddings to match dimensions before comparing.
- */
 export function cosineSimilarity(vecA: number[], vecB: number[]): number {
     // Warn about dimension mismatch - this will give poor results
     if (vecA.length !== vecB.length) {
@@ -66,19 +45,10 @@ export function cosineSimilarity(vecA: number[], vecB: number[]): number {
     return magnitude === 0 ? 0 : dotProduct / magnitude;
 }
 
-/**
- * Check if an embedding is from neural model (384-dim) or fallback (256-dim)
- */
 export function isNeuralEmbedding(embedding: number[]): boolean {
-    return embedding.length === NEURAL_EMBEDDING_DIM;
+    return embedding?.length === NEURAL_EMBEDDING_DIM;
 }
 
-// ============= FALLBACK IMPLEMENTATION =============
-
-/**
- * Generate a fallback embedding using TF-IDF-like approach
- * Used when neural model isn't ready
- */
 function generateFallbackEmbedding(text: string): number[] {
     // Normalize and tokenize
     const tokens = tokenize(text);
@@ -104,9 +74,6 @@ function generateFallbackEmbedding(text: string): number[] {
     return normalizeVector(embedding);
 }
 
-/**
- * Tokenize text into words
- */
 function tokenize(text: string): string[] {
     return text
         .toLowerCase()
@@ -116,9 +83,6 @@ function tokenize(text: string): string[] {
         .filter((word) => !STOP_WORDS.has(word)); // Remove stop words
 }
 
-/**
- * Simple hash function for tokens
- */
 function hashToken(token: string): number {
     let hash = 0;
     for (let i = 0; i < token.length; i++) {
@@ -129,18 +93,12 @@ function hashToken(token: string): number {
     return Math.abs(hash);
 }
 
-/**
- * Normalize a vector to unit length
- */
 function normalizeVector(vec: number[]): number[] {
     const magnitude = Math.sqrt(vec.reduce((sum, val) => sum + val * val, 0));
     if (magnitude === 0) return vec;
     return vec.map((val) => val / magnitude);
 }
 
-/**
- * Common English stop words to filter out
- */
 const STOP_WORDS = new Set([
     "a",
     "an",

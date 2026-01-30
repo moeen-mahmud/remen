@@ -253,6 +253,8 @@ export const NotesHome: React.FC = () => {
         setSearchQuery("");
         setTemporalFilterDescription(null);
         setInterpretedQuery(null);
+        setIsSearching(false);
+        setIsUsingLLM(false);
         setIsRefreshing(true);
         loadNotes();
     }, [loadNotes]);

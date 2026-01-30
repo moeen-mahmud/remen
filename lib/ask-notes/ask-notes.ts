@@ -1,29 +1,7 @@
-/**
- * Ask Notes service
- *
- * Uses LLM to interpret natural language queries for note search.
- * Extracts intent, topics, temporal context, and generates search terms.
- */
-
 import { type LLMModel } from "@/lib/ai/provider";
+import { AskNotesResult } from "@/lib/ask-notes/ask-notes.type";
+import { extractJsonObject } from "@/lib/utils/functions";
 
-export interface AskNotesResult {
-    searchTerms: string[];
-    temporalHint: string | null;
-    topics: string[];
-    interpretedQuery: string;
-}
-
-function extractJsonObject(text: string): string | null {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    if (start === -1 || end === -1 || end <= start) return null;
-    return text.slice(start, end + 1);
-}
-
-/**
- * Interpret a natural language query using LLM to extract search parameters
- */
 export async function interpretQuery(query: string, llm: LLMModel): Promise<AskNotesResult> {
     if (!llm?.isReady) {
         throw new Error("LLM model not ready");
@@ -101,9 +79,7 @@ Guidelines:
             interpretedQuery: parsed.interpretedQuery,
         };
     } catch (error) {
-        // This can happen if the local LLM returns plain text instead of JSON.
-        // Don't treat as fatal; fall back to a basic query.
-        console.warn("⚠️ [Ask Notes] Falling back (LLM interpretation failed):", error);
+        console.warn("[Ask Notes] Falling back (LLM interpretation failed):", error);
         // Fallback: treat the entire query as search terms
         return {
             searchTerms: [query],
@@ -112,25 +88,4 @@ Guidelines:
             interpretedQuery: query,
         };
     }
-}
-
-/**
- * Check if a query looks like it should use LLM interpretation
- * (vs simple keyword search)
- */
-export function shouldUseLLM(query: string): boolean {
-    const llmQueryPatterns = [
-        // Question starters
-        /^(what|let's|let us|discuss|discussing|discussing about|do you|when|where|how|why|who|which|when|whose|find|show|tell me|can you)/i,
-        // Conversational patterns
-        /(i (wrote|thought|was thinking|noted)|my (notes|thoughts))/i,
-        // Time-based questions
-        /(recently|yesterday|last (week|month|year)|this (week|month))/i,
-        // Topic-based questions
-        /(about|regarding|concerning) .+/i,
-        // Ideas and concepts
-        /(ideas?|concepts?|thoughts?) (about|on|for)/i,
-    ];
-
-    return llmQueryPatterns.some((pattern) => pattern.test(query));
 }

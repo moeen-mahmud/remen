@@ -11,7 +11,7 @@ export interface Note {
     created_at: number;
     updated_at: number;
     is_processed: boolean;
-    ai_status: "unprocessed" | "queued" | "processing" | "organized" | "failed" | "cancelled";
+    ai_status: AIStatus;
     ai_error: string | null;
     embedding: string | null;
     original_image: string | null;
@@ -24,6 +24,7 @@ export interface Note {
     is_pinned: boolean;
 }
 
+export type AIStatus = "unprocessed" | "queued" | "processing" | "organized" | "failed" | "cancelled";
 export type NoteType = "note" | "meeting" | "task" | "idea" | "journal" | "reference" | "voice" | "scan";
 
 export interface Tag {

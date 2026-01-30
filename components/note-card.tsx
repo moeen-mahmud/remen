@@ -284,7 +284,7 @@ export const NoteCard: FC<NoteCardProps> = ({
                             <Box className="flex-row flex-grow gap-2 justify-between items-center mt-1 mb-2">
                                 {totalTasks > 3 ? (
                                     <Text
-                                        className="text-sm font-semibold uppercase"
+                                        className="text-xs font-semibold uppercase"
                                         style={{ color: isDark ? "#888" : "#666" }}
                                     >
                                         {totalTasks - 3}+ more
@@ -293,7 +293,7 @@ export const NoteCard: FC<NoteCardProps> = ({
                                     <Box className="flex-grow"></Box>
                                 )}
                                 <Text
-                                    className="text-sm font-semibold uppercase"
+                                    className="text-xs font-semibold uppercase"
                                     style={{ color: isDark ? "#888" : "#666" }}
                                 >
                                     {taskProgressPercentage}% done

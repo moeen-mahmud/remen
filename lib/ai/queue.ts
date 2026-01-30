@@ -1,14 +1,8 @@
-/**
- * AI Processing Queue
- *
- * Manages background processing of notes with AI models.
- * Processes notes one at a time to avoid overwhelming the device.
- */
-
+import { AI_OPERATION_DELAY } from "@/lib/consts/consts";
 import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database";
+import type { EmbeddingsModel, LLMModel } from "./ai.types";
 import { classifyNoteType } from "./classify";
 import { generateEmbedding } from "./embeddings";
-import type { EmbeddingsModel, LLMModel } from "./provider";
 import { extractTags } from "./tags";
 import { generateTitle } from "./title";
 
@@ -25,7 +19,6 @@ export interface AIModels {
 export type ProcessingCompleteCallback = (noteId: string) => void;
 
 // Small delay between AI operations to prevent "ModelGenerating" errors
-const AI_OPERATION_DELAY = 2000;
 
 /**
  * Wait for a model to be ready and not generating
@@ -221,9 +214,6 @@ class AIProcessingQueue {
         }
     }
 
-    /**
-     * Process a single note with AI
-     */
     private async processNote(job: NoteJob, tokenAtStart: number) {
         const { noteId, content } = job;
 
@@ -431,5 +421,4 @@ class AIProcessingQueue {
     }
 }
 
-// Singleton instance
 export const aiQueue = new AIProcessingQueue();

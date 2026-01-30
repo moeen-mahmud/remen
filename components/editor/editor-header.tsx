@@ -25,17 +25,9 @@ export const EditorHeader: React.FC<EditorHeaderProps> = ({ isEditing, handleBac
                     <Text className="text-xl font-bold">Remen</Text>
                 )}
 
-                {/* Action buttons */}
-                <Box className="flex-row gap-4 items-center">
-                    {/* {onInsertTask && (
-                        <Pressable onPress={onInsertTask} hitSlop={10}>
-                            <Icon as={CheckSquare} size="xl" />
-                        </Pressable>
-                    )} */}
-                    <Pressable onPress={handleViewNotes} hitSlop={10}>
-                        <Icon as={ListIcon} size="xl" />
-                    </Pressable>
-                </Box>
+                <Pressable onPress={handleViewNotes} hitSlop={40}>
+                    <Icon as={ListIcon} size="xl" />
+                </Pressable>
             </Box>
         </Box>
     );

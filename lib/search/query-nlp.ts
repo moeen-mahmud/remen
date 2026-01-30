@@ -1,8 +1,4 @@
-/**
- * Lightweight NLP-ish preprocessing for search queries.
- *
- * Goal: turn natural-language questions into stable search terms without requiring the LLM.
- */
+import { normalizeText } from "@/lib/utils/functions";
 
 export interface ProcessedQuery {
     original: string;
@@ -68,25 +64,12 @@ const STOPWORDS = new Set([
     "concerning",
 ]);
 
-function normalizeText(q: string): string {
-    return (
-        q
-            .trim()
-            .toLowerCase()
-            // keep letters/numbers/spaces/apostrophes; strip punctuation
-            .replace(/[^a-z0-9\s']/g, " ")
-            .replace(/\s+/g, " ")
-            .trim()
-    );
-}
-
 export function processSearchQuery(query: string): ProcessedQuery {
     const original = query;
     const normalized = normalizeText(query);
 
     const tokens = normalized.split(" ").filter(Boolean);
 
-    // Preserve quoted phrases as-is (best-effort)
     const quoted: string[] = [];
     const quoteMatches = original.match(/"([^"]{1,80})"/g) || [];
     for (const m of quoteMatches) {
@@ -96,7 +79,6 @@ export function processSearchQuery(query: string): ProcessedQuery {
 
     const keywords = tokens
         .filter((t) => t.length >= 2 && !STOPWORDS.has(t))
-        // de-dupe while keeping order
         .filter((t, idx, arr) => arr.indexOf(t) === idx);
 
     const keywordQuery = [...quoted, ...keywords].join(" ").trim();

@@ -1,16 +1,11 @@
-/**
- * Search module for notes
- *
- * Combines semantic search (using neural embeddings) with keyword search
- * for comprehensive note retrieval. Supports natural language temporal queries.
- */
-
 import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings";
 import type { EmbeddingsModel, LLMModel } from "@/lib/ai/provider";
-import { interpretQuery, shouldUseLLM, type AskNotesResult } from "@/lib/ask-notes";
+import { interpretQuery } from "@/lib/ask-notes/ask-notes";
+import { AskNotesResult } from "@/lib/ask-notes/ask-notes.type";
 import { getAllNotes, searchNotes as keywordSearch, updateNote, type Note } from "@/lib/database";
 import { processSearchQuery } from "@/lib/search/query-nlp";
 import { parseTemporalQuery, type TemporalFilter } from "@/lib/search/temporal-parser";
+import { shouldUseLLM } from "@/lib/utils/functions";
 
 export interface SearchResult extends Note {
     relevanceScore: number;

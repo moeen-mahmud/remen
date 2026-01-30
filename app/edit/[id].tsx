@@ -10,7 +10,6 @@ export default function EditNoteScreen() {
     const router = useRouter();
     const insertTaskRef = useRef<(() => void) | null>(null);
     const isTaskMode = taskMode === "true";
-    // Note: Editor will also auto-detect task mode from note type
 
     const handleBack = async () => {
         router.back();
@@ -22,18 +21,9 @@ export default function EditNoteScreen() {
         KeyboardController.dismiss();
     };
 
-    // const handleInsertTask = useCallback(() => {
-    //         insertTaskRef.current?.();
-    //     }, []);
-
     return (
         <PageWrapper disableBottomPadding>
-            <EditorHeader
-                isEditing={true}
-                handleBack={handleBack}
-                handleViewNotes={handleViewNotes}
-                // onInsertTask={isTaskMode ? undefined : handleInsertTask}
-            />
+            <EditorHeader isEditing={true} handleBack={handleBack} handleViewNotes={handleViewNotes} />
             <Editor
                 noteId={id || null}
                 onInsertTaskReady={(fn) => (insertTaskRef.current = fn)}
