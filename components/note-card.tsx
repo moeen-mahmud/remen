@@ -6,8 +6,8 @@ import { Text } from "@/components/ui/text";
 import { getNoteTypeBadge } from "@/lib/ai/classify";
 import { scaleValues, springConfigs, timingConfigs } from "@/lib/utils/animation-config";
 
-import type { Note, Tag } from "@/lib/database";
-import { parseTasksFromText } from "@/lib/tasks";
+import type { Note, Tag } from "@/lib/database/database";
+import { parseTasksFromText } from "@/lib/tasks/tasks";
 import * as Haptics from "expo-haptics";
 import {
     BookIcon,

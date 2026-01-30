@@ -6,7 +6,7 @@ import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
 import { consumePendingScanPhotoUri } from "@/lib/capture/pending-scan-photo";
 import { formatOCRText, getScannedImageAsBase64, processImageOCR } from "@/lib/capture/scan";
-import { createNote } from "@/lib/database";
+import { createNote } from "@/lib/database/database";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { XIcon } from "lucide-react-native";

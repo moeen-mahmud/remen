@@ -1,5 +1,5 @@
 import { AI_OPERATION_DELAY } from "@/lib/consts/consts";
-import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database";
+import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database/database";
 import type { EmbeddingsModel, LLMModel } from "./ai.types";
 import { classifyNoteType } from "./classify";
 import { generateEmbedding } from "./embeddings";

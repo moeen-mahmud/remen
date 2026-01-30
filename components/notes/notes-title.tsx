@@ -1,6 +1,6 @@
 import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
-import { Note } from "@/lib/database";
+import { Note } from "@/lib/database/database";
 import { useColorScheme } from "nativewind";
 import { useRef } from "react";
 import { Pressable, TextInput } from "react-native";

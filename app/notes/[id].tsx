@@ -4,7 +4,7 @@ import { PageWrapper } from "@/components/page-wrapper";
 import { SettingsHeader } from "@/components/settings/settings-header";
 import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
-import { archiveNote, getNoteById, moveToTrash } from "@/lib/database";
+import { archiveNote, getNoteById, moveToTrash } from "@/lib/database/database";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { Archive, Edit, Recycle, Share2Icon } from "lucide-react-native";

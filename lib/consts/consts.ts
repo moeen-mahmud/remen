@@ -1,4 +1,9 @@
 export const SCANS_DIR_NAME = "remen_scans";
+export const BACKUP_DIR = "remen-backup";
+export const NOTES_FILE = "notes.json";
+export const BACKUP_PATH = `${BACKUP_DIR}/${NOTES_FILE}`;
+export const PREFERENCES_KEY = "@remen_preferences";
+
 export const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 export const MONTHS = [
     "january",
@@ -60,3 +65,11 @@ export const FALLBACK_EMBEDDING_DIM = 256;
 export const AI_OPERATION_DELAY = 2000;
 
 export const MAX_TITLE_LENGTH = 30;
+
+export const TEMPORAL_ONLY_PATTERNS = [
+    /^what\s+(i\s+)?(wrote|was\s+thinking|thought|noted)\s*[?.]?\s*$/i,
+    /^what\s+did\s+i\s+(write|note)\s*[?.]?\s*$/i,
+    /^what\s+did\s+i\s+(write|note)\s+down\s*[?.]?\s*$/i,
+    /^notes?\s+(from|i\s+wrote)\s*[?.]?\s*$/i,
+    /^(from|my\s+notes?)\s*[?.]?\s*$/i,
+];

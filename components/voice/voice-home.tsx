@@ -2,7 +2,7 @@ import { Waveform } from "@/components/waveform";
 import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
 import { voiceCapture, type VoiceState } from "@/lib/capture/voice";
-import { createNote } from "@/lib/database";
+import { createNote } from "@/lib/database/database";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { MicIcon, MicOffIcon, XIcon } from "lucide-react-native";

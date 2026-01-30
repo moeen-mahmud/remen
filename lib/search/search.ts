@@ -1,31 +1,14 @@
+import type { EmbeddingsModel, LLMModel } from "@/lib/ai/ai.types";
 import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings";
-import type { EmbeddingsModel, LLMModel } from "@/lib/ai/provider";
 import { interpretQuery } from "@/lib/ask-notes/ask-notes";
 import { AskNotesResult } from "@/lib/ask-notes/ask-notes.type";
-import { getAllNotes, searchNotes as keywordSearch, updateNote, type Note } from "@/lib/database";
+import { TEMPORAL_ONLY_PATTERNS } from "@/lib/consts/consts";
+import { getAllNotes, searchNotes as keywordSearch, updateNote } from "@/lib/database/database";
+import type { Note } from "@/lib/database/database.types";
 import { processSearchQuery } from "@/lib/search/query-nlp";
-import { parseTemporalQuery, type TemporalFilter } from "@/lib/search/temporal-parser";
+import type { EnhancedSearchResult, SearchResult } from "@/lib/search/search.types";
+import { parseTemporalQuery } from "@/lib/search/temporal-parser";
 import { shouldUseLLM } from "@/lib/utils/functions";
-
-export interface SearchResult extends Note {
-    relevanceScore: number;
-    matchType: "semantic" | "keyword" | "both";
-}
-
-export interface EnhancedSearchResult {
-    results: SearchResult[];
-    temporalFilter: TemporalFilter | null;
-    interpretedQuery?: string; // For LLM-interpreted queries
-}
-
-/** Filler phrases that indicate a purely time-based query when combined with a temporal filter */
-const TEMPORAL_ONLY_PATTERNS = [
-    /^what\s+(i\s+)?(wrote|was\s+thinking|thought|noted)\s*[?.]?\s*$/i,
-    /^what\s+did\s+i\s+(write|note)\s*[?.]?\s*$/i,
-    /^what\s+did\s+i\s+(write|note)\s+down\s*[?.]?\s*$/i,
-    /^notes?\s+(from|i\s+wrote)\s*[?.]?\s*$/i,
-    /^(from|my\s+notes?)\s*[?.]?\s*$/i,
-];
 
 function isTemporalOnlyRemainder(q: string): boolean {
     const s = q.replace(/[?.]/g, " ").trim();
@@ -33,18 +16,11 @@ function isTemporalOnlyRemainder(q: string): boolean {
     return TEMPORAL_ONLY_PATTERNS.some((p) => p.test(q));
 }
 
-/**
- * Search notes using a hybrid approach combining semantic and keyword search
- * Now with natural language temporal parsing support
- */
 export async function searchNotes(query: string, embeddingsModel: EmbeddingsModel | null): Promise<SearchResult[]> {
     const enhanced = await searchNotesEnhanced(query, embeddingsModel);
     return enhanced.results;
 }
 
-/**
- * Enhanced search that returns both results and any detected temporal filter
- */
 export async function searchNotesEnhanced(
     query: string,
     embeddingsModel: EmbeddingsModel | null,
@@ -128,9 +104,6 @@ export async function searchNotesEnhanced(
     return { results: mergedResults, temporalFilter };
 }
 
-/**
- * Semantic search using neural embeddings
- */
 async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | null): Promise<SearchResult[]> {
     try {
         console.log(`🧠 [Semantic Search] Starting for: "${query}"`);
@@ -234,9 +207,6 @@ async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | 
     }
 }
 
-/**
- * Keyword search with relevance scoring
- */
 async function keywordSearchWithScoring(query: string): Promise<SearchResult[]> {
     try {
         const results = await keywordSearch(query);
@@ -279,9 +249,6 @@ async function keywordSearchWithScoring(query: string): Promise<SearchResult[]> 
     }
 }
 
-/**
- * Merge semantic and keyword results, handling duplicates
- */
 function mergeSearchResults(semantic: SearchResult[], keyword: SearchResult[]): SearchResult[] {
     const resultMap = new Map<string, SearchResult>();
 
@@ -311,10 +278,6 @@ function mergeSearchResults(semantic: SearchResult[], keyword: SearchResult[]): 
         .slice(0, 50); // Limit results
 }
 
-/**
- * Enhanced search with LLM-powered query interpretation
- * Uses LLM to understand natural language queries before searching
- */
 export async function askNotesSearch(
     query: string,
     embeddingsModel: EmbeddingsModel | null,
@@ -389,9 +352,6 @@ export async function askNotesSearch(
     }
 }
 
-/**
- * Find notes related to a given note
- */
 export async function findRelatedNotes(
     noteId: string,
     embeddingsModel: EmbeddingsModel | null,

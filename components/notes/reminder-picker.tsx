@@ -2,7 +2,7 @@ import { DatePickerModal } from "@/components/date-picker-modal";
 import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { cancelNoteReminder, formatReminderDateDetailed, scheduleReminder } from "@/lib/reminders";
+import { cancelNoteReminder, formatReminderDateDetailed, scheduleReminder } from "@/lib/reminders/reminders";
 import { SquarePen } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useState } from "react";

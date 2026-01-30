@@ -19,8 +19,8 @@ import {
     unpinNote,
     type Note,
     type Tag,
-} from "@/lib/database";
-import { askNotesSearch } from "@/lib/search";
+} from "@/lib/database/database";
+import { askNotesSearch } from "@/lib/search/search";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ListIcon, SearchIcon } from "lucide-react-native";

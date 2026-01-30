@@ -1,43 +1,19 @@
-import { Platform } from "react-native";
-import { CloudStorage, CloudStorageScope } from "react-native-cloud-storage";
+import { BACKUP_DIR, BACKUP_PATH } from "@/lib/consts/consts";
 import {
     addTagToNote,
     createNote,
     getAllNotes,
     getNoteById,
     getTagsForNote,
-    Note,
     pinNote,
     removeTagFromNote,
     unpinNote,
     updateNote,
-} from "./database";
-import { getPreferences, savePreferences } from "./preferences";
-
-// Constants
-const BACKUP_DIR = "remen-backup";
-const NOTES_FILE = "notes.json";
-const BACKUP_PATH = `${BACKUP_DIR}/${NOTES_FILE}`;
-
-// Types
-export interface SyncResult {
-    success: boolean;
-    error?: string;
-    notesBackedUp?: number;
-    notesRestored?: number;
-    timestamp?: number;
-}
-
-interface NoteWithTags extends Note {
-    tags: string[]; // Tag names for this note
-    // AI processing fields are already included from Note
-}
-
-interface BackupData {
-    version: number;
-    timestamp: number;
-    notes: NoteWithTags[];
-}
+} from "@/lib/database/database";
+import { getPreferences, savePreferences } from "@/lib/preference/preferences";
+import { Platform } from "react-native";
+import { CloudStorage, CloudStorageScope } from "react-native-cloud-storage";
+import { BackupData, NoteWithTags, SyncResult } from "./cloud-sync.types";
 
 /**
  * Check if iCloud is available on the device

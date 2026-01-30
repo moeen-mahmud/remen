@@ -1,17 +1,7 @@
-import { createTask, deleteTask, getTasksForNote, updateTask, type Task } from "./database";
+import { createTask, deleteTask, getTasksForNote, updateTask } from "@/lib/database/database";
+import type { Task } from "@/lib/database/database.types";
+import { ParsedTask } from "@/lib/tasks/tasks.type";
 
-export interface ParsedTask {
-    lineIndex: number;
-    indent: string;
-    isCompleted: boolean;
-    content: string;
-    fullLine: string;
-}
-
-/**
- * Parse tasks from text content
- * Returns array of parsed tasks with their line positions
- */
 export function parseTasksFromText(text: string): ParsedTask[] {
     const lines = text.split("\n");
     const tasks: ParsedTask[] = [];
@@ -33,21 +23,11 @@ export function parseTasksFromText(text: string): ParsedTask[] {
     return tasks;
 }
 
-/**
- * Convert a task back to markdown format
- */
 export function taskToMarkdown(task: ParsedTask): string {
-    const checkbox = task.isCompleted ? "[x]" : "[ ]";
+    const checkbox = task.isCompleted ? "- [x]" : "- [ ]";
     return `${task.indent}- ${checkbox} ${task.content}`;
 }
 
-/**
- * Sync tasks from text content to database
- * This will:
- * 1. Parse tasks from text
- * 2. Compare with existing tasks in database
- * 3. Create new tasks, update existing ones, delete removed ones
- */
 export async function syncTasksFromText(noteId: string, text: string): Promise<void> {
     const parsedTasks = parseTasksFromText(text);
     const existingTasks = await getTasksForNote(noteId);
@@ -94,10 +74,6 @@ export async function syncTasksFromText(noteId: string, text: string): Promise<v
     }
 }
 
-/**
- * Toggle a task in text content
- * Finds the task line and toggles its checkbox
- */
 export function toggleTaskInText(text: string, lineIndex: number): string {
     const lines = text.split("\n");
     const line = lines[lineIndex];

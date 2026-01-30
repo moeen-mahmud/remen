@@ -1,7 +1,7 @@
 import { SettingsAppearanceActions } from "@/components/settings/settings-home/settings-appearance-actions";
 import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
-import { Preferences } from "@/lib/preferences";
+import { Preferences } from "@/lib/preference/preferences";
 import { useColorScheme } from "nativewind";
 
 type SettingAppearanceProps = {

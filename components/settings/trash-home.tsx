@@ -11,7 +11,7 @@ import {
     restoreFromTrash,
     type Note,
     type Tag,
-} from "@/lib/database";
+} from "@/lib/database/database";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Recycle } from "lucide-react-native";

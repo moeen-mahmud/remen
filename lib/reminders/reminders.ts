@@ -1,14 +1,7 @@
-/**
- * Reminder Service
- *
- * Handles scheduling, canceling, and managing reminders for notes using expo-notifications
- */
-
+import { getNoteById, updateNote } from "@/lib/database/database";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { getNoteById, updateNote } from "./database";
 
-// Configure notification behavior
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
@@ -109,9 +102,6 @@ export async function scheduleReminder(noteId: string, reminderDate: Date): Prom
     }
 }
 
-/**
- * Cancel a reminder notification
- */
 export async function cancelReminder(notificationId: string): Promise<void> {
     try {
         await Notifications.cancelScheduledNotificationAsync(notificationId);
@@ -120,9 +110,6 @@ export async function cancelReminder(notificationId: string): Promise<void> {
     }
 }
 
-/**
- * Cancel reminder for a note
- */
 export async function cancelNoteReminder(noteId: string): Promise<void> {
     try {
         const note = await getNoteById(noteId);
@@ -140,9 +127,6 @@ export async function cancelNoteReminder(noteId: string): Promise<void> {
     }
 }
 
-/**
- * Get all scheduled reminders
- */
 export async function getAllScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
     try {
         return await Notifications.getAllScheduledNotificationsAsync();
@@ -152,9 +136,6 @@ export async function getAllScheduledNotifications(): Promise<Notifications.Noti
     }
 }
 
-/**
- * Format reminder date for display
- */
 export function formatReminderDate(timestamp: number): string {
     const date = new Date(timestamp);
     const now = new Date();
@@ -174,9 +155,6 @@ export function formatReminderDate(timestamp: number): string {
     }
 }
 
-/**
- * Format reminder date for detailed display
- */
 export function formatReminderDateDetailed(timestamp: number): string {
     const date = new Date(timestamp);
     const now = new Date();

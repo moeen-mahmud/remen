@@ -3,7 +3,8 @@ import { SettingsNoteCounter } from "@/components/settings/settings-note-counter
 import { SwipeableNoteCard } from "@/components/swipeable-note-card";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
-import { getArchivedNotes, getTagsForNote, moveToTrash, unarchiveNote, type Note, type Tag } from "@/lib/database";
+import { getArchivedNotes, getTagsForNote, moveToTrash, unarchiveNote } from "@/lib/database/database";
+import type { Note, Tag } from "@/lib/database/database.types";
 import { useRouter } from "expo-router";
 import { ArchiveIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";

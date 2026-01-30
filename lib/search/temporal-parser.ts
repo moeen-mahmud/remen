@@ -14,14 +14,8 @@ import {
     THIS_WEEK,
     THIS_WEEK_GLOBAL,
 } from "@/lib/consts/consts";
+import { TemporalFilter } from "@/lib/search/search.types";
 import { getLastDayOfWeek, getStartOfWeek, getThisDayOfWeek } from "@/lib/utils/functions";
-
-export interface TemporalFilter {
-    startTime: number;
-    endTime: number;
-    description: string;
-    query: string; // The remaining query after extracting temporal info
-}
 
 export function parseTemporalQuery(query: string): TemporalFilter | null {
     const lowerQuery = query.toLowerCase().trim();

@@ -6,13 +6,13 @@ import { SettingsICloud } from "@/components/settings/settings-home/settings-icl
 import { PageLoader } from "@/components/ui/page-loader";
 
 import { useAI } from "@/lib/ai/provider";
-import { isICloudAvailable, performFullSync } from "@/lib/cloud-sync";
-import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database";
+import { isICloudAvailable, performFullSync } from "@/lib/cloud/cloud-sync";
+import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database/database";
 import { Alert, ScrollView } from "react-native";
 
 import { SettingsAIControls } from "@/components/settings/settings-home/settings-ai-controls";
 import { Box } from "@/components/ui/box";
-import { Preferences, getPreferences, savePreferences } from "@/lib/preferences";
+import { Preferences, getPreferences, savePreferences } from "@/lib/preference/preferences";
 import * as Haptics from "expo-haptics";
 import { router, usePathname } from "expo-router";
 import { useColorScheme } from "nativewind";

@@ -1,6 +1,6 @@
-import { LLMModel, Message } from "@/lib/ai/ai.types";
+import type { LLMModel, Message } from "@/lib/ai/ai.types";
 import { MAX_TITLE_LENGTH } from "@/lib/consts/consts";
-import type { NoteType } from "@/lib/database";
+import type { NoteType } from "@/lib/database/database.types";
 
 /**
  * Generate a title for the given note content using AI
