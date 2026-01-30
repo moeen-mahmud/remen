@@ -269,7 +269,7 @@ export const NoteCard: FC<NoteCardProps> = ({
 
             {/* Preview */}
             {preview && preview.length > 0 && (
-                <Text style={[styles.preview, { color: isDark ? "#aaa" : "#666" }]} numberOfLines={2}>
+                <Box>
                     {hasTasks ? (
                         <Box className="flex-col">
                             {parsedTasks?.slice(0, 3)?.map((task, index) => {
@@ -281,7 +281,7 @@ export const NoteCard: FC<NoteCardProps> = ({
                                     />
                                 );
                             })}
-                            <Box className="flex-row gap-2 justify-between items-center">
+                            <Box className="flex-row flex-grow gap-2 justify-between items-center mt-1 mb-2">
                                 {totalTasks > 3 ? (
                                     <Text
                                         className="text-sm font-semibold uppercase"
@@ -289,7 +289,9 @@ export const NoteCard: FC<NoteCardProps> = ({
                                     >
                                         {totalTasks - 3}+ more
                                     </Text>
-                                ) : null}
+                                ) : (
+                                    <Box className="flex-grow"></Box>
+                                )}
                                 <Text
                                     className="text-sm font-semibold uppercase"
                                     style={{ color: isDark ? "#888" : "#666" }}
@@ -299,9 +301,11 @@ export const NoteCard: FC<NoteCardProps> = ({
                             </Box>
                         </Box>
                     ) : (
-                        preview
+                        <Text style={[styles.preview, { color: isDark ? "#aaa" : "#666" }]} numberOfLines={2}>
+                            {preview}
+                        </Text>
                     )}
-                </Text>
+                </Box>
             )}
 
             {/* Type + Tags Row */}

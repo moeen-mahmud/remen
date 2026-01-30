@@ -25,7 +25,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ content, isCompleted, onTogg
                 )}
             </Box>
             <Text
-                className="text-lg"
+                className="-mt-[3px] text-lg"
                 style={[
                     {
                         color: isDark ? (isCompleted ? "#666" : "#fff") : isCompleted ? "#999" : "#000",
@@ -42,7 +42,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ content, isCompleted, onTogg
 const styles = StyleSheet.create({
     container: {
         flexDirection: "row",
-        alignItems: "center",
+        alignItems: "flex-start",
         paddingVertical: 8,
         paddingRight: 12,
         gap: 12,
