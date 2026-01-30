@@ -3,10 +3,10 @@ import { NotesFooter } from "@/components/notes/notes-footer";
 import { NotesHeader } from "@/components/notes/notes-header";
 import { NotesSearch } from "@/components/notes/notes-search";
 import { NotesSearchHelper } from "@/components/notes/notes-search-helper";
-import { SettingsNoteCounter } from "@/components/settings/settings-note-counter";
 import { SwipeableNoteCard } from "@/components/swipeable-note-card";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
+import { Text } from "@/components/ui/text";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { aiQueue } from "@/lib/ai";
 import { useAI, useAILLM } from "@/lib/ai/provider";
@@ -109,7 +109,7 @@ export const NotesHome: React.FC = () => {
                 newSections.push({ title: "Pinned items", data: pinnedNotes });
             }
             if (unpinnedNotes.length > 0) {
-                newSections.push({ title: "", data: unpinnedNotes });
+                newSections.push({ title: "Others", data: unpinnedNotes });
             }
             setSections(newSections);
         } catch (error) {
@@ -250,6 +250,9 @@ export const NotesHome: React.FC = () => {
 
     // Handle refresh
     const handleRefresh = useCallback(() => {
+        setSearchQuery("");
+        setTemporalFilterDescription(null);
+        setInterpretedQuery(null);
         setIsRefreshing(true);
         loadNotes();
     }, [loadNotes]);
@@ -411,17 +414,17 @@ export const NotesHome: React.FC = () => {
         ],
     );
 
-    // const renderSectionHeader = useCallback(({ section }: { section: { title: string; data: NoteWithTags[] } }) => {
-    //     // Don't show section header for search results or empty titles
-    //     if (section.title === "Search results" || section.title === "") {
-    //         return null;
-    //     }
-    //     return (
-    //         <Box className="px-4 py-2">
-    //             <Text className="text-sm font-medium text-typography-500">{section.title}</Text>
-    //         </Box>
-    //     );
-    // }, []);
+    const renderSectionHeader = useCallback(({ section }: { section: { title: string; data: NoteWithTags[] } }) => {
+        // Don't show section header for search results or empty titles
+        // if (section.title === "Search results" || section.title === "") {
+        //     return null;
+        // }
+        return (
+            <Box className="px-4 py-2">
+                <Text className="text-sm font-medium text-typography-500">{section.title}</Text>
+            </Box>
+        );
+    }, []);
 
     // Key extractor
     const keyExtractor = useCallback((item: Note) => item.id, []);
@@ -496,10 +499,11 @@ export const NotesHome: React.FC = () => {
             />
 
             {/* Notes count */}
-            <SettingsNoteCounter notes={filteredNotes} />
+            {/* <SettingsNoteCounter notes={filteredNotes} /> */}
 
             {/* Notes List */}
             <SectionList
+                renderSectionHeader={renderSectionHeader}
                 sections={sections}
                 renderItem={renderNote}
                 keyExtractor={keyExtractor}
