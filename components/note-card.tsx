@@ -4,7 +4,7 @@ import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { getNoteTypeBadge } from "@/lib/ai/classify";
-import { scaleValues, springConfigs, timingConfigs } from "@/lib/animation-config";
+import { scaleValues, springConfigs, timingConfigs } from "@/lib/utils/animation-config";
 
 import type { Note, Tag } from "@/lib/database";
 import { parseTasksFromText } from "@/lib/tasks";

@@ -7,7 +7,7 @@ import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FabItem } from "@/components/fab/fab-item";
-import { springConfigs } from "@/lib/animation-config";
+import { springConfigs } from "@/lib/utils/animation-config";
 import { router } from "expo-router";
 import type { SpeedDialProps } from "./types";
 

@@ -1,6 +1,6 @@
 import { Heading } from "@/components/ui/heading";
 import { Text } from "@/components/ui/text";
-import { springConfigs, timingConfigs } from "@/lib/animation-config";
+import { springConfigs, timingConfigs } from "@/lib/utils/animation-config";
 import { useColorScheme } from "nativewind";
 import { type FC, useEffect } from "react";
 import { StyleSheet, View } from "react-native";

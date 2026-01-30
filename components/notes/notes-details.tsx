@@ -15,7 +15,7 @@ import { aiQueue } from "@/lib/ai/queue";
 import { getNoteById, getTagsForNote, updateNote, type Note, type Tag } from "@/lib/database";
 import { findRelatedNotes, type SearchResult } from "@/lib/search";
 import { parseTasksFromText, toggleTaskInText } from "@/lib/tasks";
-import { formatFullDate } from "@/lib/utils/utils";
+import { formatFullDate } from "@/lib/utils/functions";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";

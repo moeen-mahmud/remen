@@ -1,6 +1,6 @@
 import { NoteCard, type NoteCardProps } from "@/components/note-card";
 import { Icon } from "@/components/ui/icon";
-import { gestureThresholds, timingConfigs } from "@/lib/animation-config";
+import { gestureThresholds, timingConfigs } from "@/lib/utils/animation-config";
 import * as Haptics from "expo-haptics";
 import { ArchiveIcon, Pin, PinOff, Trash2, UndoIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
