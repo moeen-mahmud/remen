@@ -1,5 +1,5 @@
 import { ModelDownloadOverlay } from "@/components/model-download-overlay";
-import { Onboarding } from "@/components/onboarding";
+import { Onboarding } from "@/components/onboarding/onboarding-home";
 import { useAI } from "@/lib/ai";
 import { aiQueue } from "@/lib/ai/queue";
 import { getDatabase, getUnprocessedNotes } from "@/lib/database";

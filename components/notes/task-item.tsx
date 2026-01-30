@@ -1,6 +1,6 @@
 import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
-import { Check, Circle } from "lucide-react-native";
+import { Circle, CircleCheck } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { Pressable, StyleSheet } from "react-native";
 
@@ -16,21 +16,17 @@ export const TaskItem: React.FC<TaskItemProps> = ({ content, isCompleted, onTogg
     const isDark = colorScheme === "dark";
 
     return (
-        <Pressable
-            onPress={onToggle}
-            style={[styles.container, { paddingLeft: indent.length * 8 + 12 }]}
-            disabled={!onToggle}
-        >
-            <Box style={[styles.checkbox, isCompleted && styles.checkboxCompleted]}>
+        <Pressable onPress={onToggle} style={[styles.container]} disabled={!onToggle}>
+            <Box style={[styles.checkbox]}>
                 {isCompleted ? (
-                    <Check size={14} color={isDark ? "#000" : "#fff"} strokeWidth={3} />
+                    <CircleCheck size={22} color={isCompleted ? "#007AFF" : isDark ? "#888" : "#666"} />
                 ) : (
-                    <Circle size={14} color={isDark ? "#888" : "#666"} strokeWidth={2} />
+                    <Circle size={22} color={isDark ? "#888" : "#666"} />
                 )}
             </Box>
             <Text
+                className="text-lg"
                 style={[
-                    styles.content,
                     {
                         color: isDark ? (isCompleted ? "#666" : "#fff") : isCompleted ? "#999" : "#000",
                     },
@@ -52,23 +48,10 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     checkbox: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        borderWidth: 2,
         borderColor: "#888",
         alignItems: "center",
         justifyContent: "center",
         backgroundColor: "transparent",
-    },
-    checkboxCompleted: {
-        backgroundColor: "#007AFF",
-        borderColor: "#007AFF",
-    },
-    content: {
-        flex: 1,
-        fontSize: 16,
-        lineHeight: 22,
     },
     contentCompleted: {
         textDecorationLine: "line-through",

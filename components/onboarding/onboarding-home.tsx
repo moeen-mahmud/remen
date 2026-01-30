@@ -3,75 +3,23 @@ import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { LinearGradient } from "expo-linear-gradient";
-import { Bot, Camera, ChevronRight, Mic, Search, Shield } from "lucide-react-native";
+import { ChevronRight } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useCallback, useState } from "react";
-import { Dimensions, Pressable, StyleSheet, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import Animated, {
-    Easing,
-    runOnJS,
-    SharedValue,
-    useAnimatedStyle,
-    useSharedValue,
-    withTiming,
-} from "react-native-reanimated";
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Dot } from "./onboarding-dot";
+import { onboardingSlides as slides } from "./onboarding-slides";
+import { SCREEN_WIDTH, onboardingStyles as styles } from "./onboarding-styles";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-interface OnboardingProps {
+type OnboardingProps = {
     onComplete: () => void;
     onSkip?: () => void;
-}
+};
 
-interface OnboardingSlide {
-    id: string;
-    icon: React.ReactNode;
-    title: string;
-    description: string;
-    gradient: [string, string];
-}
-
-const slides: OnboardingSlide[] = [
-    {
-        id: "ai",
-        icon: <Bot size={48} color="#fff" />,
-        title: "AI-Powered Intelligence",
-        description: "Your notes are automatically categorized, tagged, and titled using advanced on-device AI.",
-        gradient: ["#667eea", "#764ba2"],
-    },
-    {
-        id: "privacy",
-        icon: <Shield size={48} color="#fff" />,
-        title: "Privacy First",
-        description: "All processing stays on your device. Your data never leaves your phone.",
-        gradient: ["#fa709a", "#fee140"],
-    },
-    {
-        id: "voice",
-        icon: <Mic size={48} color="#fff" />,
-        title: "Voice Notes",
-        description: "Capture ideas instantly. AI transcribes and organizes your spoken thoughts.",
-        gradient: ["#f093fb", "#f5576c"],
-    },
-    {
-        id: "scan",
-        icon: <Camera size={48} color="#fff" />,
-        title: "Document Scanning",
-        description: "Scan documents and handwritten notes with OCR-powered search.",
-        gradient: ["#4facfe", "#00f2fe"],
-    },
-    {
-        id: "search",
-        icon: <Search size={48} color="#fff" />,
-        title: "Smart Search",
-        description: "Find anything instantly using semantic search and natural language.",
-        gradient: ["#43e97b", "#38f9d7"],
-    },
-];
-
-export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
+export const Onboarding = ({ onComplete, onSkip }: OnboardingProps) => {
     const { colorScheme } = useColorScheme();
     const { top, bottom } = useSafeAreaInsets();
     const isDark = colorScheme === "dark";
@@ -197,68 +145,4 @@ export function Onboarding({ onComplete, onSkip }: OnboardingProps) {
             </Box>
         </Animated.View>
     );
-}
-
-/** Dot Component */
-function Dot({ index, translateX, isDark }: { index: number; translateX: SharedValue<number>; isDark: boolean }) {
-    const style = useAnimatedStyle(() => {
-        const position = -translateX.value / SCREEN_WIDTH;
-        const distance = Math.abs(position - index);
-
-        return {
-            width: withTiming(distance < 0.5 ? 16 : 8),
-            opacity: withTiming(distance < 0.5 ? 1 : 0.4),
-        };
-    });
-
-    return <Animated.View style={[{ backgroundColor: isDark ? "#39FF14" : "#00B700" }, styles.dot, style]} />;
-}
-
-/** Styles */
-const styles = StyleSheet.create({
-    container: {
-        ...StyleSheet.absoluteFillObject,
-        justifyContent: "space-between",
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingHorizontal: 24,
-    },
-    progressContainer: {
-        flexDirection: "row",
-        justifyContent: "center",
-        gap: 8,
-    },
-    dot: {
-        height: 8,
-        borderRadius: 4,
-    },
-    slidesContainer: {
-        flexDirection: "row",
-        flex: 1,
-    },
-    slide: {
-        width: SCREEN_WIDTH,
-        alignItems: "center",
-        justifyContent: "center",
-        paddingHorizontal: 32,
-    },
-    iconContainer: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: 32,
-    },
-    nextButton: {
-        marginHorizontal: 24,
-        marginBottom: 12,
-        paddingVertical: 16,
-        flexDirection: "row",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 8,
-    },
-});
+};

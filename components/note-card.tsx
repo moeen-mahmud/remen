@@ -1,3 +1,4 @@
+import { TaskItem } from "@/components/notes/task-item";
 import { Box } from "@/components/ui/box";
 import { Heading } from "@/components/ui/heading";
 import { Icon } from "@/components/ui/icon";
@@ -6,8 +7,21 @@ import { getNoteTypeBadge } from "@/lib/ai/classify";
 import { scaleValues, springConfigs, timingConfigs } from "@/lib/animation-config";
 
 import type { Note, Tag } from "@/lib/database";
+import { parseTasksFromText } from "@/lib/tasks";
 import * as Haptics from "expo-haptics";
-import { CircleCheckIcon, CircleIcon, MicIcon, Pin, ScanIcon } from "lucide-react-native";
+import {
+    BookIcon,
+    BookOpenIcon,
+    CalendarIcon,
+    CircleCheckIcon,
+    CircleIcon,
+    FileIcon,
+    LightbulbIcon,
+    ListIcon,
+    MicIcon,
+    Pin,
+    ScanIcon,
+} from "lucide-react-native";
 import { useColorScheme } from "nativewind";
 import { useEffect, type FC } from "react";
 import { Pressable, StyleSheet } from "react-native";
@@ -69,6 +83,18 @@ function getNoteTypeIcon(type: Note["type"], color: string) {
             return <MicIcon size={12} color={color} />;
         case "scan":
             return <ScanIcon size={12} color={color} />;
+        case "task":
+            return <ListIcon size={12} color={color} />;
+        case "idea":
+            return <LightbulbIcon size={12} color={color} />;
+        case "journal":
+            return <BookIcon size={12} color={color} />;
+        case "reference":
+            return <BookOpenIcon size={12} color={color} />;
+        case "meeting":
+            return <CalendarIcon size={12} color={color} />;
+        case "note":
+            return <FileIcon size={12} color={color} />;
         default:
             return null;
     }
@@ -91,16 +117,19 @@ export const NoteCard: FC<NoteCardProps> = ({
     const hasContent = note.content.trim().length > 0;
     const hasTitle = note.title && note.title.trim().length > 0;
     const hasTasks = /^\s*-\s+\[[\sxX]\]\s+/.test(note.content);
+    const parsedTasks = parseTasksFromText(note.content);
 
     // Display title: show title if exists, otherwise show content preview, or "Empty note" if both empty
     const displayTitle = hasTitle
-        ? note.title
-        : hasContent
-          ? hasTasks
-              ? note.content
-              : truncateText(note.content, 50)
+        ? note.title?.startsWith("- [ ]")
+            ? "Tasks list"
+            : note.title
+        : hasTasks
+          ? "Tasks list"
           : "Empty note";
-
+    const totalTasks = parsedTasks.length;
+    const completedTasks = parsedTasks.filter((task) => task.isCompleted).length;
+    const taskProgressPercentage = Math.round((completedTasks / totalTasks) * 100);
     // Preview: only show if there's content AND we're showing title (not content as title)
     const preview =
         hasTitle && hasContent
@@ -241,7 +270,37 @@ export const NoteCard: FC<NoteCardProps> = ({
             {/* Preview */}
             {preview && preview.length > 0 && (
                 <Text style={[styles.preview, { color: isDark ? "#aaa" : "#666" }]} numberOfLines={2}>
-                    {preview}
+                    {hasTasks ? (
+                        <Box className="flex-col">
+                            {parsedTasks?.slice(0, 3)?.map((task, index) => {
+                                return (
+                                    <TaskItem
+                                        key={`task-${task.lineIndex}-${index}`}
+                                        content={task.content}
+                                        isCompleted={task.isCompleted}
+                                    />
+                                );
+                            })}
+                            <Box className="flex-row gap-2 justify-between items-center">
+                                {totalTasks > 3 ? (
+                                    <Text
+                                        className="text-sm font-semibold uppercase"
+                                        style={{ color: isDark ? "#888" : "#666" }}
+                                    >
+                                        {totalTasks - 3}+ more
+                                    </Text>
+                                ) : null}
+                                <Text
+                                    className="text-sm font-semibold uppercase"
+                                    style={{ color: isDark ? "#888" : "#666" }}
+                                >
+                                    {taskProgressPercentage}% done
+                                </Text>
+                            </Box>
+                        </Box>
+                    ) : (
+                        preview
+                    )}
                 </Text>
             )}
 
