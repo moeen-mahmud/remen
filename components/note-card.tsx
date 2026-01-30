@@ -121,12 +121,12 @@ export const NoteCard: FC<NoteCardProps> = ({
 
     // Display title: show title if exists, otherwise show content preview, or "Empty note" if both empty
     const displayTitle = hasTitle
-        ? note.title?.startsWith("- [ ]")
+        ? note.title?.startsWith("- [ ]") || note.title?.startsWith("- [x]")
             ? "Tasks list"
             : note.title
         : hasTasks
           ? "Tasks list"
-          : "Empty note";
+          : `${truncateText(note.content, 10)}`;
     const totalTasks = parsedTasks.length;
     const completedTasks = parsedTasks.filter((task) => task.isCompleted).length;
     const taskProgressPercentage = Math.round((completedTasks / totalTasks) * 100);
@@ -142,7 +142,7 @@ export const NoteCard: FC<NoteCardProps> = ({
                 ? hasTasks
                     ? ""
                     : truncateText(note.content.substring(50), 100) // Content as title, show rest as preview
-                : ""; // Empty note - no preview
+                : "Empty note"; // Empty note - no preview
     const typeIcon = getNoteTypeIcon(note.type, typeBadge.color);
 
     // Animation values

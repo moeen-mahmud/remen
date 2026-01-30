@@ -246,8 +246,6 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
     const typeBadge = getNoteTypeBadge(note.type);
     const typeIcon = getNoteTypeIcon(note.type, typeBadge.color);
 
-    console.log("note details", note.original_image);
-
     return (
         <Box className="flex-1">
             <ScrollView

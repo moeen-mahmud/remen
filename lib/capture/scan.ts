@@ -1,5 +1,6 @@
 import type { OCRBbox, OCRDetection, OCRModel } from "@/lib/ai/provider";
 import { Directory, File, Paths } from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
 /* ---------------------------------- Types --------------------------------- */
 
@@ -32,6 +33,18 @@ function getScansDirectory(): Directory {
         scansDir.create();
     }
     return scansDir;
+}
+
+/**
+ * Read a captured image file and return it as a data URI (base64).
+ * Use this so the image can be stored with the note and survives app removal / iCloud restore.
+ */
+export async function getScannedImageAsBase64(tempPath: string): Promise<string> {
+    const localPath = tempPath.startsWith("file://") ? tempPath.replace("file://", "") : tempPath;
+    const base64 = await FileSystem.readAsStringAsync(localPath, {
+        encoding: FileSystem.EncodingType.Base64,
+    });
+    return `data:image/jpeg;base64,${base64}`;
 }
 
 export async function saveScannedImage(tempPath: string): Promise<string> {

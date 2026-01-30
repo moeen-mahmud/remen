@@ -1,4 +1,3 @@
-import * as FileSystem from "expo-file-system/legacy";
 import { Platform } from "react-native";
 import { CloudStorage, CloudStorageScope } from "react-native-cloud-storage";
 import {
@@ -17,7 +16,6 @@ import { getPreferences, savePreferences } from "./preferences";
 
 // Constants
 const BACKUP_DIR = "remen-backup";
-const IMAGES_DIR = `${BACKUP_DIR}/images`;
 const NOTES_FILE = "notes.json";
 const BACKUP_PATH = `${BACKUP_DIR}/${NOTES_FILE}`;
 
@@ -66,102 +64,9 @@ async function ensureBackupDirectory(): Promise<void> {
         if (!exists) {
             await CloudStorage.mkdir(BACKUP_DIR, CloudStorageScope.AppData);
         }
-        // Also ensure images directory exists
-        const imagesExists = await CloudStorage.exists(IMAGES_DIR, CloudStorageScope.AppData);
-        if (!imagesExists) {
-            await CloudStorage.mkdir(IMAGES_DIR, CloudStorageScope.AppData);
-        }
     } catch (error) {
         console.error("Failed to create backup directory:", error);
         throw error;
-    }
-}
-
-/**
- * Backup a single image to iCloud
- * @param localPath Local file path of the image
- * @returns Cloud path where the image was saved, or null if backup failed
- */
-async function backupImageToCloud(localPath: string): Promise<string | null> {
-    try {
-        // Check if local file exists
-        const fileInfo = await FileSystem.getInfoAsync(localPath);
-        if (!fileInfo.exists) {
-            console.warn(`[Sync] Image not found at ${localPath}`);
-            return null;
-        }
-
-        // Get filename from path
-        const filename = localPath.split("/").pop();
-        if (!filename) return null;
-
-        const cloudPath = `${IMAGES_DIR}/${filename}`;
-
-        // Read file as base64
-        const base64Data = await FileSystem.readAsStringAsync(localPath, {
-            encoding: FileSystem.EncodingType.Base64,
-        });
-
-        // Write to iCloud
-        await CloudStorage.writeFile(cloudPath, base64Data, CloudStorageScope.AppData);
-
-        console.log(`[Sync] Backed up image ${filename} to iCloud`);
-        return cloudPath;
-    } catch (error) {
-        console.error(`[Sync] Failed to backup image ${localPath}:`, error);
-        return null;
-    }
-}
-
-/**
- * Restore an image from iCloud to local storage
- * @param cloudPath Path in iCloud where the image is stored
- * @returns Local file path where the image was restored, or null if restore failed
- */
-async function restoreImageFromCloud(cloudPath: string): Promise<string | null> {
-    try {
-        // Check if cloud file exists
-        const exists = await CloudStorage.exists(cloudPath, CloudStorageScope.AppData);
-        if (!exists) {
-            console.warn(`[Sync] Image not found in iCloud at ${cloudPath}`);
-            return null;
-        }
-
-        // Get filename
-        const filename = cloudPath.split("/").pop();
-        if (!filename) return null;
-
-        // Use document directory for restored images
-        const localDir = `${FileSystem.documentDirectory}scans`;
-
-        // Ensure local directory exists
-        const dirInfo = await FileSystem.getInfoAsync(localDir);
-        if (!dirInfo.exists) {
-            await FileSystem.makeDirectoryAsync(localDir, { intermediates: true });
-        }
-
-        const localPath = `${localDir}/${filename}`;
-
-        // Check if already exists locally
-        const localInfo = await FileSystem.getInfoAsync(localPath);
-        if (localInfo.exists) {
-            console.log(`[Sync] Image ${filename} already exists locally`);
-            return localPath;
-        }
-
-        // Read from iCloud (base64)
-        const base64Data = await CloudStorage.readFile(cloudPath, CloudStorageScope.AppData);
-
-        // Write to local storage
-        await FileSystem.writeAsStringAsync(localPath, base64Data, {
-            encoding: FileSystem.EncodingType.Base64,
-        });
-
-        console.log(`[Sync] Restored image ${filename} from iCloud`);
-        return localPath;
-    } catch (error) {
-        console.error(`[Sync] Failed to restore image from ${cloudPath}:`, error);
-        return null;
     }
 }
 

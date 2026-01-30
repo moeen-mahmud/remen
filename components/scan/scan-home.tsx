@@ -5,7 +5,7 @@ import { Text } from "@/components/ui/text";
 import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
 import { consumePendingScanPhotoUri } from "@/lib/capture/pending-scan-photo";
-import { formatOCRText, processImageOCR, saveScannedImage } from "@/lib/capture/scan";
+import { formatOCRText, getScannedImageAsBase64, processImageOCR } from "@/lib/capture/scan";
 import { createNote } from "@/lib/database";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -64,16 +64,17 @@ export const ScanHome: React.FC = () => {
 
                 setScanState("saving-image");
 
-                // Save image permanently first (this is fast)
-                const savedPath = await saveScannedImage(photoUri);
-                setCapturedImagePath(savedPath);
+                // Convert to base64 data URI so image is stored with the note (survives app removal / iCloud)
+                const imageDataUri = await getScannedImageAsBase64(photoUri);
+                setCapturedImagePath(imageDataUri);
 
                 setScanState("processing");
 
                 // Small delay to ensure UI updates
                 await new Promise((resolve) => setTimeout(resolve, 100));
 
-                const ocrPromise = processImageOCR(savedPath, ocr);
+                // OCR needs a file path; temp file still exists at photoUri
+                const ocrPromise = processImageOCR(photoUri, ocr);
                 const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error("OCR timeout after 30 seconds")), 30000),
                 );
