@@ -1,4 +1,4 @@
-name: Hallelujah CI/CD #v0
+name: Remen Release Pipeline
 
 on:
     push:
@@ -41,7 +41,7 @@ jobs:
                   commit: "release: remen app release"
                   createGithubReleases: false
               env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN}}
+                  GITHUB_TOKEN: ${{ secrets.CHANGESETS_TOKEN}}
 
             - name: Push tags (if any)
               if: steps.changesets.outputs.hasChangesets == 'false'
