@@ -1,7 +1,7 @@
 import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
-import { Note } from "@/lib/database/database";
-import { useColorScheme } from "nativewind";
+import { Note } from "@/lib/database/database.types";
+import { useTheme } from "@/lib/theme/use-theme";
 import { useRef } from "react";
 import { Pressable, TextInput } from "react-native";
 
@@ -24,27 +24,17 @@ export const NotesTitle: React.FC<NotesTitleProps> = ({
     handleTitlePress,
     note,
 }) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { placeholderTextColor } = useTheme();
     const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isButtonPressRef = useRef(false);
 
     const handleBlur = () => {
-        // Small delay to allow button presses to complete first
         blurTimeoutRef.current = setTimeout(() => {
             if (!isButtonPressRef.current) {
                 handleTitleSave();
             }
             isButtonPressRef.current = false;
         }, 150);
-    };
-
-    const handleClearPress = () => {
-        isButtonPressRef.current = true;
-        if (blurTimeoutRef.current) {
-            clearTimeout(blurTimeoutRef.current);
-        }
-        handleTitleClear();
     };
 
     return (
@@ -61,18 +51,13 @@ export const NotesTitle: React.FC<NotesTitleProps> = ({
                             value={editingTitle}
                             onChangeText={setEditingTitle}
                             placeholder="Enter title..."
-                            placeholderTextColor={isDark ? "#666" : "#999"}
+                            placeholderTextColor={placeholderTextColor}
                             autoFocus
                             selectTextOnFocus
                             onSubmitEditing={handleTitleSave}
                             onBlur={handleBlur}
                             maxLength={100}
                         />
-                        {/* {editingTitle.length > 0 && (
-                        <Pressable onPress={handleClearPress} hitSlop={10}>
-                        <Icon as={X} size="sm" color={isDark ? "#666" : "#999"} />
-                        </Pressable>
-                        )} */}
                     </Box>
                     <Text className="text-xs opacity-60 text-typography-400">Tap outside to save</Text>
                 </Box>

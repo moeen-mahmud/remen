@@ -1,13 +1,14 @@
 import * as Haptics from "expo-haptics";
 import { XIcon, Zap } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { type FC, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { FabItem } from "@/components/fab/fab-item";
-import { springConfigs } from "@/lib/utils/animation-config";
+import { ICON_SIZE, ICON_STROKE_WIDTH } from "@/lib/config";
+import { springConfigs } from "@/lib/config/animation-config";
+import { useTheme } from "@/lib/theme/use-theme";
 import { router } from "expo-router";
 import type { SpeedDialProps } from "./types";
 
@@ -22,9 +23,7 @@ export const SpeedDial: FC<SpeedDialProps> = ({
     offsetHorizontal = 24,
 }) => {
     const { bottom } = useSafeAreaInsets();
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
-
+    const { brandColor, textColor, textColorInverse } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
     const rotation = useSharedValue(0);
     const scale = useSharedValue(1);
@@ -53,8 +52,8 @@ export const SpeedDial: FC<SpeedDialProps> = ({
         transform: [{ rotate: `${rotation.value}deg` }, { scale: scale.value }],
     }));
 
-    const buttonColor = mainButtonColor || (isDark ? "#39FF14" : "#00B700");
-    const iconColor = isDark ? "#000" : "#fff";
+    const buttonColor = mainButtonColor || brandColor;
+    const iconColor = textColorInverse;
 
     // Position styles based on prop
     const positionStyle = {
@@ -87,7 +86,6 @@ export const SpeedDial: FC<SpeedDialProps> = ({
                                   isOpen={isOpen}
                                   totalItems={actions.length}
                                   onPress={closeMenu}
-                                  isDark={isDark}
                               />
                           ))}
                 </View>
@@ -95,12 +93,16 @@ export const SpeedDial: FC<SpeedDialProps> = ({
                 {/* Main FAB Button */}
                 <AnimatedPressable
                     onPress={toggleOpen}
-                    style={[mainButtonAnimatedStyle, styles.mainButton, { backgroundColor: buttonColor }]}
+                    style={[
+                        mainButtonAnimatedStyle,
+                        styles.mainButton,
+                        { backgroundColor: buttonColor, shadowColor: textColorInverse },
+                    ]}
                 >
                     {isOpen ? (
-                        <XIcon size={26} color={iconColor} strokeWidth={2.5} />
+                        <XIcon size={ICON_SIZE.xlarge} color={iconColor} strokeWidth={ICON_STROKE_WIDTH.large} />
                     ) : (
-                        <Zap size={26} color={iconColor} strokeWidth={2.5} />
+                        <Zap size={ICON_SIZE.xlarge} color={iconColor} strokeWidth={ICON_STROKE_WIDTH.large} />
                     )}
                 </AnimatedPressable>
             </View>
@@ -129,7 +131,6 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         alignItems: "center",
         justifyContent: "center",
-        shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 6,

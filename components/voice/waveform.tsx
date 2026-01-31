@@ -17,7 +17,7 @@ interface WaveformProps {
 }
 
 const NUM_BARS = 5;
-const BAR_DELAYS = [0, 100, 200, 100, 0]; // Staggered delays for wave effect
+const BAR_DELAYS = [0, 100, 200, 100, 0];
 
 export function Waveform({ isActive, color = "#EF4444", size = 80 }: WaveformProps) {
     return (

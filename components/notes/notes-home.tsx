@@ -3,28 +3,20 @@ import { NotesFooter } from "@/components/notes/notes-footer";
 import { NotesHeader } from "@/components/notes/notes-header";
 import { NotesSearch } from "@/components/notes/notes-search";
 import { NotesSearchHelper } from "@/components/notes/notes-search-helper";
-import { SwipeableNoteCard } from "@/components/swipeable-note-card";
+import { SwipeableNoteCard } from "@/components/notes/swipeable-note-card";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Text } from "@/components/ui/text";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { aiQueue } from "@/lib/ai";
 import { useAI, useAILLM } from "@/lib/ai/provider";
-import {
-    archiveNote,
-    getAllNotes,
-    getTagsForNote,
-    moveToTrash,
-    pinNote,
-    unpinNote,
-    type Note,
-    type Tag,
-} from "@/lib/database/database";
+import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, pinNote, unpinNote } from "@/lib/database/database";
+import { Note, Tag } from "@/lib/database/database.types";
 import { askNotesSearch } from "@/lib/search/search";
+import { useTheme } from "@/lib/theme/use-theme";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ListIcon, SearchIcon } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, LayoutAnimation, RefreshControl, SectionList, Share } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -34,9 +26,8 @@ interface NoteWithTags extends Note {
 }
 
 export const NotesHome: React.FC = () => {
-    const { colorScheme } = useColorScheme();
+    const { mutedIconColor, brandColor, mutedTextColor, mutedTextColorInverse } = useTheme();
     const router = useRouter();
-    const isDark = colorScheme === "dark";
     const { bottom } = useSafeAreaInsets();
 
     // Get AI models for search - use ref to avoid dependency issues
@@ -138,22 +129,16 @@ export const NotesHome: React.FC = () => {
             setProcessingNoteIds(processingIds);
         };
 
-        // Listen for processing complete events
         const handleProcessingComplete = (noteId: string) => {
             console.log(`📋 [Notes] AI processing completed for note: ${noteId.substring(0, 8)}...`);
-            // Refresh notes to show updated tags/categories
             loadNotes();
-            // Update processing status
             updateProcessingNotes();
         };
 
-        // Register callback
         aiQueue.onProcessingComplete(handleProcessingComplete);
 
-        // Update immediately
         updateProcessingNotes();
 
-        // Check periodically for processing status
         const interval = (notes.length || filteredNotes.length) > 0 ? setInterval(updateProcessingNotes, 1000) : 0;
 
         return () => {
@@ -164,8 +149,6 @@ export const NotesHome: React.FC = () => {
         };
     }, [loadNotes, notes, filteredNotes]);
 
-    // Filter notes based on search query (using LLM-powered search when appropriate)
-    // Use debounced search to prevent rapid re-renders
     const handleSearch = useCallback(async () => {
         if (searchQuery.trim() === "") {
             setFilteredNotes(notes);
@@ -173,7 +156,6 @@ export const NotesHome: React.FC = () => {
             setIsSearching(false);
             setIsUsingLLM(false);
             setInterpretedQuery(null);
-            // Organize notes into sections when search is cleared
             const pinnedNotes = notes.filter((note) => note.is_pinned);
             const unpinnedNotes = notes.filter((note) => !note.is_pinned);
             const newSections: { title: string; data: NoteWithTags[] }[] = [];
@@ -417,10 +399,6 @@ export const NotesHome: React.FC = () => {
     );
 
     const renderSectionHeader = useCallback(({ section }: { section: { title: string; data: NoteWithTags[] } }) => {
-        // Don't show section header for search results or empty titles
-        // if (section.title === "Search results" || section.title === "") {
-        //     return null;
-        // }
         return (
             <Box className="px-4 py-2">
                 <Text className="text-sm font-medium text-typography-500">{section.title}</Text>
@@ -431,12 +409,10 @@ export const NotesHome: React.FC = () => {
     // Key extractor
     const keyExtractor = useCallback((item: Note) => item.id, []);
 
-    // Determine empty state props based on current state
     const getEmptyStateProps = useCallback(() => {
-        // Show searching state while actively searching
         if (isSearching && searchQuery) {
             return {
-                icon: <SearchIcon size={56} color={isDark ? "#39FF14" : "#00B700"} />,
+                icon: <SearchIcon size={56} color={brandColor} />,
                 title: "AI is searching...",
                 description: "Using intelligent search to find relevant notes",
             };
@@ -445,19 +421,18 @@ export const NotesHome: React.FC = () => {
         // Show no results state when search is complete but no matches
         if (searchQuery && !isSearching) {
             return {
-                icon: <SearchIcon size={56} color={isDark ? "#444" : "#ccc"} />,
+                icon: <SearchIcon size={56} color={mutedIconColor} />,
                 title: "No notes found",
                 description: "Try a different search term or time expression",
             };
         }
 
-        // Show default empty state when no search and no notes
         return {
-            icon: <ListIcon size={56} color={isDark ? "#444" : "#ccc"} />,
+            icon: <ListIcon size={56} color={mutedIconColor} />,
             title: "No notes yet",
             description: "Tap the button to capture your first thought",
         };
-    }, [isSearching, searchQuery, isDark]);
+    }, [isSearching, searchQuery, brandColor, mutedIconColor]);
 
     // Render empty state with dynamic props
     const renderEmptyState = useCallback(() => {
@@ -497,7 +472,6 @@ export const NotesHome: React.FC = () => {
                 interpretedQuery={interpretedQuery}
                 temporalFilterDescription={temporalFilterDescription}
                 searchQuery={searchQuery}
-                isDark={isDark}
             />
 
             {/* Notes count */}

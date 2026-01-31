@@ -1,11 +1,3 @@
-/**
- * Centralized Animation Configuration
- *
- * Adjust these values to control the feel of all animations in the app.
- * Lower friction = more bouncy, higher friction = more damped
- * Lower tension = slower, higher tension = faster
- */
-
 // Spring configs for react-native-reanimated (withSpring)
 export const springConfigs = {
     // Snappy - for quick UI responses (buttons, toggles)

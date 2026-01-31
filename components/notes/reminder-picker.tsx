@@ -3,8 +3,8 @@ import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { cancelNoteReminder, formatReminderDateDetailed, scheduleReminder } from "@/lib/reminders/reminders";
+import { useTheme } from "@/lib/theme/use-theme";
 import { SquarePen } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { useState } from "react";
 import { Pressable } from "react-native";
 
@@ -15,8 +15,7 @@ type ReminderPickerProps = {
 };
 
 export const ReminderPicker: React.FC<ReminderPickerProps> = ({ noteId, currentReminder, onReminderSet }) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { mutedIconColor } = useTheme();
     const [isSetting, setIsSetting] = useState(false);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date>(currentReminder ? new Date(currentReminder) : new Date());
@@ -97,7 +96,7 @@ export const ReminderPicker: React.FC<ReminderPickerProps> = ({ noteId, currentR
                             hitSlop={10}
                             className="p-1"
                         >
-                            <Icon as={SquarePen} size="sm" color={isDark ? "#666" : "#999"} />
+                            <Icon as={SquarePen} size="sm" color={mutedIconColor} />
                         </Pressable>
                     )}
                     {isSetting && <Text className="text-xs text-typography-500">Setting...</Text>}

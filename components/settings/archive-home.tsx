@@ -1,6 +1,6 @@
 import { EmptyPage } from "@/components/empty-page";
+import { SwipeableNoteCard } from "@/components/notes/swipeable-note-card";
 import { SettingsNoteCounter } from "@/components/settings/settings-note-counter";
-import { SwipeableNoteCard } from "@/components/swipeable-note-card";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
 import { getArchivedNotes, getTagsForNote, moveToTrash, unarchiveNote } from "@/lib/database/database";

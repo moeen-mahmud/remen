@@ -2,15 +2,16 @@ import { editorStyles } from "@/components/editor/editor-styles";
 import { PageLoader } from "@/components/ui/page-loader";
 import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
-import { createNote, getNoteById, updateNote, type NoteType } from "@/lib/database/database";
+import { TASK_PATTERNS } from "@/lib/config/regex-patterns";
+import { AUTOSAVE_DELAY } from "@/lib/consts/consts";
+import { createNote, getNoteById, updateNote } from "@/lib/database/database";
+import { NoteType } from "@/lib/database/database.types";
 import { syncTasksFromText } from "@/lib/tasks/tasks";
-import { useColorScheme } from "nativewind";
+import { useTheme } from "@/lib/theme/use-theme";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, ScrollView, TextInput } from "react-native";
 import { KeyboardGestureArea } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const AUTOSAVE_DELAY = 100;
 
 interface EditorProps {
     noteId?: string | null;
@@ -26,8 +27,7 @@ export default function Editor({
     taskMode = false,
 }: EditorProps) {
     const { bottom } = useSafeAreaInsets();
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { textColor, placeholderTextColor } = useTheme();
 
     const { llm, embeddings } = useAI();
 
@@ -41,15 +41,6 @@ export default function Editor({
 
     const scrollViewRef = useRef<ScrollView>(null);
     const textInputRef = useRef<TextInput>(null);
-
-    // Dismiss keyboard when route loses focus
-    // useFocusEffect(
-    //     useCallback(() => {
-    //         return () => {
-    //             Keyboard.dismiss();
-    //         };
-    //     }, []),
-    // );
 
     useEffect(() => {
         async function loadNote() {
@@ -208,7 +199,7 @@ export default function Editor({
             const previousLastLine = previousLines[previousLines.length - 1] || "";
 
             // Extract indent from previous task line (fast regex match)
-            const taskMatch = previousLastLine.match(/^(\s*)-\s+\[[\sxX]\]\s+/);
+            const taskMatch = previousLastLine.match(TASK_PATTERNS);
             const indent = taskMatch ? taskMatch[1] : "";
 
             // Insert task checkbox on new line - single string operation
@@ -218,7 +209,6 @@ export default function Editor({
             return;
         }
 
-        // Auto-convert "- " to "- [ ] " for easier task creation (non-task mode)
         if (!isInTaskMode) {
             const lines = text.split("\n");
             const lastLine = lines[lines.length - 1];
@@ -232,7 +222,6 @@ export default function Editor({
                 return;
             }
 
-            // Auto-convert "- " to "- [ ] " when at start of line
             const convertedLines = lines.map((line, index) => {
                 // Only convert if it's a new line that starts with "- " and isn't already a task
                 if (index === lines.length - 1 && line.trim() === "- " && !line.includes("[")) {
@@ -294,14 +283,14 @@ export default function Editor({
                     style={[
                         editorStyles.editorInput,
                         {
-                            color: isDark ? "#ffffff" : "#000000",
+                            color: textColor,
                             minHeight: "100%",
                         },
                     ]}
                     value={content}
                     onChangeText={handleChangeText}
                     placeholder={taskMode || noteType === "task" ? "Add tasks..." : placeholder}
-                    placeholderTextColor={isDark ? "#555555" : "#aaaaaa"}
+                    placeholderTextColor={placeholderTextColor}
                     multiline
                     textAlignVertical="top"
                     autoCapitalize="sentences"

@@ -1,9 +1,9 @@
-import { NoteCard, type NoteCardProps } from "@/components/note-card";
+import { NoteCard, type NoteCardProps } from "@/components/notes/note-card";
 import { Icon } from "@/components/ui/icon";
-import { gestureThresholds, timingConfigs } from "@/lib/utils/animation-config";
+import { gestureThresholds, timingConfigs } from "@/lib/config/animation-config";
+import { useTheme } from "@/lib/theme/use-theme";
 import * as Haptics from "expo-haptics";
 import { ArchiveIcon, Pin, PinOff, Trash2, UndoIcon } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { type FC, useCallback } from "react";
 import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -45,8 +45,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
     onToggleSelect,
     isProcessing,
 }) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { brandColor, dangerColor, taskCompletedColor, warningColor, textColor } = useTheme();
 
     const translateX = useSharedValue(0);
     const isRemoving = useSharedValue(false);
@@ -162,20 +161,14 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
         switch (pageContext) {
             case "notes":
                 return {
-                    color: isPinned
-                        ? isDark
-                            ? "#E7000B"
-                            : "#F9423C" // Danger color for unpin
-                        : isDark
-                          ? "#3B82F6"
-                          : "#2563EB", // Blue for pin
+                    color: isPinned ? dangerColor : taskCompletedColor, // Blue for pin
                     icon: isPinned ? PinOff : Pin,
                     label: isPinned ? "Unpin" : "Pin",
                 };
             case "archive":
             case "trash":
                 return {
-                    color: isDark ? "#39FF14" : "#00B700", // Success color for restore
+                    color: brandColor,
                     icon: UndoIcon,
                     label: "Restore",
                 };
@@ -186,19 +179,19 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
         switch (pageContext) {
             case "notes":
                 return {
-                    color: isDark ? "#F59E0B" : "#D97706", // Orange for archive
+                    color: warningColor,
                     icon: ArchiveIcon,
                     label: "Archive",
                 };
             case "archive":
                 return {
-                    color: isDark ? "#E7000B" : "#F9423C", // Danger color for trash
+                    color: dangerColor,
                     icon: Trash2,
                     label: "Trash",
                 };
             case "trash":
                 return {
-                    color: isDark ? "#E7000B" : "#F9423C", // Danger color for delete
+                    color: dangerColor,
                     icon: Trash2,
                     label: "Delete",
                 };
@@ -219,7 +212,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
                             { backgroundColor: leftConfig.color, justifyContent: "flex-start" },
                         ]}
                     >
-                        <Icon as={leftConfig.icon} size="md" color="#000" />
+                        <Icon as={leftConfig.icon} size="md" color={textColor} />
                         <Text style={styles.actionText}>{leftConfig.label}</Text>
                     </View>
                 </Animated.View>
@@ -235,7 +228,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
                         ]}
                     >
                         <Text style={styles.actionText}>{rightConfig.label}</Text>
-                        <Icon as={rightConfig.icon} size="md" color="#000" />
+                        <Icon as={rightConfig.icon} size="md" color={textColor} />
                     </View>
                 </Animated.View>
             )}

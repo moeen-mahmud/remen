@@ -1,12 +1,14 @@
-import { Waveform } from "@/components/waveform";
+import { Waveform } from "@/components/voice/waveform";
 import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
-import { voiceCapture, type VoiceState } from "@/lib/capture/voice";
+import { voiceCapture } from "@/lib/capture/voice";
+import { VoiceState } from "@/lib/capture/voice.types";
 import { createNote } from "@/lib/database/database";
+import { LIGHT_THEME_COLORS } from "@/lib/theme/colors";
+import { useTheme } from "@/lib/theme/use-theme";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { MicIcon, MicOffIcon, XIcon } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
@@ -14,9 +16,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export const VoiceHome: React.FC = () => {
     const { top, bottom } = useSafeAreaInsets();
-    const { colorScheme } = useColorScheme();
     const router = useRouter();
-    const isDark = colorScheme === "dark";
+    const { backgroundColor, textColor, voiceWaveformColor, mutedTextColor, mutedTextColorInverse, mutedIconColor } =
+        useTheme();
 
     // Get AI models for processing queue
     const { llm, embeddings } = useAI();
@@ -172,35 +174,35 @@ export const VoiceHome: React.FC = () => {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? "#000" : "#fff", paddingTop: top }]}>
+        <View style={[styles.container, { backgroundColor: backgroundColor, paddingTop: top }]}>
             {/* Header */}
             <View style={styles.header}>
                 <Pressable onPress={handleClose} style={styles.closeButton}>
-                    <XIcon size={24} color={isDark ? "#fff" : "#000"} />
+                    <XIcon size={24} color={textColor} />
                 </Pressable>
-                <Text style={[styles.headerTitle, { color: isDark ? "#fff" : "#000" }]}>Voice Note</Text>
+                <Text style={[styles.headerTitle, { color: textColor }]}>Voice Note</Text>
                 <View style={styles.closeButton} />
             </View>
 
             {/* Waveform */}
             <View style={styles.waveformContainer}>
-                <Waveform isActive={isRecording} color="#EF4444" size={100} />
+                <Waveform isActive={isRecording} color={voiceWaveformColor} size={100} />
             </View>
 
             {/* Status */}
             <View style={styles.statusContainer}>
-                <Text style={[styles.statusText, { color: isDark ? "#fff" : "#000" }]}>
+                <Text style={[styles.statusText, { color: textColor }]}>
                     {isSaving ? "Saving..." : isRecording ? "Press again to save" : ""}
                 </Text>
                 {isRecording && (
-                    <Text style={[styles.timerText, { color: "#EF4444" }]}>{formatTime(recordingTime)}</Text>
+                    <Text style={[styles.timerText, { color: voiceWaveformColor }]}>{formatTime(recordingTime)}</Text>
                 )}
             </View>
 
             {/* Live transcript */}
             {isRecording && currentTranscript?.length > 0 ? (
                 <View style={styles.transcriptContainer}>
-                    <Text style={[styles.transcriptText, { color: isDark ? "#ddd" : "#333" }]} numberOfLines={5}>
+                    <Text style={[styles.transcriptText, { color: mutedTextColor }]} numberOfLines={5}>
                         &ldquo;{currentTranscript}&rdquo;
                     </Text>
                 </View>
@@ -209,7 +211,7 @@ export const VoiceHome: React.FC = () => {
             {/* Mic button */}
             <View style={[styles.micContainer, { paddingBottom: bottom + 40 }]}>
                 {/* Pulse ring */}
-                <Animated.View style={[styles.pulseRing, { backgroundColor: "#EF4444" }, pulseStyle]}>
+                <Animated.View style={[styles.pulseRing, { backgroundColor: voiceWaveformColor }]}>
                     {/* Main button */}
                     {isRecording ? (
                         <Pressable
@@ -217,10 +219,10 @@ export const VoiceHome: React.FC = () => {
                             disabled={isSaving}
                             style={[
                                 styles.micButton,
-                                { backgroundColor: isRecording ? "#EF4444" : isDark ? "#333" : "#f0f0f0" },
+                                { backgroundColor: isRecording ? voiceWaveformColor : mutedTextColorInverse },
                             ]}
                         >
-                            <MicOffIcon size={40} color={isRecording ? "#fff" : isDark ? "#fff" : "#000"} />
+                            <MicOffIcon size={40} color={isRecording ? LIGHT_THEME_COLORS.textColor : textColor} />
                         </Pressable>
                     ) : (
                         <Pressable
@@ -228,15 +230,14 @@ export const VoiceHome: React.FC = () => {
                             disabled={isSaving}
                             style={[
                                 styles.micButton,
-                                { backgroundColor: isRecording ? "#EF4444" : isDark ? "#333" : "#f0f0f0" },
+                                { backgroundColor: isRecording ? voiceWaveformColor : mutedTextColorInverse },
                             ]}
                         >
-                            <MicIcon size={40} color={isRecording ? "#fff" : isDark ? "#fff" : "#000"} />
+                            <MicIcon size={40} color={isRecording ? LIGHT_THEME_COLORS.textColor : textColor} />
                         </Pressable>
                     )}
                 </Animated.View>
-
-                <Text style={[styles.hintText, { color: isDark ? "#888" : "#666" }]}>
+                <Text style={[styles.hintText, { color: mutedIconColor }]}>
                     {isRecording ? "Listening..." : "Start speaking"}
                 </Text>
             </View>
@@ -320,7 +321,7 @@ const styles = StyleSheet.create({
         borderRadius: 50,
         alignItems: "center",
         justifyContent: "center",
-        shadowColor: "#EF4444",
+        shadowColor: LIGHT_THEME_COLORS.voiceWaveformColor,
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.25,
         shadowRadius: 16,

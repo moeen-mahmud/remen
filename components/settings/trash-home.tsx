@@ -1,17 +1,10 @@
 import { EmptyPage } from "@/components/empty-page";
+import { SwipeableNoteCard } from "@/components/notes/swipeable-note-card";
 import { SettingsNoteCounter } from "@/components/settings/settings-note-counter";
-import { SwipeableNoteCard } from "@/components/swipeable-note-card";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
-import {
-    deleteNote,
-    emptyTrash,
-    getTagsForNote,
-    getTrashedNotes,
-    restoreFromTrash,
-    type Note,
-    type Tag,
-} from "@/lib/database/database";
+import { deleteNote, emptyTrash, getTagsForNote, getTrashedNotes, restoreFromTrash } from "@/lib/database/database";
+import { Note, Tag } from "@/lib/database/database.types";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { Recycle } from "lucide-react-native";
