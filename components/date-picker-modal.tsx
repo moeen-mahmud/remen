@@ -1,5 +1,6 @@
 import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
+import { useTheme } from "@/lib/theme/use-theme";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useColorScheme } from "nativewind";
 import { Modal, Platform, Pressable } from "react-native";
@@ -29,6 +30,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
 }) => {
     const { colorScheme } = useColorScheme();
     const isDark = colorScheme === "dark";
+    const { brandColor, backgroundColor } = useTheme();
 
     if (Platform.OS === "ios") {
         return (
@@ -39,7 +41,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
                 >
                     <Pressable
                         style={{
-                            backgroundColor: isDark ? "#1A1A1B" : "#fff",
+                            backgroundColor: backgroundColor,
                             borderTopLeftRadius: 20,
                             borderTopRightRadius: 20,
                             padding: 20,
@@ -60,10 +62,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
                                     }
                                 }}
                             >
-                                <Text
-                                    className="text-base font-semibold"
-                                    style={{ color: isDark ? "#39FF14" : "#00B700" }}
-                                >
+                                <Text className="text-base font-semibold" style={{ color: brandColor }}>
                                     {confirmText}
                                 </Text>
                             </Pressable>
@@ -81,7 +80,7 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
                                 minimumDate={minimumDate}
                                 themeVariant={isDark ? "dark" : "light"}
                                 style={{
-                                    backgroundColor: isDark ? "#1A1A1B" : "#fff",
+                                    backgroundColor: backgroundColor,
                                 }}
                             />
                         </Box>

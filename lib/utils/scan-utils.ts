@@ -1,4 +1,4 @@
-import { OCRBbox } from "@/lib/ai/provider";
+import { OCRBbox } from "@/lib/ai/ai.types";
 import { SCANS_DIR_NAME } from "@/lib/consts/consts";
 import { Directory, Paths } from "expo-file-system";
 

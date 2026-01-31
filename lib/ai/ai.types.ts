@@ -1,4 +1,4 @@
-import { NoteType } from "@/lib/database/database";
+import { NoteType } from "@/lib/database/database.types";
 
 // Types for the AI context
 export interface Message {

@@ -1,13 +1,14 @@
+import { useTheme } from "@/lib/theme/use-theme";
 import Animated, { SharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 import { SCREEN_WIDTH, onboardingStyles as styles } from "./onboarding-styles";
 
 type DotProps = {
     index: number;
     translateX: SharedValue<number>;
-    isDark: boolean;
 };
 
-export const Dot = ({ index, translateX, isDark }: DotProps) => {
+export const Dot = ({ index, translateX }: DotProps) => {
+    const { brandColor } = useTheme();
     const style = useAnimatedStyle(() => {
         const position = -translateX.value / SCREEN_WIDTH;
         const distance = Math.abs(position - index);
@@ -18,5 +19,5 @@ export const Dot = ({ index, translateX, isDark }: DotProps) => {
         };
     });
 
-    return <Animated.View style={[{ backgroundColor: isDark ? "#39FF14" : "#00B700" }, styles.dot, style]} />;
+    return <Animated.View style={[{ backgroundColor: brandColor }, styles.dot, style]} />;
 };

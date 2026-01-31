@@ -1,11 +1,11 @@
-import { settingsStyle as styles } from "@/components/settings/settings-home/settings-style";
+import { settingsStyle as styles } from "@/components/settings/settings-style";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { EmbeddingsModel, LLMModel, OCRModel } from "@/lib/ai/provider";
+import { EmbeddingsModel, LLMModel, OCRModel } from "@/lib/ai";
+import { useTheme } from "@/lib/theme/use-theme";
 import { CheckCircle, Download, XCircle, Zap } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { useMemo } from "react";
 
 type SettingsAIProps = {
@@ -23,8 +23,7 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
     overallProgress = 0,
     isInitializing = false,
 }) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { mutedTextColor, brandColor } = useTheme();
 
     const modelRows = useMemo(() => {
         return [
@@ -59,27 +58,27 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
                         <Box style={styles.modelRow}>
                             <Box style={styles.modelInfo}>
                                 <Text className="font-medium text-typography-500">{model.name}</Text>
-                                <Text className="mt-1 text-sm" style={{ color: isDark ? "#666" : "#999" }}>
+                                <Text className="mt-1 text-sm" style={{ color: mutedTextColor }}>
                                     {model.description}
                                 </Text>
                             </Box>
                             <Box style={styles.modelStatus}>
                                 {model.isReady ? (
                                     <Box style={styles.statusRow}>
-                                        <Icon as={CheckCircle} color={isDark ? "#39FF14" : "#00B700"} />
-                                        <Text style={{ color: isDark ? "#39FF14" : "#00B700" }}>Ready</Text>
+                                        <Icon as={CheckCircle} color={brandColor} />
+                                        <Text style={{ color: brandColor }}>Ready</Text>
                                     </Box>
                                 ) : isInitializing ? (
                                     <Box style={styles.statusRow}>
-                                        <Icon as={Download} color={isDark ? "#39FF14" : "#00B700"} />
-                                        <Text style={{ color: isDark ? "#39FF14" : "#00B700" }}>
+                                        <Icon as={Download} color={brandColor} />
+                                        <Text style={{ color: brandColor }}>
                                             {Math.round((model.downloadProgress || 0) * 100)}%
                                         </Text>
                                     </Box>
                                 ) : (
                                     <Box style={styles.statusRow}>
-                                        <Icon as={XCircle} color={isDark ? "#666" : "#999"} />
-                                        <Text style={{ color: isDark ? "#666" : "#999" }}>Not loaded</Text>
+                                        <Icon as={XCircle} color={mutedTextColor} />
+                                        <Text style={{ color: mutedTextColor }}>Not loaded</Text>
                                     </Box>
                                 )}
                             </Box>
@@ -95,15 +94,12 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
                 <Box className="p-4 mt-4 rounded-lg bg-brand/10">
                     <Box className="flex-row justify-between items-center">
                         <Box className="flex-row gap-2 items-center">
-                            <Icon as={Zap} color={isDark ? "#39FF14" : "#00B700"} />
-                            <Text
-                                className="font-medium text-typography-500"
-                                style={{ color: isDark ? "#39FF14" : "#00B700" }}
-                            >
+                            <Icon as={Zap} color={brandColor} />
+                            <Text className="font-medium text-typography-500" style={{ color: brandColor }}>
                                 Downloading AI Models
                             </Text>
                         </Box>
-                        <Text className="text-sm" style={{ color: isDark ? "#39FF14" : "#00B700" }}>
+                        <Text className="text-sm" style={{ color: brandColor }}>
                             {Math.round(overallProgress * 100)}%
                         </Text>
                     </Box>

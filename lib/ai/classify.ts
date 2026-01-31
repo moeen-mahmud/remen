@@ -1,5 +1,5 @@
 import { ClassificationResult } from "@/lib/ai/ai.types";
-import type { NoteType } from "@/lib/database/database";
+import type { NoteType } from "@/lib/database/database.types";
 import type { LLMModel, Message } from "./ai.types";
 
 const VALID_TYPES: Exclude<NoteType, "voice" | "scan">[] = ["meeting", "task", "idea", "journal", "reference", "note"];

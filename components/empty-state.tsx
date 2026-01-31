@@ -1,7 +1,6 @@
 import { Heading } from "@/components/ui/heading";
 import { Text } from "@/components/ui/text";
 import { springConfigs, timingConfigs } from "@/lib/config/animation-config";
-import { useColorScheme } from "nativewind";
 import { type FC, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import Animated, {
@@ -21,9 +20,6 @@ interface EmptyStateProps {
 }
 
 export const EmptyState: FC<EmptyStateProps> = ({ icon, title, description }) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
-
     const iconScale = useSharedValue(1);
     const iconRotation = useSharedValue(0);
     const contentOpacity = useSharedValue(0);

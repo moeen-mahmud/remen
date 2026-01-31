@@ -2,9 +2,9 @@ import { scanStyles as styles } from "@/components/scan/scan-styles";
 import { Box } from "@/components/ui/box";
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
+import { useTheme } from "@/lib/theme/use-theme";
 import { Image } from "expo-image";
 import { CheckIcon, RefreshCwIcon } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { TextInput } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,8 +31,7 @@ export const ScanReview: React.FC<ScanReviewProps> = ({
     isSaving,
 }) => {
     const { bottom } = useSafeAreaInsets();
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { textColor, backgroundColor, placeholderTextColor, borderColor } = useTheme();
 
     return (
         <KeyboardAwareScrollView className="flex-1 -mt-6 bg-background-0">
@@ -59,9 +58,9 @@ export const ScanReview: React.FC<ScanReviewProps> = ({
                     style={[
                         styles.textInput,
                         {
-                            color: isDark ? "#fff" : "#000",
-                            backgroundColor: isDark ? "#1a1a1a" : "#f5f5f5",
-                            borderColor: isDark ? "#333" : "#e5e5e5",
+                            color: textColor,
+                            backgroundColor: backgroundColor,
+                            borderColor: borderColor,
                         },
                     ]}
                     value={extractedText}
@@ -69,7 +68,7 @@ export const ScanReview: React.FC<ScanReviewProps> = ({
                     multiline
                     textAlignVertical="top"
                     placeholder="No text detected"
-                    placeholderTextColor={isDark ? "#666" : "#999"}
+                    placeholderTextColor={placeholderTextColor}
                 />
             </Box>
 

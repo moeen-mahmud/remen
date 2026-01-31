@@ -1,19 +1,17 @@
 import {
-    DAYS,
     LAST_MONTH,
     LAST_MONTH_GLOBAL,
     LAST_WEEK,
     LAST_WEEK_GLOBAL,
     LAST_YEAR,
     LAST_YEAR_GLOBAL,
-    MONTHS,
     RELATIVE_TIME_PATTERNS,
-    TEMPORAL_KEYWORDS,
     THIS_MONTH,
     THIS_MONTH_GLOBAL,
     THIS_WEEK,
     THIS_WEEK_GLOBAL,
-} from "@/lib/consts/consts";
+} from "@/lib/config/regex-patterns";
+import { DAYS, MONTHS, TEMPORAL_KEYWORDS } from "@/lib/consts/consts";
 import { TemporalFilter } from "@/lib/search/search.types";
 import { getLastDayOfWeek, getStartOfWeek, getThisDayOfWeek } from "@/lib/utils/functions";
 

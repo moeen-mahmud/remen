@@ -2,7 +2,7 @@ import type { EmbeddingsModel, LLMModel } from "@/lib/ai/ai.types";
 import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings";
 import { interpretQuery } from "@/lib/ask-notes/ask-notes";
 import { AskNotesResult } from "@/lib/ask-notes/ask-notes.type";
-import { TEMPORAL_ONLY_PATTERNS } from "@/lib/consts/consts";
+import { TEMPORAL_ONLY_PATTERNS } from "@/lib/config/regex-patterns";
 import { getAllNotes, searchNotes as keywordSearch, updateNote } from "@/lib/database/database";
 import type { Note } from "@/lib/database/database.types";
 import { processSearchQuery } from "@/lib/search/query-nlp";
@@ -198,9 +198,10 @@ async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | 
                 }));
             }
         }
+        const removeEmptyResults = results.filter((result) => result.content.trim().length > 0);
 
         // Sort by relevance
-        return results.sort((a, b) => b.relevanceScore - a.relevanceScore);
+        return removeEmptyResults.sort((a, b) => b.relevanceScore - a.relevanceScore);
     } catch (error) {
         console.error("❌ [Semantic Search] Failed:", error);
         return [];

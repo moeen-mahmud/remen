@@ -26,7 +26,7 @@ interface NoteWithTags extends Note {
 }
 
 export const NotesHome: React.FC = () => {
-    const { mutedIconColor, brandColor, mutedTextColor, mutedTextColorInverse } = useTheme();
+    const { mutedIconColor, brandColor } = useTheme();
     const router = useRouter();
     const { bottom } = useSafeAreaInsets();
 

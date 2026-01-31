@@ -23,6 +23,7 @@
 		"web": "expo start --web",
 		"lint": "expo lint",
 		"format": "prettier --write .",
+		"type-check": "tsc --noEmit",
 		"eas:build:development": "eas build -p ios --profile development",
 		"eas:build:preview": "eas build -p ios --profile preview",
 		"eas:build:production": "eas build -p ios --profile production",

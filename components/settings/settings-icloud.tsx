@@ -1,12 +1,12 @@
-import { settingsStyle as styles } from "@/components/settings/settings-home/settings-style";
+import { settingsStyle as styles } from "@/components/settings/settings-style";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { Preferences } from "@/lib/preference/preferences";
+import { Preferences } from "@/lib/preference/preference.types";
+import { useTheme } from "@/lib/theme/use-theme";
 
 import { Cloud, CloudOff, RefreshCw } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { ActivityIndicator, Platform, Pressable, Switch } from "react-native";
 
 type SettingsICloudProps = {
@@ -57,8 +57,7 @@ export const SettingsICloud: React.FC<SettingsICloudProps> = ({
     onToggleSync,
     onSyncNow,
 }) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { brandColor, mutedTextColor, disabledColor, textColor } = useTheme();
 
     // Only show on iOS
     if (Platform.OS !== "ios") {
@@ -69,7 +68,7 @@ export const SettingsICloud: React.FC<SettingsICloudProps> = ({
     const lastSync = preferences.lastICloudSync;
 
     // Icon color based on state (similar to other settings)
-    const iconColor = isEnabled && iCloudAvailable ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#fff" : "#000";
+    const iconColor = isEnabled && iCloudAvailable ? brandColor : mutedTextColor;
 
     return (
         <Box className="px-4 mt-6">
@@ -94,8 +93,8 @@ export const SettingsICloud: React.FC<SettingsICloudProps> = ({
                         onValueChange={onToggleSync}
                         disabled={isSyncing || !iCloudAvailable}
                         trackColor={{
-                            false: isDark ? "#39393D" : "#E9E9EA",
-                            true: isDark ? "#39FF14" : "#00B700",
+                            false: disabledColor,
+                            true: brandColor,
                         }}
                         thumbColor="#FFFFFF"
                     />
@@ -112,7 +111,7 @@ export const SettingsICloud: React.FC<SettingsICloudProps> = ({
                             </Box>
                             <Box style={styles.rowRight}>
                                 {isSyncing ? (
-                                    <ActivityIndicator size="small" color={isDark ? "#fff" : "#000"} />
+                                    <ActivityIndicator size="small" color={textColor} />
                                 ) : (
                                     <Text className="text-xs text-typography-500">{formatLastSync(lastSync)}</Text>
                                 )}

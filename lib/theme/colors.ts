@@ -16,6 +16,7 @@ export const DARK_THEME_COLORS = {
     warningColor: "#F59E0B",
     taskIncompleteColor: "#888",
     placeholderTextColor: "#888",
+    disabledColor: "#39393D",
 };
 
 export const LIGHT_THEME_COLORS = {
@@ -36,4 +37,5 @@ export const LIGHT_THEME_COLORS = {
     mutedTextColor: "#333",
     mutedTextColorInverse: "#ddd",
     voiceWaveformColor: "#EF4444",
+    disabledColor: "#E9E9EA",
 };

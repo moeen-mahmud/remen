@@ -1,18 +1,19 @@
-import { SettingsAbout } from "@/components/settings/settings-home/settings-about";
-import { SettingsAI } from "@/components/settings/settings-home/settings-ai";
-import { SettingsAppearance } from "@/components/settings/settings-home/settings-appearance";
-import { SettingsData } from "@/components/settings/settings-home/settings-data";
-import { SettingsICloud } from "@/components/settings/settings-home/settings-icloud";
+import { SettingsAbout } from "@/components/settings/settings-about";
+import { SettingsAI } from "@/components/settings/settings-ai";
+import { SettingsAppearance } from "@/components/settings/settings-appearance";
+import { SettingsData } from "@/components/settings/settings-data";
+import { SettingsICloud } from "@/components/settings/settings-icloud";
 import { PageLoader } from "@/components/ui/page-loader";
 
-import { useAI } from "@/lib/ai/provider";
+import { useAI } from "@/lib/ai";
 import { isICloudAvailable, performFullSync } from "@/lib/cloud/cloud-sync";
 import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database/database";
 import { Alert, ScrollView } from "react-native";
 
-import { SettingsAIControls } from "@/components/settings/settings-home/settings-ai-controls";
+import { SettingsAIControls } from "@/components/settings/settings-ai-controls";
 import { Box } from "@/components/ui/box";
-import { Preferences, getPreferences, savePreferences } from "@/lib/preference/preferences";
+import { Preferences } from "@/lib/preference/preference.types";
+import { getPreferences, savePreferences } from "@/lib/preference/preferences";
 import * as Haptics from "expo-haptics";
 import { router, usePathname } from "expo-router";
 import { useColorScheme } from "nativewind";

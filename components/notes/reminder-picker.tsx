@@ -15,7 +15,7 @@ type ReminderPickerProps = {
 };
 
 export const ReminderPicker: React.FC<ReminderPickerProps> = ({ noteId, currentReminder, onReminderSet }) => {
-    const { mutedIconColor } = useTheme();
+    const { mutedIconColor, backgroundColor } = useTheme();
     const [isSetting, setIsSetting] = useState(false);
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date>(currentReminder ? new Date(currentReminder) : new Date());
@@ -72,7 +72,7 @@ export const ReminderPicker: React.FC<ReminderPickerProps> = ({ noteId, currentR
     return (
         <>
             <Pressable onPress={handleOpenDatePicker} disabled={isSetting}>
-                <Box className="flex-row gap-2 items-center px-4 py-3 rounded-lg bg-background-50 dark:bg-background-100">
+                <Box className="flex-row gap-2 items-center px-4 py-3 rounded-lg" style={{ backgroundColor }}>
                     <Box className="flex-1">
                         {currentReminder ? (
                             <>

@@ -1,4 +1,4 @@
-import { type LLMModel } from "@/lib/ai/provider";
+import { type LLMModel } from "@/lib/ai";
 import { AskNotesResult } from "@/lib/ask-notes/ask-notes.type";
 import { extractJsonObject } from "@/lib/utils/functions";
 

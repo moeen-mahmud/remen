@@ -1,4 +1,4 @@
-import { OCRBbox } from "@/lib/ai/provider";
+import { OCRBbox } from "@/lib/ai/ai.types";
 
 export interface ScanResult {
     text: string;

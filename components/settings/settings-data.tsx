@@ -1,11 +1,11 @@
-import { settingsStyle as styles } from "@/components/settings/settings-home/settings-style";
+import { settingsStyle as styles } from "@/components/settings/settings-style";
 import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { useTheme } from "@/lib/theme/use-theme";
 
 import { AlertCircle, Archive, ChevronRightIcon, Recycle } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { Pressable } from "react-native";
 
 type SettingsDataProps = {
@@ -23,8 +23,7 @@ export const SettingsData: React.FC<SettingsDataProps> = ({
     trashedCount,
     handleEmptyTrash,
 }) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { dangerColor } = useTheme();
     return (
         <Box className="px-4 mt-6">
             <Text className="mb-2 ml-1 text-sm font-medium text-typography-500">DATA</Text>
@@ -59,8 +58,8 @@ export const SettingsData: React.FC<SettingsDataProps> = ({
                         <Divider className="bg-background-50 dark:bg-background-100" />
                         <Pressable style={styles.row} onPress={handleEmptyTrash}>
                             <Box style={styles.rowLeft}>
-                                <Icon as={AlertCircle} color={isDark ? "#E7000B" : "#F9423C"} />
-                                <Text style={{ color: isDark ? "#E7000B" : "#F9423C" }}>Empty Recycle Bin</Text>
+                                <Icon as={AlertCircle} color={dangerColor} />
+                                <Text style={{ color: dangerColor }}>Empty Recycle Bin</Text>
                             </Box>
                         </Pressable>
                     </>

@@ -1,4 +1,4 @@
-import type { NoteType } from "@/lib/database/database";
+import type { NoteType } from "@/lib/database/database.types";
 import type { LLMModel, Message } from "./ai.types";
 
 const MAX_TAGS = 5;

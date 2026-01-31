@@ -2,9 +2,9 @@ import { RemenLogo } from "@/components/brand/logo";
 import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { useTheme } from "@/lib/theme/use-theme";
 import { LinearGradient } from "expo-linear-gradient";
 import { ChevronRight } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { useCallback, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -20,9 +20,8 @@ type OnboardingProps = {
 };
 
 export const Onboarding = ({ onComplete, onSkip }: OnboardingProps) => {
-    const { colorScheme } = useColorScheme();
     const { top, bottom } = useSafeAreaInsets();
-    const isDark = colorScheme === "dark";
+    const { brandColor, textColor } = useTheme();
 
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -111,11 +110,9 @@ export const Onboarding = ({ onComplete, onSkip }: OnboardingProps) => {
                                 {slide.icon}
                             </LinearGradient>
 
-                            <Text bold size="2xl" style={{ color: isDark ? "#fff" : "#000", textAlign: "center" }}>
-                                {slide.title}
-                            </Text>
+                            <Text className="text-2xl font-bold text-center">{slide.title}</Text>
 
-                            <Text style={{ color: isDark ? "#ccc" : "#666", textAlign: "center", marginTop: 12 }}>
+                            <Text className="mt-4 text-lg text-center text-neutral-500 dark:text-neutral-400">
                                 {slide.description}
                             </Text>
                         </View>
@@ -126,7 +123,7 @@ export const Onboarding = ({ onComplete, onSkip }: OnboardingProps) => {
             {/* Dots */}
             <View className="flex-row gap-2 justify-center mb-10">
                 {slides.map((_, i) => (
-                    <Dot key={i} index={i} translateX={translateX} isDark={isDark} />
+                    <Dot key={i} index={i} translateX={translateX} />
                 ))}
             </View>
 
@@ -135,12 +132,12 @@ export const Onboarding = ({ onComplete, onSkip }: OnboardingProps) => {
                 <Pressable
                     onPress={handleNext}
                     className="flex-row gap-2 justify-center items-center p-4 rounded-lg"
-                    style={{ backgroundColor: isDark ? "#39FF14" : "#00B700" }}
+                    style={{ backgroundColor: brandColor }}
                 >
                     <Text className="text-xl font-bold text-white dark:text-black">
                         {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
                     </Text>
-                    <Icon as={ChevronRight} size="xl" color={isDark ? "#000" : "#fff"} />
+                    <Icon as={ChevronRight} size="xl" color={textColor} />
                 </Pressable>
             </Box>
         </Animated.View>

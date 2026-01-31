@@ -7,7 +7,7 @@ import { AlertCircle, ChevronRight, CircleStop } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Alert, Pressable } from "react-native";
 
-export const SettingsAIControls = () => {
+export const SettingsAIControls: React.FC = () => {
     const [queueStatus, setQueueStatus] = useState(() => aiQueue.getStatus());
 
     useEffect(() => {

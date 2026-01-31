@@ -1,12 +1,12 @@
 "use client";
-import React from "react";
 import { createAlertDialog } from "@gluestack-ui/core/alert-dialog/creator";
-import { tva, withStyleContext, useStyleContext } from "@gluestack-ui/utils/nativewind-utils";
+import { tva, useStyleContext, withStyleContext } from "@gluestack-ui/utils/nativewind-utils";
+import React from "react";
 
-import { cssInterop } from "nativewind";
 import type { VariantProps } from "@gluestack-ui/utils/nativewind-utils";
-import { Motion, AnimatePresence, createMotionAnimatedComponent, MotionComponentProps } from "@legendapp/motion";
-import { View, Pressable, ScrollView, ViewStyle } from "react-native";
+import { AnimatePresence, createMotionAnimatedComponent, Motion, MotionComponentProps } from "@legendapp/motion";
+import { cssInterop } from "nativewind";
+import { Pressable, ScrollView, View, ViewStyle } from "react-native";
 
 const SCOPE = "ALERT_DIALOG";
 
@@ -261,10 +261,11 @@ AlertDialogBackdrop.displayName = "AlertDialogBackdrop";
 
 export {
     AlertDialog,
-    AlertDialogContent,
-    AlertDialogCloseButton,
-    AlertDialogHeader,
-    AlertDialogFooter,
-    AlertDialogBody,
     AlertDialogBackdrop,
+    AlertDialogBody,
+    AlertDialogCloseButton,
+    AlertDialogContent,
+    AlertDialogFooter,
+    AlertDialogHeader // eslint-disable-line
 };
+//

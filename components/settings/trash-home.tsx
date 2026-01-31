@@ -3,23 +3,21 @@ import { SwipeableNoteCard } from "@/components/notes/swipeable-note-card";
 import { SettingsNoteCounter } from "@/components/settings/settings-note-counter";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
-import { deleteNote, emptyTrash, getTagsForNote, getTrashedNotes, restoreFromTrash } from "@/lib/database/database";
+import { deleteNote, getTagsForNote, getTrashedNotes, restoreFromTrash } from "@/lib/database/database";
 import { Note, Tag } from "@/lib/database/database.types";
-import * as Haptics from "expo-haptics";
+import { useTheme } from "@/lib/theme/use-theme";
 import { useRouter } from "expo-router";
 import { Recycle } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, FlatList, RefreshControl } from "react-native";
+import { FlatList, RefreshControl } from "react-native";
 
 interface NoteWithTags extends Note {
     tags: Tag[];
 }
 
 export const TrashHome: React.FC = () => {
-    const { colorScheme } = useColorScheme();
+    const { mutedTextColor } = useTheme();
     const router = useRouter();
-    const isDark = colorScheme === "dark";
 
     const [notes, setNotes] = useState<NoteWithTags[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,10 +47,6 @@ export const TrashHome: React.FC = () => {
         loadNotes();
     }, [loadNotes]);
 
-    const handleBack = useCallback(() => {
-        router.back();
-    }, [router]);
-
     const handleNotePress = useCallback(
         (note: Note) => {
             router.push(`/notes/${note.id}` as any);
@@ -75,21 +69,6 @@ export const TrashHome: React.FC = () => {
         loadNotes();
     }, [loadNotes]);
 
-    const handleEmptyTrash = useCallback(async () => {
-        Alert.alert("Empty Recycle Bin", "This will permanently delete all notes. This cannot be undone.", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Empty",
-                style: "destructive",
-                onPress: async () => {
-                    await emptyTrash();
-                    setNotes([]);
-                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                },
-            },
-        ]);
-    }, []);
-
     const renderNote = useCallback(
         ({ item }: { item: NoteWithTags }) => (
             <SwipeableNoteCard
@@ -109,7 +88,7 @@ export const TrashHome: React.FC = () => {
 
     const renderEmptyState = () => (
         <EmptyPage
-            icon={<Recycle size={56} color={isDark ? "#444" : "#ccc"} />}
+            icon={<Recycle size={56} color={mutedTextColor} />}
             title="Recycle Bin is empty"
             description="Deleted notes will appear here"
         />
