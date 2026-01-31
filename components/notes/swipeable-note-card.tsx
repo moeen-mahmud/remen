@@ -45,7 +45,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
     onToggleSelect,
     isProcessing,
 }) => {
-    const { brandColor, dangerColor, taskCompletedColor, warningColor, textColor } = useTheme();
+    const { brandColor, dangerColor, taskCompletedColor, warningColor, textColorInverse } = useTheme();
 
     const translateX = useSharedValue(0);
     const isRemoving = useSharedValue(false);
@@ -212,7 +212,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
                             { backgroundColor: leftConfig.color, justifyContent: "flex-start" },
                         ]}
                     >
-                        <Icon as={leftConfig.icon} size="md" color={textColor} />
+                        <Icon as={leftConfig.icon} size="md" color={textColorInverse} />
                         <Text style={styles.actionText}>{leftConfig.label}</Text>
                     </View>
                 </Animated.View>
@@ -228,7 +228,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
                         ]}
                     >
                         <Text style={styles.actionText}>{rightConfig.label}</Text>
-                        <Icon as={rightConfig.icon} size="md" color={textColor} />
+                        <Icon as={rightConfig.icon} size="md" color={textColorInverse} />
                     </View>
                 </Animated.View>
             )}

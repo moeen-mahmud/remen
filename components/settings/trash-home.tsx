@@ -4,6 +4,7 @@ import { SettingsNoteCounter } from "@/components/settings/settings-note-counter
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
 import { deleteNote, getTagsForNote, getTrashedNotes, restoreFromTrash } from "@/lib/database/database";
+import { addPermanentlyDeletedIds } from "@/lib/preference/preferences";
 import { Note, Tag } from "@/lib/database/database.types";
 import { useTheme } from "@/lib/theme/use-theme";
 import { useRouter } from "expo-router";
@@ -61,6 +62,7 @@ export const TrashHome: React.FC = () => {
 
     const handlePermanentDelete = useCallback(async (noteId: string) => {
         await deleteNote(noteId);
+        await addPermanentlyDeletedIds([noteId]);
         setNotes((prev) => prev.filter((n) => n.id !== noteId));
     }, []);
 

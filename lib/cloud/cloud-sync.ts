@@ -1,4 +1,4 @@
-import { BACKUP_DIR, BACKUP_PATH } from "@/lib/consts/consts";
+import { BACKUP_DIR, BACKUP_PATH, MAX_PERMANENTLY_DELETED_IDS } from "@/lib/consts/consts";
 import {
     addTagToNote,
     createNote,
@@ -76,11 +76,16 @@ export async function syncNotesToCloud(): Promise<SyncResult> {
             }),
         );
 
+        // Include permanently deleted IDs so restore won't bring them back
+        const preferences = await getPreferences();
+        const permanentlyDeletedIds = preferences.permanentlyDeletedNoteIds ?? [];
+
         // Create backup data
         const backupData: BackupData = {
             version: 1,
             timestamp: Date.now(),
             notes: notesWithTags,
+            permanentlyDeletedIds,
         };
 
         // Ensure backup directory exists
@@ -146,17 +151,29 @@ export async function syncNotesFromCloud(): Promise<SyncResult> {
 
         console.log(`[Sync] Found ${backupData.notes.length} notes in cloud backup`);
 
+        // Build set of permanently deleted IDs (from cloud backup + local) so we never restore them
+        const localPrefs = await getPreferences();
+        const permanentlyDeletedSet = new Set<string>([
+            ...(backupData.permanentlyDeletedIds ?? []),
+            ...(localPrefs.permanentlyDeletedNoteIds ?? []),
+        ]);
+
         let restoredCount = 0;
         let createdCount = 0;
         let updatedCount = 0;
 
-        // Merge notes - import notes that don't exist locally or are newer
+        // Merge notes - import notes that don't exist locally or are newer (skip permanently deleted)
         for (const cloudNote of backupData.notes) {
             try {
                 const localNote = await getNoteById(cloudNote.id);
 
                 if (!localNote) {
-                    // Note doesn't exist locally (was permanently deleted or never existed), restore it
+                    // Don't restore notes the user permanently deleted
+                    if (permanentlyDeletedSet.has(cloudNote.id)) {
+                        console.log(`[Sync] Skipping permanently deleted note: ${cloudNote.id}`);
+                        continue;
+                    }
+                    // Note doesn't exist locally (e.g. from another device), restore it
                     const restoredNote = await createNote({
                         id: cloudNote.id,
                         content: cloudNote.content,
@@ -261,8 +278,12 @@ export async function syncNotesFromCloud(): Promise<SyncResult> {
             `[Sync] Restore complete: ${createdCount} created, ${updatedCount} updated, ${restoredCount} total`,
         );
 
-        // Update last sync time
-        await savePreferences({ lastICloudSync: Date.now() });
+        // Keep local permanently-deleted list in sync with cloud (merged set, cap at 2000)
+        const mergedDeletedIds = [...permanentlyDeletedSet].slice(-MAX_PERMANENTLY_DELETED_IDS);
+        await savePreferences({
+            lastICloudSync: Date.now(),
+            permanentlyDeletedNoteIds: mergedDeletedIds,
+        });
 
         return {
             success: true,

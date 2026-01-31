@@ -37,9 +37,8 @@ export const TEMPORAL_KEYWORDS = [
 
 export const NEURAL_EMBEDDING_DIM = 384;
 export const FALLBACK_EMBEDDING_DIM = 256;
-
 export const AI_OPERATION_DELAY = 2000;
-
 export const MAX_TITLE_LENGTH = 30;
-
 export const AUTOSAVE_DELAY = 100;
+
+export const MAX_PERMANENTLY_DELETED_IDS = 2000;

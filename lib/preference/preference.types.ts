@@ -7,4 +7,6 @@ export interface Preferences {
     downloadOverlayMinimized: boolean; // tracks if download overlay has been minimized
     iCloudSyncEnabled: boolean; // tracks if iCloud sync is enabled
     lastICloudSync: number | null; // tracks the last sync time
+    /** Note IDs that were permanently deleted; used by iCloud sync to avoid restoring them */
+    permanentlyDeletedNoteIds: string[];
 }

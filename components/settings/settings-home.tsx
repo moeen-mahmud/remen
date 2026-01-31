@@ -7,13 +7,13 @@ import { PageLoader } from "@/components/ui/page-loader";
 
 import { useAI } from "@/lib/ai";
 import { isICloudAvailable, performFullSync } from "@/lib/cloud/cloud-sync";
-import { emptyTrash, getArchivedNotesCount, getTrashedNotesCount } from "@/lib/database/database";
+import { emptyTrash, getArchivedNotesCount, getTrashedNotes, getTrashedNotesCount } from "@/lib/database/database";
 import { Alert, ScrollView } from "react-native";
 
 import { SettingsAIControls } from "@/components/settings/settings-ai-controls";
 import { Box } from "@/components/ui/box";
 import { Preferences } from "@/lib/preference/preference.types";
-import { getPreferences, savePreferences } from "@/lib/preference/preferences";
+import { addPermanentlyDeletedIds, getPreferences, savePreferences } from "@/lib/preference/preferences";
 import * as Haptics from "expo-haptics";
 import { router, usePathname } from "expo-router";
 import { useColorScheme } from "nativewind";
@@ -79,7 +79,12 @@ export const SettingsHome: React.FC = () => {
     }, []);
 
     const handleEmptyAction = useCallback(async () => {
+        const trashed = await getTrashedNotes();
+        const ids = trashed.map((n) => n.id);
         const deleted = await emptyTrash();
+        if (ids.length > 0) {
+            await addPermanentlyDeletedIds(ids);
+        }
         setTrashedCount(0);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert("Done", `${deleted} note${deleted !== 1 ? "s" : ""} permanently deleted.`);

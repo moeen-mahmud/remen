@@ -16,4 +16,6 @@ export interface BackupData {
     version: number;
     timestamp: number;
     notes: NoteWithTags[];
+    /** Note IDs that were permanently deleted; do not restore these from backup */
+    permanentlyDeletedIds?: string[];
 }
