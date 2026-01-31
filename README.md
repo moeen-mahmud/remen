@@ -1,50 +1,76 @@
-# Welcome to your Expo app 👋
+# Remen
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Remen turns thoughts into something you can return to.
 
-## Get started
+A notes app for iOS: Zero-friction capture with voice or camera, search with natural language, and keep everything in sync with iCloud. AI runs on-device.
 
-1. Install dependencies
+## Features
 
-    ```bash
-    npm install
-    ```
+- **Notes** — Create and edit notes (task notes, reminders). Pin, archive, trash or delete permanently.
+- **Voice** — Record speech and save as a note (transcription).
+- **Scan** — Capture a photo, extract text with on-device OCR, save as a note.
+- **Search** — Keyword, semantic, and natural-language search (“what I wrote last week”).
+- **AI** — On-device LLM and embeddings for search and auto categorization and tagging (models downloaded in-app).
+- **iCloud** — Backup and sync notes; permanent deletes stay deleted across sync.
 
-2. Start the app
+## Core Tech Stack
 
-    ```bash
-    npx expo start
-    ```
+- [Typescript](https://www.typescriptlang.org)
+- [Expo](https://expo.dev) (SDK 54)
+- [React Native](https://reactnative.dev)
+- [expo-router](https://expo.github.io/router)
+- [expo-sqlite](https://docs.expo.dev/versions/latest/sdk/sqlite/) for local storage
+- [react-native-cloud-storage](github.com/kuatsu/react-native-cloud-storage) for iCloud
+- [react-native-executorch](https://github.com/software-mansion/react-native-executorch) for on-device AI
+- [react-native-vision-camera](https://github.com/mrousavy/react-native-vision-camera) for camera
+- [react-native-voice](https://github.com/react-native-voice/voice) for voice recognition
+- [NativeWind](https://www.nativewind.dev) (Tailwind for RN)
+- [Gluestack UI](https://www.gluestack.io) (React Native UI library)
 
-In the output, you'll find options to open the app in a
+## AI Models Used
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- [SMOLLM 2.1 135M](https://huggingface.co/software-mansion/react-native-executorch-smolLm-2/tree/main/smolLm-2-135M/original) for LLM
+- [ALL-MINILM-L6-V2](https://huggingface.co/software-mansion/react-native-executorch-all-MiniLM-L6-v2) for embeddings
+- [OCR_ENGLISH](https://huggingface.co/software-mansion/react-native-executorch-recognizer-crnn.en) for OCR
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Prerequisites
 
-## Get a fresh project
+- Node.js 24+
+- Bun
+- iOS: Xcode, CocoaPods (for running on simulator or device)
+- For voice: device or simulator with speech recognition
+- For AI: download models in-app (first use)
 
-When you're ready, run:
+## Run locally
 
 ```bash
-npm run reset-project
+git clone https://github.com/moeen-mahmud/remen.git
+cd remen
+bun install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+> **Note:** You need to have [development build](https://docs.expo.dev/develop/development-builds/introduction/) for full features like camera and iCloud. Recommended not to use Expo Go for development.
 
-## Learn more
+**iOS device / full features:**
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+bun prebuild # bun prebuild:clean to clean the build
+bun ios # optionally bun ios -d to run on physical device
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Scripts
 
-## Join the community
+| Command | Description |
+|--------|-------------|
+| `bun ios` | Run on iOS (after prebuild) |
+| `bun lint` | Run ESLint |
+| `bun format` | Format with Prettier |
+| `bun type-check` | TypeScript check |
 
-Join our community of developers creating universal apps.
+## License
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+[AGPL-3.0](LICENSE). See [LICENSE](LICENSE) for details.
+
+## Author
+
+[Moeen Mahmud](https://moeen.osmynt.dev) — [moeen@osmynt.dev](mailto:moeen@osmynt.dev)
