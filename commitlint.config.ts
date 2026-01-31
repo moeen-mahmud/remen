@@ -20,6 +20,7 @@ const Configuration: UserConfig = {
                 "test",
                 "wip",
                 "hotfix",
+                "release",
             ],
         ],
     },
