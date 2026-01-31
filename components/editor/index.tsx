@@ -2,24 +2,32 @@ import { editorStyles } from "@/components/editor/editor-styles";
 import { PageLoader } from "@/components/ui/page-loader";
 import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
-import { createNote, getNoteById, updateNote } from "@/lib/database";
-import { useColorScheme } from "nativewind";
+import { TASK_PATTERNS } from "@/lib/config/regex-patterns";
+import { AUTOSAVE_DELAY } from "@/lib/consts/consts";
+import { createNote, getNoteById, updateNote } from "@/lib/database/database";
+import { NoteType } from "@/lib/database/database.types";
+import { syncTasksFromText } from "@/lib/tasks/tasks";
+import { useTheme } from "@/lib/theme/use-theme";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, ScrollView, TextInput } from "react-native";
 import { KeyboardGestureArea } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-const AUTOSAVE_DELAY = 100;
-
 interface EditorProps {
     noteId?: string | null;
     placeholder?: string;
+    onInsertTaskReady?: (insertTask: () => void) => void;
+    taskMode?: boolean;
 }
 
-export default function Editor({ noteId: initialNoteId = null, placeholder = "What's on your mind?" }: EditorProps) {
+export default function Editor({
+    noteId: initialNoteId = null,
+    placeholder = "What's on your mind?",
+    onInsertTaskReady,
+    taskMode = false,
+}: EditorProps) {
     const { bottom } = useSafeAreaInsets();
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { textColor, placeholderTextColor } = useTheme();
 
     const { llm, embeddings } = useAI();
 
@@ -28,18 +36,11 @@ export default function Editor({ noteId: initialNoteId = null, placeholder = "Wh
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastSavedContentRef = useRef<string>("");
     const [content, setContent] = useState("");
+    const [noteType, setNoteType] = useState<NoteType | null>(null);
+    const previousContentRef = useRef<string>("");
 
     const scrollViewRef = useRef<ScrollView>(null);
     const textInputRef = useRef<TextInput>(null);
-
-    // Dismiss keyboard when route loses focus
-    // useFocusEffect(
-    //     useCallback(() => {
-    //         return () => {
-    //             Keyboard.dismiss();
-    //         };
-    //     }, []),
-    // );
 
     useEffect(() => {
         async function loadNote() {
@@ -52,10 +53,14 @@ export default function Editor({ noteId: initialNoteId = null, placeholder = "Wh
                 const note = await getNoteById(initialNoteId);
                 if (note) {
                     setContent(note.content);
+                    previousContentRef.current = note.content;
                     setCurrentNoteId(note.id);
+                    setNoteType(note.type);
                     lastSavedContentRef.current = note.content;
                 } else {
                     setCurrentNoteId(null);
+                    setNoteType(null);
+                    previousContentRef.current = "";
                 }
             } catch (error) {
                 console.error("Failed to load note:", error);
@@ -66,7 +71,7 @@ export default function Editor({ noteId: initialNoteId = null, placeholder = "Wh
         }
 
         loadNote();
-    }, [initialNoteId]);
+    }, [initialNoteId, taskMode]);
 
     const saveNote = useCallback(
         async (noteContent: string, noteId: string | null) => {
@@ -75,18 +80,40 @@ export default function Editor({ noteId: initialNoteId = null, placeholder = "Wh
             }
 
             try {
+                // Check if note has tasks - if so, set type to "task"
+                const hasTasks = TASK_PATTERNS.test(noteContent);
+                const newNoteType = hasTasks ? ("task" as const) : undefined;
+
                 if (noteId) {
                     const content = noteContent.trim().length > 0 ? noteContent : "";
-                    await updateNote(noteId, { content });
+                    const updatedNote = await updateNote(noteId, { content, type: newNoteType });
+                    if (updatedNote) {
+                        setNoteType(updatedNote.type);
+                    }
                     lastSavedContentRef.current = noteContent;
+
+                    // Sync tasks from text to database
+                    try {
+                        await syncTasksFromText(noteId, content);
+                    } catch (error) {
+                        console.error("Failed to sync tasks:", error);
+                    }
 
                     aiQueue.setModels({ llm, embeddings });
                     aiQueue.add({ noteId, content }, true);
 
                     return noteId;
                 } else {
-                    const note = await createNote({ content: noteContent });
+                    const note = await createNote({ content: noteContent, type: newNoteType });
+                    setNoteType(note.type);
                     lastSavedContentRef.current = noteContent;
+
+                    // Sync tasks from text to database
+                    try {
+                        await syncTasksFromText(note.id, noteContent);
+                    } catch (error) {
+                        console.error("Failed to sync tasks:", error);
+                    }
 
                     aiQueue.setModels({ llm, embeddings });
                     aiQueue.add({ noteId: note.id, content: noteContent }, true);
@@ -98,7 +125,7 @@ export default function Editor({ noteId: initialNoteId = null, placeholder = "Wh
                 return noteId;
             }
         },
-        [llm, embeddings],
+        [llm, embeddings], // noteType is intentionally excluded - we check it in the function body
     );
 
     const scheduleAutosave = useCallback(
@@ -153,9 +180,89 @@ export default function Editor({ noteId: initialNoteId = null, placeholder = "Wh
     }, []);
 
     const handleChangeText = (text: string) => {
+        const previousContent = previousContentRef.current;
+        previousContentRef.current = text;
+
+        // Determine if we're in task mode (either explicit prop or note type is "task")
+        const isInTaskMode = taskMode || noteType === "task";
+
+        // Task mode: Fast path for newline detection - check if Enter was just pressed
+        if (
+            isInTaskMode &&
+            text.length > previousContent.length &&
+            text.endsWith("\n") &&
+            !previousContent.endsWith("\n")
+        ) {
+            // User just pressed Enter - insert task checkbox immediately
+            const textWithoutNewline = text.slice(0, -1);
+            // const previousLines = previousContent.split("\n");
+            // const previousLastLine = previousLines[previousLines.length - 1] || "";
+
+            // Extract indent from previous task line (fast regex match)
+            // const taskMatch = previousLastLine.match(TASK_PATTERNS);
+            // const indent = taskMatch ? taskMatch[1] : "";
+
+            // Insert task checkbox on new line - single string operation
+            const newText = textWithoutNewline + "\n" + "- [ ] ";
+            console.log("newText", newText);
+            setContent(newText);
+            scheduleAutosave(newText);
+            return;
+        }
+
+        if (!isInTaskMode) {
+            const lines = text.split("\n");
+            const lastLine = lines[lines.length - 1];
+            const previousLines = previousContent.split("\n");
+
+            // Check if user just typed "- " at the start of a line
+            if (lastLine.trim() === "-" && previousLines.length === lines.length) {
+                // User is typing "- ", wait for space
+                setContent(text);
+                scheduleAutosave(text);
+                return;
+            }
+
+            const convertedLines = lines.map((line, index) => {
+                // Only convert if it's a new line that starts with "- " and isn't already a task
+                if (index === lines.length - 1 && line.trim() === "- " && !line.includes("[")) {
+                    return line.replace(/^(\s*)- $/, "$1- [ ] ");
+                }
+                return line;
+            });
+
+            const convertedText = convertedLines.join("\n");
+            setContent(convertedText);
+            scheduleAutosave(convertedText);
+            return;
+        }
+
+        // Regular text change in task mode (no newline detected)
         setContent(text);
         scheduleAutosave(text);
     };
+
+    // const handleInsertTask = useCallback(() => {
+    //     const currentText = content;
+    //     const lines = currentText.split("\n");
+    //     const lastLine = lines[lines.length - 1];
+    //     const indent = lastLine.match(/^(\s*)/)?.[1] || "";
+
+    //     // Insert task at current position or new line
+    //     const taskText = currentText.length > 0 && !currentText.endsWith("\n") ? "\n" : "";
+    //     const newContent = currentText + taskText + indent + "- [ ] ";
+
+    //     console.log("newContent", newContent);
+    //     setContent(newContent);
+    //     scheduleAutosave(newContent);
+    // }, [content, scheduleAutosave]);
+
+    // // Expose insertTask handler to parent
+    // useEffect(() => {
+    //     if (onInsertTaskReady) {
+    //         onInsertTaskReady(handleInsertTask);
+    //     }
+    // }, [onInsertTaskReady, handleInsertTask]);
 
     if (isLoading) return <PageLoader />;
 
@@ -178,18 +285,18 @@ export default function Editor({ noteId: initialNoteId = null, placeholder = "Wh
                     style={[
                         editorStyles.editorInput,
                         {
-                            color: isDark ? "#ffffff" : "#000000",
+                            color: textColor,
                             minHeight: "100%",
                         },
                     ]}
                     value={content}
                     onChangeText={handleChangeText}
-                    placeholder={placeholder}
-                    placeholderTextColor={isDark ? "#555555" : "#aaaaaa"}
+                    placeholder={taskMode || noteType === "task" ? "Add tasks..." : placeholder}
+                    placeholderTextColor={placeholderTextColor}
                     multiline
                     textAlignVertical="top"
                     autoCapitalize="sentences"
-                    autoFocus={false}
+                    autoFocus={taskMode}
                     scrollEnabled={false}
                 />
             </ScrollView>

@@ -1,9 +1,11 @@
 import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { LINK_MATCHER } from "@/lib/config";
+import { useTheme } from "@/lib/theme/use-theme";
+import { extractDomain, truncateUrl } from "@/lib/utils/functions";
 import * as WebBrowser from "expo-web-browser";
 import { ExternalLink, Link2 } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { Pressable, StyleSheet } from "react-native";
 
 interface LinkCardProps {
@@ -11,27 +13,8 @@ interface LinkCardProps {
     onPress?: () => void;
 }
 
-// Extract domain from URL for display
-function extractDomain(url: string): string {
-    try {
-        const urlObj = new URL(url);
-        return urlObj.hostname.replace("www.", "");
-    } catch {
-        // If URL parsing fails, try basic extraction
-        const match = url.match(/^(?:https?:\/\/)?(?:www\.)?([^\/]+)/i);
-        return match ? match[1] : url;
-    }
-}
-
-// Truncate URL for display
-function truncateUrl(url: string, maxLength: number = 50): string {
-    if (url.length <= maxLength) return url;
-    return url.substring(0, maxLength) + "...";
-}
-
 export const LinkCard: React.FC<LinkCardProps> = ({ url, onPress }) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { primaryColor, mutedIconColor, mutedTextColor } = useTheme();
 
     const domain = extractDomain(url);
 
@@ -48,29 +31,23 @@ export const LinkCard: React.FC<LinkCardProps> = ({ url, onPress }) => {
     };
 
     return (
-        <Pressable
-            onPress={handlePress}
-            style={[styles.container, { backgroundColor: isDark ? "#1a1a1a" : "#f5f5f5" }]}
-        >
+        <Pressable onPress={handlePress} style={[styles.container, { backgroundColor: primaryColor }]}>
             <Box style={styles.iconContainer}>
-                <Icon as={Link2} size="sm" color={isDark ? "#888" : "#666"} />
+                <Icon as={Link2} size="sm" color={mutedIconColor} />
             </Box>
             <Box style={styles.textContainer}>
-                <Text style={[styles.domain, { color: isDark ? "#ddd" : "#333" }]}>{domain}</Text>
-                <Text style={[styles.url, { color: isDark ? "#888" : "#666" }]} numberOfLines={1}>
+                <Text style={[styles.domain, { color: mutedTextColor }]}>{domain}</Text>
+                <Text style={[styles.url, { color: mutedIconColor }]} numberOfLines={1}>
                     {truncateUrl(url)}
                 </Text>
             </Box>
-            <Icon as={ExternalLink} size="sm" color={isDark ? "#666" : "#999"} />
+            <Icon as={ExternalLink} size="sm" color={mutedIconColor} />
         </Pressable>
     );
 };
 
-// Utility function to detect URLs in text
-const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
-
 export function detectUrls(text: string): string[] {
-    const matches = text.match(URL_REGEX);
+    const matches = text.match(LINK_MATCHER.http || LINK_MATCHER.nonHttp);
     if (!matches) return [];
     // Return unique URLs only
     return [...new Set(matches)];

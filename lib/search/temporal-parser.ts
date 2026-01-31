@@ -1,43 +1,20 @@
-/**
- * Temporal Parser for Natural Language Search
- *
- * Parses temporal expressions like:
- * - "yesterday", "today", "last week"
- * - "2 hours ago", "30 minutes ago"
- * - "last Saturday", "this Monday"
- * - "last month", "this year"
- * - "What I wrote on [date]"
- */
+import {
+    LAST_MONTH,
+    LAST_MONTH_GLOBAL,
+    LAST_WEEK,
+    LAST_WEEK_GLOBAL,
+    LAST_YEAR,
+    LAST_YEAR_GLOBAL,
+    RELATIVE_TIME_PATTERNS,
+    THIS_MONTH,
+    THIS_MONTH_GLOBAL,
+    THIS_WEEK,
+    THIS_WEEK_GLOBAL,
+} from "@/lib/config/regex-patterns";
+import { DAYS, MONTHS, TEMPORAL_KEYWORDS } from "@/lib/consts/consts";
+import { TemporalFilter } from "@/lib/search/search.types";
+import { getLastDayOfWeek, getStartOfWeek, getThisDayOfWeek } from "@/lib/utils/functions";
 
-export interface TemporalFilter {
-    startTime: number;
-    endTime: number;
-    description: string;
-    query: string; // The remaining query after extracting temporal info
-}
-
-// Day names
-const DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-
-// Month names
-const MONTHS = [
-    "january",
-    "february",
-    "march",
-    "april",
-    "may",
-    "june",
-    "july",
-    "august",
-    "september",
-    "october",
-    "november",
-    "december",
-];
-
-/**
- * Parse a query string and extract any temporal filters
- */
 export function parseTemporalQuery(query: string): TemporalFilter | null {
     const lowerQuery = query.toLowerCase().trim();
 
@@ -67,20 +44,8 @@ export function parseTemporalQuery(query: string): TemporalFilter | null {
     return null;
 }
 
-/**
- * Parse "X hours/minutes/days ago" patterns
- */
 function parseRelativeTime(query: string): TemporalFilter | null {
-    const patterns = [
-        // "2 hours ago", "30 minutes ago", etc.
-        /(\d+)\s*(hours?|hrs?)\s*ago/i,
-        /(\d+)\s*(minutes?|mins?)\s*ago/i,
-        /(\d+)\s*(days?)\s*ago/i,
-        /(\d+)\s*(weeks?)\s*ago/i,
-        /(\d+)\s*(months?)\s*ago/i,
-    ];
-
-    for (const pattern of patterns) {
+    for (const pattern of RELATIVE_TIME_PATTERNS) {
         const match = query.match(pattern);
         if (match) {
             const value = parseInt(match[1], 10);
@@ -126,9 +91,6 @@ function parseRelativeTime(query: string): TemporalFilter | null {
     return null;
 }
 
-/**
- * Parse "yesterday", "today" patterns
- */
 function parseSimpleRelative(query: string): TemporalFilter | null {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -156,9 +118,6 @@ function parseSimpleRelative(query: string): TemporalFilter | null {
     return null;
 }
 
-/**
- * Parse "last/this [day]" patterns (e.g., "last Saturday", "this Monday")
- */
 function parseLastThisDay(query: string): TemporalFilter | null {
     for (let i = 0; i < DAYS.length; i++) {
         const day = DAYS[i];
@@ -206,78 +165,72 @@ function parseLastThisDay(query: string): TemporalFilter | null {
     return null;
 }
 
-/**
- * Parse "last/this week/month/year" patterns
- */
 function parseLastThisPeriod(query: string): TemporalFilter | null {
     const now = new Date();
 
     // Last week
-    if (/last\s+week/i.test(query)) {
+    if (LAST_WEEK.test(query)) {
         const endOfLastWeek = getStartOfWeek(now);
         const startOfLastWeek = new Date(endOfLastWeek.getTime() - 7 * 24 * 60 * 60 * 1000);
         return {
             startTime: startOfLastWeek.getTime(),
             endTime: endOfLastWeek.getTime(),
             description: "Last week",
-            query: query.replace(/last\s+week/gi, "").trim(),
+            query: query.replace(LAST_WEEK_GLOBAL, "").trim(),
         };
     }
 
     // This week
-    if (/this\s+week/i.test(query)) {
+    if (THIS_WEEK.test(query)) {
         const startOfWeek = getStartOfWeek(now);
         const endOfWeek = new Date(startOfWeek.getTime() + 7 * 24 * 60 * 60 * 1000);
         return {
             startTime: startOfWeek.getTime(),
             endTime: endOfWeek.getTime(),
             description: "This week",
-            query: query.replace(/this\s+week/gi, "").trim(),
+            query: query.replace(THIS_WEEK_GLOBAL, "").trim(),
         };
     }
 
     // Last month
-    if (/last\s+month/i.test(query)) {
+    if (LAST_MONTH.test(query)) {
         const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         return {
             startTime: startOfLastMonth.getTime(),
             endTime: startOfThisMonth.getTime(),
             description: "Last month",
-            query: query.replace(/last\s+month/gi, "").trim(),
+            query: query.replace(LAST_MONTH_GLOBAL, "").trim(),
         };
     }
 
     // This month
-    if (/this\s+month/i.test(query)) {
+    if (THIS_MONTH.test(query)) {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         return {
             startTime: startOfMonth.getTime(),
             endTime: startOfNextMonth.getTime(),
             description: "This month",
-            query: query.replace(/this\s+month/gi, "").trim(),
+            query: query.replace(THIS_MONTH_GLOBAL, "").trim(),
         };
     }
 
     // Last year
-    if (/last\s+year/i.test(query)) {
+    if (LAST_YEAR.test(query)) {
         const startOfThisYear = new Date(now.getFullYear(), 0, 1);
         const startOfLastYear = new Date(now.getFullYear() - 1, 0, 1);
         return {
             startTime: startOfLastYear.getTime(),
             endTime: startOfThisYear.getTime(),
             description: "Last year",
-            query: query.replace(/last\s+year/gi, "").trim(),
+            query: query.replace(LAST_YEAR_GLOBAL, "").trim(),
         };
     }
 
     return null;
 }
 
-/**
- * Parse date mentions like "on January 5", "in March"
- */
 function parseDateMention(query: string): TemporalFilter | null {
     const now = new Date();
 
@@ -305,69 +258,9 @@ function parseDateMention(query: string): TemporalFilter | null {
     return null;
 }
 
-/**
- * Get the date of the last occurrence of a specific day of week
- */
-function getLastDayOfWeek(dayOfWeek: number): Date {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const currentDay = today.getDay();
-
-    let daysAgo = currentDay - dayOfWeek;
-    if (daysAgo <= 0) {
-        daysAgo += 7; // Go to previous week
-    }
-
-    return new Date(today.getTime() - daysAgo * 24 * 60 * 60 * 1000);
-}
-
-/**
- * Get the date of the current or upcoming occurrence of a specific day of week
- */
-function getThisDayOfWeek(dayOfWeek: number): Date {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const currentDay = today.getDay();
-
-    let daysUntil = dayOfWeek - currentDay;
-    if (daysUntil < 0) {
-        daysUntil += 7;
-    }
-
-    return new Date(today.getTime() + daysUntil * 24 * 60 * 60 * 1000);
-}
-
-/**
- * Get the start of the week (Sunday) for a given date
- */
-function getStartOfWeek(date: Date): Date {
-    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    d.setDate(d.getDate() - d.getDay());
-    return d;
-}
-
-/**
- * Check if a query contains temporal keywords
- */
 export function hasTemporalKeywords(query: string): boolean {
-    const temporalKeywords = [
-        "yesterday",
-        "today",
-        "ago",
-        "last",
-        "this",
-        "week",
-        "month",
-        "year",
-        "hours?",
-        "minutes?",
-        "days?",
-        ...DAYS,
-        ...MONTHS,
-    ];
-
     const lowerQuery = query.toLowerCase();
-    return temporalKeywords.some((keyword) => {
+    return TEMPORAL_KEYWORDS.some((keyword) => {
         const regex = new RegExp(`\\b${keyword}\\b`, "i");
         return regex.test(lowerQuery);
     });

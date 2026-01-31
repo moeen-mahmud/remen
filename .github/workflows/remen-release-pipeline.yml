@@ -1,0 +1,54 @@
+name: Hallelujah CI/CD #v0
+
+on:
+    push:
+        branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+    contents: write
+    pull-requests: write
+    id-token: write
+
+jobs:
+    release:
+        name: Release
+        runs-on: ubuntu-latest
+        outputs:
+            hasChangesets: ${{ steps.changesets.outputs.hasChangesets }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+
+            - name: Install dependencies
+              run: bun install
+
+            - name: Run changesets
+              id: changesets
+              uses: changesets/action@v1
+              with:
+                  version: bun run release:version
+                  publish: bun run release:tag
+                  title: "release: version remen app"
+                  commit: "release: remen app release"
+                  createGithubReleases: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN}}
+
+            - name: Push tags (if any)
+              if: steps.changesets.outputs.hasChangesets == 'false'
+              run: |
+                  tags=$(git tag --points-at HEAD)
+                  if [ -n "$tags" ]; then
+                    git push origin --tags
+                  else
+                    echo 'No tags to push'
+                  fi

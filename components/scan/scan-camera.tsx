@@ -39,26 +39,26 @@ export const ScanCamera: React.FC = () => {
         }
 
         if (!device) {
-            console.warn("⚠️ [Scan] No camera device found");
+            console.warn("[Scan] No camera device found");
             return;
         }
 
         if (isCapturingRef.current) {
-            console.warn("⚠️ [Scan] Already capturing, ignoring capture request");
+            console.warn("[Scan] Already capturing, ignoring capture request");
             return;
         }
         if (!cameraRef.current) {
-            console.warn("⚠️ [Scan] Camera not mounted, ignoring capture request");
+            console.warn("[Scan] Camera not mounted, ignoring capture request");
             return;
         }
 
         // Keep capture disabled while OCR is not ready (matches prior behavior)
         if (!ocr?.isReady) {
-            console.warn("⚠️ [Scan] OCR not ready, ignoring capture request");
+            console.warn("[Scan] OCR not ready, ignoring capture request");
             return;
         }
         if (ocr?.isGenerating) {
-            console.warn("⚠️ [Scan] OCR is generating, ignoring capture request");
+            console.warn("[Scan] OCR is generating, ignoring capture request");
             return;
         }
 

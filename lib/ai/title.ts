@@ -1,14 +1,6 @@
-/**
- * Generate a title for a note
- *
- * Uses SmolLM 360M via ExecutorTorch for intelligent title generation.
- * Falls back to rule-based extraction when the model isn't ready.
- */
-
-import type { NoteType } from "@/lib/database";
-import type { LLMModel, Message } from "./provider";
-
-const MAX_TITLE_LENGTH = 30;
+import type { LLMModel, Message } from "@/lib/ai/ai.types";
+import { MAX_TITLE_LENGTH } from "@/lib/consts/consts";
+import type { NoteType } from "@/lib/database/database.types";
 
 /**
  * Generate a title for the given note content using AI

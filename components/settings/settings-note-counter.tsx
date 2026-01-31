@@ -1,6 +1,6 @@
 import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
-import { Note } from "@/lib/database";
+import { Note } from "@/lib/database/database.types";
 
 interface SettingsNoteCounterProps {
     notes: Note[];

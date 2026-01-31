@@ -1,14 +1,8 @@
-/**
- * AI Processing Queue
- *
- * Manages background processing of notes with AI models.
- * Processes notes one at a time to avoid overwhelming the device.
- */
-
-import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database";
+import { AI_OPERATION_DELAY } from "@/lib/consts/consts";
+import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database/database";
+import type { EmbeddingsModel, LLMModel } from "./ai.types";
 import { classifyNoteType } from "./classify";
 import { generateEmbedding } from "./embeddings";
-import type { EmbeddingsModel, LLMModel } from "./provider";
 import { extractTags } from "./tags";
 import { generateTitle } from "./title";
 
@@ -25,7 +19,6 @@ export interface AIModels {
 export type ProcessingCompleteCallback = (noteId: string) => void;
 
 // Small delay between AI operations to prevent "ModelGenerating" errors
-const AI_OPERATION_DELAY = 2000;
 
 /**
  * Wait for a model to be ready and not generating
@@ -221,9 +214,6 @@ class AIProcessingQueue {
         }
     }
 
-    /**
-     * Process a single note with AI
-     */
     private async processNote(job: NoteJob, tokenAtStart: number) {
         const { noteId, content } = job;
 
@@ -267,14 +257,21 @@ class AIProcessingQueue {
             // Skip if note type was explicitly set to voice/scan
             let type = note.type;
             if (note.type !== "voice" && note.type !== "scan") {
-                console.log(`  🏷️ Classifying type...`);
-                if (llmReady && llm) {
-                    type = await classifyNoteType(content, llm);
-                    await new Promise((resolve) => setTimeout(resolve, AI_OPERATION_DELAY));
+                // Check if note has tasks - if so, classify as task type immediately
+                const hasTasks = /^\s*-\s+\[[\sxX]\]\s+/.test(content);
+                if (hasTasks) {
+                    type = "task";
+                    console.log(`  🏷️ Type: ${type} (has tasks)`);
                 } else {
-                    type = await classifyNoteType(content, null); // Fallback
+                    console.log(`  🏷️ Classifying type...`);
+                    if (llmReady && llm) {
+                        type = await classifyNoteType(content, llm);
+                        await new Promise((resolve) => setTimeout(resolve, AI_OPERATION_DELAY));
+                    } else {
+                        type = await classifyNoteType(content, null); // Fallback
+                    }
+                    console.log(`  🏷️ Type: ${type}`);
                 }
-                console.log(`  🏷️ Type: ${type}`);
             } else {
                 console.log(`  🏷️ Type: ${type} (explicit)`);
             }
@@ -424,5 +421,4 @@ class AIProcessingQueue {
     }
 }
 
-// Singleton instance
 export const aiQueue = new AIProcessingQueue();

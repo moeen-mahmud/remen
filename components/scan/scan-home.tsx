@@ -5,8 +5,8 @@ import { Text } from "@/components/ui/text";
 import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
 import { consumePendingScanPhotoUri } from "@/lib/capture/pending-scan-photo";
-import { formatOCRText, processImageOCR, saveScannedImage } from "@/lib/capture/scan";
-import { createNote } from "@/lib/database";
+import { formatOCRText, getScannedImageAsBase64, processImageOCR } from "@/lib/capture/scan";
+import { createNote } from "@/lib/database/database";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect, useRouter } from "expo-router";
 import { XIcon } from "lucide-react-native";
@@ -64,16 +64,17 @@ export const ScanHome: React.FC = () => {
 
                 setScanState("saving-image");
 
-                // Save image permanently first (this is fast)
-                const savedPath = await saveScannedImage(photoUri);
-                setCapturedImagePath(savedPath);
+                // Convert to base64 data URI so image is stored with the note (survives app removal / iCloud)
+                const imageDataUri = await getScannedImageAsBase64(photoUri);
+                setCapturedImagePath(imageDataUri);
 
                 setScanState("processing");
 
                 // Small delay to ensure UI updates
                 await new Promise((resolve) => setTimeout(resolve, 100));
 
-                const ocrPromise = processImageOCR(savedPath, ocr);
+                // OCR needs a file path; temp file still exists at photoUri
+                const ocrPromise = processImageOCR(photoUri, ocr);
                 const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error("OCR timeout after 30 seconds")), 30000),
                 );
@@ -159,7 +160,7 @@ export const ScanHome: React.FC = () => {
         }
 
         if (isSaving) {
-            console.warn("⚠️ [Scan] Already saving");
+            console.warn("[Scan] Already saving");
             return;
         }
 
@@ -168,22 +169,22 @@ export const ScanHome: React.FC = () => {
         try {
             await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            console.log("💾 [Scan] Creating note...");
+            console.log("[Scan] Creating note...");
             const note = await createNote({
                 content: extractedText,
                 type: "scan",
                 original_image: capturedImagePath,
             });
-            console.log("✅ [Scan] Note created:", note.id);
+            console.log("[Scan] Note created:", note.id);
 
             // Queue for AI processing (pass models) - but don't block navigation
             if (llm?.isReady && embeddings?.isReady) {
                 try {
                     aiQueue.setModels({ llm, embeddings });
                     aiQueue.add({ noteId: note.id, content: extractedText });
-                    console.log("📋 [Scan] Note queued for AI processing");
+                    console.log("[Scan] Note queued for AI processing");
                 } catch (queueError) {
-                    console.error("⚠️ [Scan] Failed to queue for AI processing:", queueError);
+                    console.error("[Scan] Failed to queue for AI processing:", queueError);
                     // Don't block navigation on queue failure
                 }
             }
@@ -203,7 +204,7 @@ export const ScanHome: React.FC = () => {
             setExtractedText("");
             setConfidence(0);
             setError(null);
-            console.error("❌ [Scan] Failed to save note:", err);
+            console.error("[Scan] Failed to save note:", err);
             Alert.alert("Error", "Failed to save note. Please try again.", [{ text: "OK" }]);
             setIsSaving(false);
         }

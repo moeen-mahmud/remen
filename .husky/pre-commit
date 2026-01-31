@@ -1,2 +1,2 @@
 # .husky/pre-commit
-bun lint --fix && bun format --fix
+bun type-check && bun lint --fix

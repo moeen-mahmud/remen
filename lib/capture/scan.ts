@@ -1,37 +1,15 @@
-import type { OCRBbox, OCRDetection, OCRModel } from "@/lib/ai/provider";
-import { Directory, File, Paths } from "expo-file-system";
+import type { OCRDetection, OCRModel } from "@/lib/ai/ai.types";
+import { ScanResult, TextBlock } from "@/lib/capture/scan.types";
+import { getBboxBottomY, getBboxTopY, getScansDirectory } from "@/lib/utils/scan-utils";
+import { File } from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 
-/* ---------------------------------- Types --------------------------------- */
-
-export interface ScanResult {
-    text: string;
-    blocks: TextBlock[];
-    confidence: number;
-    savedImagePath?: string;
-    isEmpty?: boolean;
-}
-
-export interface TextBlock {
-    text: string;
-    isBullet: boolean;
-    isNumbered: boolean;
-    isHeading: boolean;
-    bbox?: OCRBbox[];
-    score?: number;
-}
-
-/* -------------------------------- Constants -------------------------------- */
-
-const SCANS_DIR_NAME = "remen_scans";
-
-/* ----------------------------- File Utilities ------------------------------ */
-
-function getScansDirectory(): Directory {
-    const scansDir = new Directory(Paths.document, SCANS_DIR_NAME);
-    if (!scansDir.exists) {
-        scansDir.create();
-    }
-    return scansDir;
+export async function getScannedImageAsBase64(tempPath: string): Promise<string> {
+    const localPath = tempPath.startsWith("file://") ? tempPath.replace("file://", "") : tempPath;
+    const base64 = await FileSystem.readAsStringAsync(localPath, {
+        encoding: FileSystem.EncodingType.Base64,
+    });
+    return `data:image/jpeg;base64,${base64}`;
 }
 
 export async function saveScannedImage(tempPath: string): Promise<string> {
@@ -57,39 +35,6 @@ export async function deleteScannedImage(imagePath: string): Promise<void> {
         console.error("Failed to delete scanned image:", error);
     }
 }
-
-/* ----------------------------- BBox Utilities ------------------------------ */
-
-function getBboxTopY(bbox?: OCRBbox[]): number {
-    if (!bbox || bbox.length === 0) return 0;
-    return Math.min(...bbox.map((p) => Number(p?.y) || 0));
-}
-
-function getBboxBottomY(bbox?: OCRBbox[]): number {
-    if (!bbox || bbox.length === 0) return 0;
-    return Math.max(...bbox.map((p) => Number(p?.y) || 0));
-}
-
-/* ----------------------------- Core OCR Logic ------------------------------ */
-
-// export async function processImageOCR(imagePath: string, ocrModel: OCRModel | null): Promise<ScanResult> {
-//     if (!ocrModel?.isReady) {
-//         throw new Error("OCR model not ready")
-//     }
-
-//     try {
-//         const rawDetections = await ocrModel.forward(imagePath)
-
-//         if (!Array.isArray(rawDetections) || rawDetections.length === 0) {
-//             return emptyScanResult()
-//         }
-
-//         return parseOCRDetections(rawDetections)
-//     } catch (error) {
-//         console.error("OCR inference failed:", error)
-//         return emptyScanResult()
-//     }
-// }
 
 export async function processImageOCR(imagePath: string, ocrModel: OCRModel | null): Promise<ScanResult> {
     if (!ocrModel?.isReady) {
@@ -124,8 +69,6 @@ export async function processImageOCR(imagePath: string, ocrModel: OCRModel | nu
         throw error;
     }
 }
-
-/* ---------------------------- Parsing & Safety ----------------------------- */
 
 function parseOCRDetections(detections: OCRDetection[]): ScanResult {
     const validDetections = detections.filter((d) => {
@@ -163,8 +106,6 @@ function parseOCRDetections(detections: OCRDetection[]): ScanResult {
     };
 }
 
-/* --------------------------- Empty Result Model ---------------------------- */
-
 function emptyScanResult(): ScanResult {
     return {
         text: "",
@@ -173,8 +114,6 @@ function emptyScanResult(): ScanResult {
         isEmpty: true,
     };
 }
-
-/* ----------------------------- Text Formatting ----------------------------- */
 
 export function formatOCRText(result: ScanResult): string {
     if (result.isEmpty || result.blocks.length === 0) return "";
@@ -187,8 +126,6 @@ export function formatOCRText(result: ScanResult): string {
         .join("\n\n");
 }
 
-/* ----------------------------- Heuristics ---------------------------------- */
-
 export function isLikelyDocument(result: ScanResult): boolean {
     if (result.isEmpty) return false;
 
@@ -196,8 +133,6 @@ export function isLikelyDocument(result: ScanResult): boolean {
 
     return lines.length >= 3 && result.confidence >= 0.5;
 }
-
-/* ------------------------- Paragraph Grouping ------------------------------ */
 
 export function groupBlocksIntoParagraphs(blocks: TextBlock[]): TextBlock[][] {
     if (!blocks || blocks.length === 0) return [];

@@ -1,18 +1,10 @@
+import { VoiceCallback, VoiceState } from "@/lib/capture/voice.types";
 import Voice, {
     type SpeechEndEvent,
     type SpeechErrorEvent,
     type SpeechResultsEvent,
     type SpeechStartEvent,
 } from "@react-native-voice/voice";
-
-export interface VoiceState {
-    isListening: boolean;
-    results: string[];
-    partialResults: string[];
-    error: string | null;
-}
-
-export type VoiceCallback = (state: VoiceState) => void;
 
 class VoiceCapture {
     private callback: VoiceCallback | null = null;
@@ -131,7 +123,6 @@ class VoiceCapture {
     }
 
     getCurrentTranscript(): string {
-        // Return partial results while speaking, final results when done
         if (this.state.partialResults.length > 0 && this.state.isListening) {
             return this.state.partialResults[0] ?? "";
         }

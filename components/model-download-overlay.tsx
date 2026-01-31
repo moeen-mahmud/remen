@@ -1,6 +1,6 @@
 import { Text } from "@/components/ui/text";
+import { useTheme } from "@/lib/theme/use-theme";
 import { Minimize2 } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Dimensions, Easing, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,9 +29,7 @@ export function ModelDownloadOverlay({
     isMinimized = false,
 }: ModelDownloadOverlayProps) {
     const { top, bottom } = useSafeAreaInsets();
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
-
+    const { backgroundColor, textColor, primaryColor, mutedTextColor, brandColor } = useTheme();
     const [internalMinimized, setInternalMinimized] = useState(isMinimized);
 
     // Animation values
@@ -136,7 +134,7 @@ export function ModelDownloadOverlay({
             style={[
                 styles.container,
                 {
-                    backgroundColor: isDark ? "#000" : "#fff",
+                    backgroundColor: backgroundColor,
                     paddingTop: top,
                     paddingBottom: bottom + 40,
                     opacity: fadeAnim,
@@ -148,10 +146,10 @@ export function ModelDownloadOverlay({
             {/* Header with controls */}
             <View style={styles.header}>
                 <View style={styles.headerLeft} />
-                <Text style={[styles.headerTitle, { color: isDark ? "#fff" : "#000" }]}>Downloading AI Models</Text>
+                <Text style={[styles.headerTitle, { color: textColor }]}>Downloading AI Models</Text>
                 <View style={styles.headerRight}>
                     <Pressable onPress={handleMinimize} style={styles.headerButton}>
-                        <Minimize2 size={20} color={isDark ? "#fff" : "#000"} />
+                        <Minimize2 size={20} color={textColor} />
                     </Pressable>
                     <View />
                 </View>
@@ -170,12 +168,12 @@ export function ModelDownloadOverlay({
             {/* Progress section */}
             <View style={styles.progressSection}>
                 {/* Overall progress bar */}
-                <View style={[styles.progressBarContainer, { backgroundColor: isDark ? "#1a1a1a" : "#f0f0f0" }]}>
+                <View style={[styles.progressBarContainer, { backgroundColor: primaryColor }]}>
                     <Animated.View
                         style={[
                             styles.progressBar,
                             {
-                                backgroundColor: isDark ? "#39FF14" : "#00B700",
+                                backgroundColor: brandColor,
                                 width: progressWidth,
                             },
                         ]}
@@ -183,7 +181,7 @@ export function ModelDownloadOverlay({
                 </View>
 
                 {/* Progress percentage */}
-                <Text className="mt-4 text-4xl font-bold" style={{ color: isDark ? "#39FF14" : "#00B700" }}>
+                <Text className="mt-4 text-4xl font-bold" style={{ color: brandColor }}>
                     {progressPercent}%
                 </Text>
 
@@ -192,19 +190,16 @@ export function ModelDownloadOverlay({
                     <ModelProgressItem
                         name="Language Model"
                         progress={llmProgress}
-                        isDark={isDark}
                         description="The core of the AI functionality"
                     />
                     <ModelProgressItem
                         name="Embeddings"
                         progress={embeddingsProgress}
-                        isDark={isDark}
                         description="Intelligent note discovery"
                     />
                     <ModelProgressItem
                         name="Text Recognition"
                         progress={ocrProgress}
-                        isDark={isDark}
                         description="Extracting text from images"
                     />
                 </View>
@@ -212,7 +207,7 @@ export function ModelDownloadOverlay({
 
             {/* Bottom message */}
             <View style={styles.bottomMessage}>
-                <Text style={[styles.footnote, { color: isDark ? "#666" : "#999" }]}>
+                <Text style={[styles.footnote, { color: mutedTextColor }]}>
                     This only happens once. Your notes are processed entirely on-device for maximum privacy.
                 </Text>
             </View>
@@ -223,30 +218,31 @@ export function ModelDownloadOverlay({
 interface ModelProgressItemProps {
     name: string;
     progress: number;
-    isDark: boolean;
     description: string;
 }
 
-function ModelProgressItem({ name, progress, isDark, description }: ModelProgressItemProps) {
+function ModelProgressItem({ name, progress, description }: ModelProgressItemProps) {
+    const { brandColor, mutedTextColor } = useTheme();
+    const { textColor } = useTheme();
     const isComplete = progress >= 1;
     const progressPercent = Math.round(progress * 100);
 
     return (
         <View style={styles.modelItem}>
             <View style={styles.modelHeader}>
-                <Text style={[styles.modelName, { color: isDark ? "#fff" : "#000" }]}>{name}</Text>
+                <Text style={[styles.modelName, { color: textColor }]}>{name}</Text>
                 <Text
                     style={[
                         styles.modelProgress,
                         {
-                            color: isComplete ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#888" : "#666",
+                            color: isComplete ? brandColor : mutedTextColor,
                         },
                     ]}
                 >
                     {isComplete ? "✓" : `${progressPercent}%`}
                 </Text>
             </View>
-            <Text style={[styles.modelDescription, { color: isDark ? "#666" : "#999" }]}>{description}</Text>
+            <Text style={[styles.modelDescription, { color: mutedTextColor }]}>{description}</Text>
         </View>
     );
 }

@@ -1,4 +1,5 @@
 import { FabItemProps } from "@/components/fab/types";
+import { useTheme } from "@/lib/theme/use-theme";
 import * as Haptics from "expo-haptics";
 import type { LucideIcon } from "lucide-react-native";
 import React, { type FC, isValidElement } from "react";
@@ -7,7 +8,8 @@ import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export const FabItem: FC<FabItemProps> = ({ action, index, isOpen, totalItems, onPress, isDark }) => {
+export const FabItem: FC<FabItemProps> = ({ action, index, isOpen, totalItems, onPress }) => {
+    const { brandColor, textColor, textColorInverse } = useTheme();
     const handlePress = async () => {
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
@@ -38,14 +40,15 @@ export const FabItem: FC<FabItemProps> = ({ action, index, isOpen, totalItems, o
                 style={[
                     styles.iconButton,
                     {
-                        backgroundColor: action.backgroundColor || (isDark ? "#39FF14" : "#00B700"),
+                        shadowColor: textColorInverse,
+                        backgroundColor: action.backgroundColor || brandColor,
                     },
                 ]}
             >
                 {isReactElement ? (
                     (action.icon as React.ReactNode)
                 ) : (
-                    <IconComponent size={22} color={action.color || (isDark ? "#000" : "#fff")} />
+                    <IconComponent size={22} color={action.color || textColor} />
                 )}
             </View>
         </AnimatedPressable>
@@ -62,21 +65,6 @@ const styles = StyleSheet.create({
     itemPressed: {
         transform: [{ scale: 0.95 }],
     },
-    labelContainer: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        marginRight: 12,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 4,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: "600",
-    },
     iconButton: {
         width: 60,
         height: 60,
@@ -84,7 +72,6 @@ const styles = StyleSheet.create({
         borderRadius: 50,
         alignItems: "center",
         justifyContent: "center",
-        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 4,

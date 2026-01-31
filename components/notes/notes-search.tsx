@@ -2,8 +2,8 @@ import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
+import { useTheme } from "@/lib/theme/use-theme";
 import { SearchIcon, XIcon } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { Pressable, TextInput } from "react-native";
 
 type NotesSearchProps = {
@@ -27,8 +27,7 @@ export const NotesSearch: React.FC<NotesSearchProps> = ({
     isSearching,
     isUsingLLM,
 }) => {
-    const { colorScheme } = useColorScheme();
-    const isDark = colorScheme === "dark";
+    const { placeholderTextColor, brandColor, mutedIconColor } = useTheme();
 
     const handleClearSearch = () => {
         setSearchQuery("");
@@ -43,7 +42,7 @@ export const NotesSearch: React.FC<NotesSearchProps> = ({
             <TextInput
                 className="flex-1 font-semibold text-typography-900 dark:text-typography-0"
                 placeholder="Ask me anything..."
-                placeholderTextColor={isDark ? "#888" : "#999"}
+                placeholderTextColor={placeholderTextColor}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 onSubmitEditing={handleSearch}
@@ -54,7 +53,7 @@ export const NotesSearch: React.FC<NotesSearchProps> = ({
             {isSearching ? (
                 <Box className="flex-row gap-2 items-center">
                     {isUsingLLM ? <Text className="text-sm text-brand">AI</Text> : null}
-                    <Spinner color={isUsingLLM ? (isDark ? "#39FF14" : "#00B700") : isDark ? "#888" : "#666"} />
+                    <Spinner color={isUsingLLM ? brandColor : mutedIconColor} />
                 </Box>
             ) : searchQuery ? (
                 <Pressable onPress={handleClearSearch}>

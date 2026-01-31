@@ -25,5 +25,4 @@ export interface FabItemProps {
     isOpen: boolean;
     totalItems: number;
     onPress: () => void;
-    isDark: boolean;
 }

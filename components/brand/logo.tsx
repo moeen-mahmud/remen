@@ -1,4 +1,4 @@
-import { springConfigs, timingConfigs } from "@/lib/animation-config";
+import { springConfigs, timingConfigs } from "@/lib/config/animation-config";
 import { useColorScheme } from "nativewind";
 import { type FC } from "react";
 import { StyleSheet, Text, View } from "react-native";

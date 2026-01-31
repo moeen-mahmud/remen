@@ -1,12 +1,13 @@
 import { EmptyPage } from "@/components/empty-page";
+import { SwipeableNoteCard } from "@/components/notes/swipeable-note-card";
 import { SettingsNoteCounter } from "@/components/settings/settings-note-counter";
-import { SwipeableNoteCard } from "@/components/swipeable-note-card";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
-import { getArchivedNotes, getTagsForNote, moveToTrash, unarchiveNote, type Note, type Tag } from "@/lib/database";
+import { getArchivedNotes, getTagsForNote, moveToTrash, unarchiveNote } from "@/lib/database/database";
+import type { Note, Tag } from "@/lib/database/database.types";
+import { useTheme } from "@/lib/theme/use-theme";
 import { useRouter } from "expo-router";
 import { ArchiveIcon } from "lucide-react-native";
-import { useColorScheme } from "nativewind";
 import { useCallback, useEffect, useState } from "react";
 import { FlatList, RefreshControl } from "react-native";
 
@@ -15,9 +16,8 @@ interface NoteWithTags extends Note {
 }
 
 export const ArchivesHome: React.FC = () => {
-    const { colorScheme } = useColorScheme();
+    const { mutedTextColor } = useTheme();
     const router = useRouter();
-    const isDark = colorScheme === "dark";
 
     const [notes, setNotes] = useState<NoteWithTags[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +87,7 @@ export const ArchivesHome: React.FC = () => {
 
     const renderEmptyState = () => (
         <EmptyPage
-            icon={<ArchiveIcon size={56} color={isDark ? "#444" : "#ccc"} />}
+            icon={<ArchiveIcon size={56} color={mutedTextColor} />}
             title="No archived notes"
             description="Notes you archive will appear here"
         />

@@ -367,7 +367,7 @@ export {
     ChevronsLeftIcon,
     ChevronsRightIcon,
     ChevronsUpDownIcon,
-    ChevronUpIcon,
+    ChevronUpIcon // eslint-disable-line
 };
 
 const CircleIcon = createIcon({

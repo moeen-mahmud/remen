@@ -3,13 +3,13 @@ import Editor from "@/components/editor";
 import { EditorHeader } from "@/components/editor/editor-header";
 import { SpeedDial, type FabAction } from "@/components/fab";
 import { PageWrapper } from "@/components/page-wrapper";
-import { createNote } from "@/lib/database";
-import { requestNotificationPermissions, scheduleReminder } from "@/lib/reminders";
+import { createNote } from "@/lib/database/database";
+import { requestNotificationPermissions, scheduleReminder } from "@/lib/reminders/reminders";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
-import { Bell, CameraIcon, MicIcon } from "lucide-react-native";
+import { BellPlus, CameraIcon, CheckSquare, MicIcon } from "lucide-react-native";
 import { useColorScheme } from "nativewind";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { KeyboardController } from "react-native-keyboard-controller";
 
@@ -19,6 +19,7 @@ export default function Index() {
     const isDark = colorScheme === "dark";
     const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
     const [selectedReminderDate, setSelectedReminderDate] = useState<Date>(new Date());
+    const insertTaskRef = useRef<(() => void) | null>(null);
 
     const handleVoiceCapture = useCallback(() => {
         router.push("/voice" as any);
@@ -26,6 +27,25 @@ export default function Index() {
 
     const handleScanCapture = useCallback(() => {
         router.push("/scan" as any);
+    }, [router]);
+
+    const handleTaskCapture = useCallback(async () => {
+        try {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+            // Create task note with initial task
+            const note = await createNote({
+                content: "- [ ] ",
+                type: "task",
+            });
+
+            // Navigate to edit screen with task mode
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            router.push(`/edit/${note.id}?taskMode=true` as any);
+        } catch (error) {
+            console.error("Error creating task note:", error);
+            Alert.alert("Error", "Failed to create task note. Please try again.");
+        }
     }, [router]);
 
     const createReminderNoteWithDate = useCallback(
@@ -140,8 +160,16 @@ export default function Index() {
         {
             id: "reminder",
             label: "Reminder",
-            icon: Bell,
+            icon: BellPlus,
             onPress: handleReminderCapture,
+            backgroundColor: isDark ? "#1A1A1B" : "#fff",
+            color: isDark ? "#fff" : "#000",
+        },
+        {
+            id: "task",
+            label: "Task",
+            icon: CheckSquare,
+            onPress: handleTaskCapture,
             backgroundColor: isDark ? "#1A1A1B" : "#fff",
             color: isDark ? "#fff" : "#000",
         },
@@ -168,10 +196,19 @@ export default function Index() {
         [createReminderNoteWithDate],
     );
 
+    // const handleInsertTask = useCallback(() => {
+    //     insertTaskRef.current?.();
+    // }, []);
+
     return (
         <PageWrapper disableBottomPadding>
-            <EditorHeader isEditing={false} handleBack={handleBack} handleViewNotes={handleViewNotes} />
-            <Editor />
+            <EditorHeader
+                isEditing={false}
+                handleBack={handleBack}
+                handleViewNotes={handleViewNotes}
+                // onInsertTask={handleInsertTask}
+            />
+            <Editor onInsertTaskReady={(fn) => (insertTaskRef.current = fn)} />
             <SpeedDial actions={fabActions} position="bottom-right" />
             <DatePickerModal
                 visible={isDatePickerOpen}
