@@ -81,7 +81,7 @@ export default function Editor({
 
             try {
                 // Check if note has tasks - if so, set type to "task"
-                const hasTasks = /^\s*-\s+\[[\sxX]\]\s+/.test(noteContent);
+                const hasTasks = TASK_PATTERNS.test(noteContent);
                 const newNoteType = hasTasks ? ("task" as const) : undefined;
 
                 if (noteId) {
@@ -195,15 +195,16 @@ export default function Editor({
         ) {
             // User just pressed Enter - insert task checkbox immediately
             const textWithoutNewline = text.slice(0, -1);
-            const previousLines = previousContent.split("\n");
-            const previousLastLine = previousLines[previousLines.length - 1] || "";
+            // const previousLines = previousContent.split("\n");
+            // const previousLastLine = previousLines[previousLines.length - 1] || "";
 
             // Extract indent from previous task line (fast regex match)
-            const taskMatch = previousLastLine.match(TASK_PATTERNS);
-            const indent = taskMatch ? taskMatch[1] : "";
+            // const taskMatch = previousLastLine.match(TASK_PATTERNS);
+            // const indent = taskMatch ? taskMatch[1] : "";
 
             // Insert task checkbox on new line - single string operation
-            const newText = textWithoutNewline + "\n" + indent + "- [ ] ";
+            const newText = textWithoutNewline + "\n" + "- [ ] ";
+            console.log("newText", newText);
             setContent(newText);
             scheduleAutosave(newText);
             return;
@@ -241,26 +242,27 @@ export default function Editor({
         scheduleAutosave(text);
     };
 
-    const handleInsertTask = useCallback(() => {
-        const currentText = content;
-        const lines = currentText.split("\n");
-        const lastLine = lines[lines.length - 1];
-        const indent = lastLine.match(/^(\s*)/)?.[1] || "";
+    // const handleInsertTask = useCallback(() => {
+    //     const currentText = content;
+    //     const lines = currentText.split("\n");
+    //     const lastLine = lines[lines.length - 1];
+    //     const indent = lastLine.match(/^(\s*)/)?.[1] || "";
 
-        // Insert task at current position or new line
-        const taskText = currentText.length > 0 && !currentText.endsWith("\n") ? "\n" : "";
-        const newContent = currentText + taskText + indent + "- [ ] ";
+    //     // Insert task at current position or new line
+    //     const taskText = currentText.length > 0 && !currentText.endsWith("\n") ? "\n" : "";
+    //     const newContent = currentText + taskText + indent + "- [ ] ";
 
-        setContent(newContent);
-        scheduleAutosave(newContent);
-    }, [content, scheduleAutosave]);
+    //     console.log("newContent", newContent);
+    //     setContent(newContent);
+    //     scheduleAutosave(newContent);
+    // }, [content, scheduleAutosave]);
 
-    // Expose insertTask handler to parent
-    useEffect(() => {
-        if (onInsertTaskReady) {
-            onInsertTaskReady(handleInsertTask);
-        }
-    }, [onInsertTaskReady, handleInsertTask]);
+    // // Expose insertTask handler to parent
+    // useEffect(() => {
+    //     if (onInsertTaskReady) {
+    //         onInsertTaskReady(handleInsertTask);
+    //     }
+    // }, [onInsertTaskReady, handleInsertTask]);
 
     if (isLoading) return <PageLoader />;
 

@@ -31,7 +31,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
     const router = useRouter();
     const { bottom } = useSafeAreaInsets();
-    const { mutedIconColor, dangerColor, dangerColorInverse, backgroundColor, borderColor } = useTheme();
+    const { backgroundColor } = useTheme();
     // Get AI embeddings model - use ref to avoid dependency issues
     const { embeddings } = useAI();
     const embeddingsRef = useRef(embeddings);
