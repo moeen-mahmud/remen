@@ -30,6 +30,9 @@ What actually happened (screenshots or logs help).
 - **OS**: iOS version (e.g. 17.2)
 - **Device**: (e.g. iPhone 15, Simulator)
 - **Node**: `node -v` (if relevant to repro)
+- **Bun**: `bun -v` (if relevant to repro)
+- **Xcode**: `xcodebuild -version` (if relevant to repro)
+- **CocoaPods**: `pod --version` (if relevant to repro)
 
 ## Additional context
 
