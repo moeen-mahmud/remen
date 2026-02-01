@@ -4,6 +4,10 @@ Remen turns thoughts into something you can return to.
 
 A notes app for iOS: Zero-friction capture with voice or camera, search with natural language, and keep everything in sync with iCloud. AI runs on-device.
 
+## Backstory
+
+I've been using Apple Notes and Google Keep for years. I'm a big fan of the simplicity and ease of use. But most of the time I forgot the keywords to search for an specific note. This project was started as an R&D to see if I can run an language model on device to make it simple and easier to capture my messy thoughts, voices, tasks, scans, and reminders and organize (because I'm a lazy ass, can't even want to add a title) them in a way that I can easily search for them later. I wanted to make it minimal and maximize the privacy and the performance. After using my own app for few weeks, I believe it would be a good fit for someone else who wants to have similar experience.
+
 ## Features
 
 - **Notes** — Create and edit notes (task notes, reminders). Pin, archive, trash or delete permanently.
@@ -66,6 +70,14 @@ bun ios # optionally bun ios -d to run on physical device
 | `bun lint` | Run ESLint |
 | `bun format` | Format with Prettier |
 | `bun type-check` | TypeScript check |
+
+## Known Issues
+
+Sometimes, the AI can hallucinate or take a while searching for notes, since it's a very (very again) small model and it's not trained on a lot of data. Besides, the OCR is not perfect and sometimes it can't extract the text from the image. AI processing is done in the background and it's not instant, for this reason, it'll drain a bit of battery and slow down the app (mostly in older devices).
+
+- [ ] Voice recognition is not working on iOS simulator
+- [ ] Camera is not working on iOS simulator
+- [ ] iCloud is not working on iOS simulator
 
 ## License
 
