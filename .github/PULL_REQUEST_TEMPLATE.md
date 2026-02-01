@@ -18,7 +18,6 @@ Fixes #(issue number)
 
 - [ ] My code follows the project’s style (Prettier, existing patterns).
 - [ ] I have run the app and verified my changes (simulator/device as needed).
-- [ ] I have added/updated tests if applicable.
 - [ ] I have updated docs/README if needed.
 
 ## Screenshots / notes (optional)
