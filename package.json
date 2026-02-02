@@ -2,7 +2,7 @@
 	"name": "remen",
 	"description": "Remen turns thoughts into something you can return to.",
 	"main": "expo-router/entry",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"author": {
 		"name": "Moeen Mahmud",
 		"email": "moeen@osmynt.dev",
@@ -27,6 +27,7 @@
 		"eas:build:development": "eas build -p ios --profile development",
 		"eas:build:preview": "eas build -p ios --profile preview",
 		"eas:build:production": "eas build -p ios --profile production",
+		"eas:update:production": "eas update:republish --destination-channel production",
 		"prepare": "husky",
 		"commit": "commit",
 		"release": "changeset",

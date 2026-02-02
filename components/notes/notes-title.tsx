@@ -44,7 +44,6 @@ export const NotesTitle: React.FC<NotesTitleProps> = ({
                     <Box className="flex-row gap-2 items-center">
                         <TextInput
                             style={{
-                                borderWidth: 1,
                                 lineHeight: 0,
                             }}
                             className="flex-1 text-xl font-semibold text-left text-typography-900 dark:text-typography-0"

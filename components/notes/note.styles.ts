@@ -110,7 +110,7 @@ export const noteDetailsStyles = StyleSheet.create({
     },
     imageContainer: {
         marginBottom: 20,
-        borderRadius: 16,
+        // borderRadius: 16,
         overflow: "hidden",
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },

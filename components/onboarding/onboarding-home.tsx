@@ -21,7 +21,7 @@ type OnboardingProps = {
 
 export const Onboarding = ({ onComplete, onSkip }: OnboardingProps) => {
     const { top, bottom } = useSafeAreaInsets();
-    const { brandColor, textColor } = useTheme();
+    const { brandColor, textColorInverse } = useTheme();
 
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -137,7 +137,7 @@ export const Onboarding = ({ onComplete, onSkip }: OnboardingProps) => {
                     <Text className="text-xl font-bold text-white dark:text-black">
                         {currentIndex === slides.length - 1 ? "Get Started" : "Next"}
                     </Text>
-                    <Icon as={ChevronRight} size="xl" color={textColor} />
+                    <Icon as={ChevronRight} size="xl" color={textColorInverse} />
                 </Pressable>
             </Box>
         </Animated.View>
