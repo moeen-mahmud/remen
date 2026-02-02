@@ -1,40 +1,57 @@
 # remen
 
+## 0.1.2
+
+### Patch Changes
+
+- e066e25: ### Fixes and UI Improvements
+    - removed border radius from image container
+    - removed padding from image container
+    - removed border from the title edit component
+    - removed animation pulse while processing the note
+
 ## 0.1.0
 
 ### Minor Changes
 
 - 9f93065: **Notes & editor**
-  - Create and edit notes (text only)
-  - Text editor with auto-save
-  - Pin, archive, trash; swipe actions (pin, archive, trash, permanent delete from trash)
-  - Task notes with checkboxes
-  - Reminders with date picker and notifications
+    - Create and edit notes (text only)
+    - Text editor with auto-save
+    - Pin, archive, trash; swipe actions (pin, archive, trash, permanent delete from trash)
+    - Task notes with checkboxes
+    - Reminders with date picker and notifications
 
-    **Capture**
-  - Voice: record speech, transcribe, save as note
-  - Scan: camera capture, on-device OCR, extract text from images, save note with image
+        **Capture**
 
-    **Search**
-  - Keyword and semantic search (embeddings)
-  - Natural language / “ask notes” (LLM interprets query)
-  - Temporal search (e.g. yesterday, last week)
+    - Voice: record speech, transcribe, save as note
+    - Scan: camera capture, on-device OCR, extract text from images, save note with image
 
-    **Note details**
-  - View notes, related notes, types(auto generated), tags (auto generated)
-  - Task list (parse and toggle checkboxes); URL detection and link cards like bookmarks
-  - Reminder picker; edit title
+        **Search**
 
-    **AI**
-  - On-device LLM, embeddings model, OCR for scan are downloaded for the first time and stored on the device
-  - Automatically classify note types, generate tags, bring up related notes based on the content of the note
+    - Keyword and semantic search (embeddings)
+    - Natural language / “ask notes” (LLM interprets query)
+    - Temporal search (e.g. yesterday, last week)
 
-    **Organization**
-  - Archives; trash (recycle bin) with restore; empty trash (permanent delete)
-  - iCloud sync: backup/restore, two-way sync; permanently deleted notes stay deleted after sync
+        **Note details**
 
-    **Settings**
-  - Theme (system / light / dark); AI controls (model download); appearance; data management; iCloud sync; about
+    - View notes, related notes, types(auto generated), tags (auto generated)
+    - Task list (parse and toggle checkboxes); URL detection and link cards like bookmarks
+    - Reminder picker; edit title
 
-    **Other**
-  - Onboarding slides; haptic feedback; selection mode for notes; share
+        **AI**
+
+    - On-device LLM, embeddings model, OCR for scan are downloaded for the first time and stored on the device
+    - Automatically classify note types, generate tags, bring up related notes based on the content of the note
+
+        **Organization**
+
+    - Archives; trash (recycle bin) with restore; empty trash (permanent delete)
+    - iCloud sync: backup/restore, two-way sync; permanently deleted notes stay deleted after sync
+
+        **Settings**
+
+    - Theme (system / light / dark); AI controls (model download); appearance; data management; iCloud sync; about
+
+        **Other**
+
+    - Onboarding slides; haptic feedback; selection mode for notes; share
