@@ -260,7 +260,7 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
             >
                 {/* Original image for scan notes */}
                 {note.type === "scan" && note.original_image ? (
-                    <Box className="px-4 dark:bg-neutral-900 bg-neutral-200" style={styles.imageContainer}>
+                    <Box className="dark:bg-neutral-900 bg-neutral-200" style={styles.imageContainer}>
                         <Image source={{ uri: note.original_image }} style={styles.scanImage} />
                     </Box>
                 ) : null}

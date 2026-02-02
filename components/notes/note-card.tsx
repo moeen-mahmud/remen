@@ -18,13 +18,7 @@ import { useTheme } from "@/lib/theme/use-theme";
 import * as Haptics from "expo-haptics";
 import { useEffect, type FC } from "react";
 import { Pressable } from "react-native";
-import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withRepeat,
-    withSpring,
-    withTiming,
-} from "react-native-reanimated";
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -49,7 +43,7 @@ export const NoteCard: FC<NoteCardProps> = ({
     onToggleSelect,
     isProcessing = false,
 }) => {
-    const { brandColor, brandRGB } = useTheme();
+    const { brandColor } = useTheme();
 
     const typeBadge = getNoteTypeBadge(note.type);
     const typeIcon = getNoteTypeIcon(note.type, typeBadge.color);
@@ -57,8 +51,8 @@ export const NoteCard: FC<NoteCardProps> = ({
     // Animation values
     const scale = useSharedValue(1);
     const shadowOpacity = useSharedValue(0.1);
-    const borderAnim = useSharedValue(0);
-    const borderWidthAnim = useSharedValue(0);
+    // const borderAnim = useSharedValue(0);
+    // const borderWidthAnim = useSharedValue(0);
     const selectedBorderWidth = useSharedValue(0);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -67,16 +61,18 @@ export const NoteCard: FC<NoteCardProps> = ({
     }));
 
     const borderStyle = useAnimatedStyle(() => {
-        const processingColor = `rgba(${brandRGB}, ${borderAnim.value})`;
+        // const processingColor = isDark
+        //     ? `rgba(${brandRGB}, ${borderAnim.value})`
+        //     : `rgba(${brandRGB}, ${borderAnim.value})`;
 
         // Priority: processing > selected > default
-        const borderColor = isProcessing ? processingColor : selectedBorderWidth.value > 0 ? brandColor : "";
+        const borderColor = selectedBorderWidth.value > 0 ? brandColor : "";
 
         // Combine border widths (processing takes priority visually)
-        const totalBorderWidth = borderWidthAnim.value > 0 ? borderWidthAnim.value : selectedBorderWidth.value;
+        // const totalBorderWidth = borderWidthAnim.value > 0 ? borderWidthAnim.value : selectedBorderWidth.value;
 
         return {
-            borderWidth: totalBorderWidth,
+            borderWidth: selectedBorderWidth.value,
             borderColor,
         };
     });
@@ -109,17 +105,17 @@ export const NoteCard: FC<NoteCardProps> = ({
         onLongPress?.(note);
     };
 
-    useEffect(() => {
-        if (isProcessing) {
-            borderWidthAnim.value = withTiming(2, { duration: 300 });
-            borderAnim.value = withTiming(1, { duration: 500 }, () => {
-                borderAnim.value = withRepeat(withTiming(0.3, { duration: 1000 }), -1, true);
-            });
-        } else {
-            borderWidthAnim.value = withTiming(0, { duration: 300 });
-            borderAnim.value = withTiming(0, { duration: 300 });
-        }
-    }, [isProcessing, borderAnim, borderWidthAnim]);
+    // useEffect(() => {
+    //     if (isProcessing) {
+    //         borderWidthAnim.value = withTiming(2, { duration: 300 });
+    //         borderAnim.value = withTiming(1, { duration: 500 }, () => {
+    //             borderAnim.value = withRepeat(withTiming(0.3, { duration: 1000 }), -1, true);
+    //         });
+    //     } else {
+    //         borderWidthAnim.value = withTiming(0, { duration: 300 });
+    //         borderAnim.value = withTiming(0, { duration: 300 });
+    //     }
+    // }, [isProcessing, borderAnim, borderWidthAnim]);
 
     useEffect(() => {
         if (isSelected) {
