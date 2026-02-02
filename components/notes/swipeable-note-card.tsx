@@ -244,7 +244,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
                         isSelectionMode={isSelectionMode}
                         isSelected={isSelected}
                         onToggleSelect={onToggleSelect}
-                        isProcessing={true}
+                        isProcessing={isProcessing}
                     />
                 </Animated.View>
             </GestureDetector>
