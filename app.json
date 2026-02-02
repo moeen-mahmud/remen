@@ -2,7 +2,7 @@
     "expo": {
         "name": "Remen",
         "slug": "remen",
-        "version": "0.1.0",
+        "version": "0.1.2",
         "orientation": "portrait",
         "scheme": "remen",
         "userInterfaceStyle": "automatic",
