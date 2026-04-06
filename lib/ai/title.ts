@@ -35,17 +35,7 @@ function isExampleTitle(title: string): boolean {
     const lowerTitle = title.toLowerCase();
 
     // Common example indicators
-    const examplePatterns = [
-        /^example/i,
-        /\bexample\b/i,
-        /^e\.g\./i,
-        /^like\b/i,
-        /^such as\b/i,
-        // Specific examples that might get copied
-        /team sync|design review|daily tasks|finish report/i,
-        /ai automation|gratitude today|react hooks guide/i,
-        /meeting notes|project ideas/i,
-    ];
+    const examplePatterns = [/^example/i, /\bexample\b/i, /^e\.g\./i, /^like\b/i, /^such as\b/i];
 
     return examplePatterns.some((pattern) => pattern.test(lowerTitle));
 }

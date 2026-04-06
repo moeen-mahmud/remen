@@ -4,7 +4,7 @@ import Voice, {
     type SpeechErrorEvent,
     type SpeechResultsEvent,
     type SpeechStartEvent,
-} from "@react-native-voice/voice";
+} from "@react-native-community/voice";
 
 class VoiceCapture {
     private callback: VoiceCallback | null = null;

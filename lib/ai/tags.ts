@@ -31,87 +31,11 @@ export async function extractTags(content: string, llm: LLMModel | null, noteTyp
 }
 
 function containsExampleTags(tags: string[]): boolean {
-    const exampleWords = new Set([
-        "example",
-        "team",
-        "planning",
-        "design", // meeting examples
-        "urgent",
-        "work",
-        "deadline", // task examples
-        "product",
-        "innovation",
-        "future", // idea examples
-        "gratitude",
-        "health",
-        "reflection", // journal examples
-        "coding",
-        "tutorial",
-        "docs", // reference examples
-        "important",
-        "project", // default examples
-        "actionable",
-        "decision",
-        "review",
-        "recurring",
-        "urgent",
-        "blocked",
-        "quick-win",
-        "product",
-        "experimental",
-        "improvement",
-        "exploratory",
-        "goals",
-        "gratitude",
-        "learning",
-        "reflection",
-        "coding",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-    ]);
+    // Only reject tags that are clearly meta/placeholder words from prompts
+    const exampleWords = new Set(["example", "e-g", "such-as", "like-this", "sample-tag", "placeholder"]);
 
-    // If 2+ tags are from example set, likely copied
     const exampleMatches = tags.filter((tag) => exampleWords.has(tag.toLowerCase()));
-    return exampleMatches.length >= 2;
+    return exampleMatches.length >= 3;
 }
 
 /**
