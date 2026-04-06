@@ -67,3 +67,25 @@ Built with Gluestack UI + NativeWind (Tailwind CSS for RN). `components/ui/` con
 - **Commits:** Conventional Commits enforced by commitlint. Types: `feat`, `fix`, `docs`, `chore`, `refactor`, `perf`, `test`, `build`, `ci`, `style`, `revert`, `wip`, `hotfix`, `release`
 - **Branching:** Branch from `development`, PR into `development`. Format: `<github-username>/<type>/<description>`
 - **Releases:** Managed with Changesets (`bun run release:add`)
+
+## Agent Skills
+
+Custom and external skills are installed in `.claude/skills/`. Read the relevant SKILL.md before working on that domain.
+
+### Remen-Specific Skills (custom)
+| Skill | When to use |
+|-------|-------------|
+| `remen-architecture` | Before making ANY structural changes — file conventions, module patterns, component organization |
+| `remen-ai-pipeline` | When touching `lib/ai/` — prompts, queue, model lifecycle, output parsing |
+| `remen-database` | When touching `lib/database/` — schema, migrations, CRUD, query patterns |
+| `remen-search` | When touching `lib/search/` — semantic search, keyword search, temporal parsing, result ranking |
+| `remen-executorch` | When working with react-native-executorch — model loading, API reference, lifecycle, quantization |
+
+### External Skills (marketplace)
+| Skill | Source | When to use |
+|-------|--------|-------------|
+| `building-native-ui` | Expo | UI components, navigation, animations, native controls |
+| `native-data-fetching` | Expo | Network requests, caching, offline support |
+| `upgrading-expo` | Expo | SDK upgrades, dependency resolution |
+| `vercel-react-native-skills` | Vercel | React Native best practices, cross-platform patterns |
+| `vercel-react-best-practices` | Vercel | React patterns, hooks, state management |
