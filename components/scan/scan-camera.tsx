@@ -3,7 +3,6 @@ import { scanStyles as styles } from "@/components/scan/scan-styles";
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Text } from "@/components/ui/text";
-import { useAI } from "@/lib/ai/provider";
 import { setPendingScanPhotoUri } from "@/lib/capture/pending-scan-photo";
 import { useIsFocused } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
@@ -17,7 +16,6 @@ export const ScanCamera: React.FC = () => {
     const { top, bottom } = useSafeAreaInsets();
     const router = useRouter();
     const isFocused = useIsFocused();
-    const { ocr } = useAI();
 
     const { hasPermission, requestPermission } = useCameraPermission();
     const device = useCameraDevice("back");
@@ -52,16 +50,6 @@ export const ScanCamera: React.FC = () => {
             return;
         }
 
-        // Keep capture disabled while OCR is not ready (matches prior behavior)
-        if (!ocr?.isReady) {
-            console.warn("[Scan] OCR not ready, ignoring capture request");
-            return;
-        }
-        if (ocr?.isGenerating) {
-            console.warn("[Scan] OCR is generating, ignoring capture request");
-            return;
-        }
-
         try {
             isCapturingRef.current = true;
             setError(null);
@@ -85,7 +73,7 @@ export const ScanCamera: React.FC = () => {
         } finally {
             isCapturingRef.current = false;
         }
-    }, [device, hasPermission, ocr, router]);
+    }, [device, hasPermission, router]);
 
     return (
         <Box className="flex-1 bg-black">
@@ -106,7 +94,7 @@ export const ScanCamera: React.FC = () => {
                             photo
                             enableZoomGesture
                             onError={(e) => {
-                                console.error("❌ [Scan] Camera error:", e);
+                                console.error("[Scan] Camera error:", e);
                                 setError(e.message);
                             }}
                         />
@@ -136,24 +124,12 @@ export const ScanCamera: React.FC = () => {
                         <Box style={styles.maskBottom} />
                     </Box>
 
-                    {/* OCR Model Status */}
-                    {!ocr?.isReady && (
-                        <Box style={styles.modelStatusBanner}>
-                            <Text style={styles.modelStatusText}>
-                                OCR model loading: {Math.round((ocr?.downloadProgress || 0) * 100)}%
-                            </Text>
-                        </Box>
-                    )}
-
                     {/* Capture button */}
                     <Box style={[styles.captureButtonContainer, { paddingBottom: bottom + 20 }]}>
                         <Pressable
                             onPress={handleCapture}
-                            disabled={!device || !ocr?.isReady || ocr?.isGenerating}
-                            style={[
-                                styles.captureButton,
-                                (!device || !ocr?.isReady || ocr?.isGenerating) && styles.captureButtonDisabled,
-                            ]}
+                            disabled={!device}
+                            style={[styles.captureButton, !device && styles.captureButtonDisabled]}
                         />
                     </Box>
 

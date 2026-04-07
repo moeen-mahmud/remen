@@ -3,36 +3,22 @@ import { Box } from "@/components/ui/box";
 import { Divider } from "@/components/ui/divider";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { EmbeddingsModel, LLMModel, OCRModel } from "@/lib/ai";
+import { EmbeddingsModel } from "@/lib/ai";
 import { useTheme } from "@/lib/theme/use-theme";
 import { CheckCircle, Download, XCircle, Zap } from "lucide-react-native";
 import { useMemo } from "react";
 
 type SettingsAIProps = {
-    llm: LLMModel | null;
     embeddings: EmbeddingsModel | null;
-    ocr: OCRModel | null;
     overallProgress: number;
     isInitializing: boolean;
 };
 
-export const SettingsAI: React.FC<SettingsAIProps> = ({
-    llm,
-    embeddings,
-    ocr,
-    overallProgress = 0,
-    isInitializing = false,
-}) => {
+export const SettingsAI: React.FC<SettingsAIProps> = ({ embeddings, overallProgress = 0, isInitializing = false }) => {
     const { mutedTextColor, brandColor } = useTheme();
 
     const modelRows = useMemo(() => {
         return [
-            {
-                name: "Language Model",
-                description: "The core of the AI functionality",
-                isReady: llm?.isReady,
-                downloadProgress: llm?.downloadProgress,
-            },
             {
                 name: "Semantic Search",
                 description: "Intelligent note discovery",
@@ -40,13 +26,13 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
                 downloadProgress: embeddings?.downloadProgress,
             },
             {
-                name: "Text Recognition",
-                description: "Extracting text from images",
-                isReady: ocr?.isReady,
-                downloadProgress: ocr?.downloadProgress,
+                name: "Language Model",
+                description: "Loads on demand for note processing",
+                isReady: true, // LLM is queue-managed, loads when needed
+                downloadProgress: 1,
             },
         ];
-    }, [llm, embeddings, ocr]);
+    }, [embeddings]);
 
     return (
         <Box className="px-4 mt-6">

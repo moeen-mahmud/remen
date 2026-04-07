@@ -9,9 +9,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 interface ModelDownloadOverlayProps {
     progress: number; // 0 to 1
-    llmProgress: number;
     embeddingsProgress: number;
-    ocrProgress: number;
     isVisible: boolean;
     onMinimize?: () => void;
     onClose?: () => void;
@@ -20,9 +18,7 @@ interface ModelDownloadOverlayProps {
 
 export function ModelDownloadOverlay({
     progress,
-    llmProgress,
     embeddingsProgress,
-    ocrProgress,
     isVisible,
     onMinimize,
     onClose,
@@ -113,7 +109,6 @@ export function ModelDownloadOverlay({
         outputRange: ["0%", "100%"],
     });
 
-    // Don't render if not visible and progress is complete
     if (!isVisible && progress >= 1) {
         return null;
     }
@@ -188,19 +183,14 @@ export function ModelDownloadOverlay({
                 {/* Individual model progress */}
                 <View style={styles.modelsContainer}>
                     <ModelProgressItem
-                        name="Language Model"
-                        progress={llmProgress}
-                        description="The core of the AI functionality"
-                    />
-                    <ModelProgressItem
-                        name="Embeddings"
+                        name="Semantic Search"
                         progress={embeddingsProgress}
                         description="Intelligent note discovery"
                     />
                     <ModelProgressItem
-                        name="Text Recognition"
-                        progress={ocrProgress}
-                        description="Extracting text from images"
+                        name="Language Model"
+                        progress={embeddingsProgress >= 1 ? 1 : 0}
+                        description="Loads on demand when processing notes"
                     />
                 </View>
             </View>

@@ -42,13 +42,10 @@ export interface OCRModel {
 }
 
 export interface AIContextType {
-    llm: LLMModel | null;
     embeddings: EmbeddingsModel | null;
-    ocr: OCRModel | null;
     isInitializing: boolean;
     overallProgress: number;
     error: string | null;
-    hasMemoryError: boolean;
 }
 
 export interface ClassificationResult {

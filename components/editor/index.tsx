@@ -29,7 +29,7 @@ export default function Editor({
     const { bottom } = useSafeAreaInsets();
     const { textColor, placeholderTextColor } = useTheme();
 
-    const { llm, embeddings } = useAI();
+    const { embeddings } = useAI();
 
     const [isLoading, setIsLoading] = useState(!!initialNoteId);
     const [currentNoteId, setCurrentNoteId] = useState<string | null>(initialNoteId);
@@ -99,7 +99,7 @@ export default function Editor({
                         console.error("Failed to sync tasks:", error);
                     }
 
-                    aiQueue.setModels({ llm, embeddings });
+                    aiQueue.setModels({ embeddings });
                     aiQueue.add({ noteId, content }, true);
 
                     return noteId;
@@ -115,7 +115,7 @@ export default function Editor({
                         console.error("Failed to sync tasks:", error);
                     }
 
-                    aiQueue.setModels({ llm, embeddings });
+                    aiQueue.setModels({ embeddings });
                     aiQueue.add({ noteId: note.id, content: noteContent }, true);
 
                     return note.id;
@@ -125,7 +125,7 @@ export default function Editor({
                 return noteId;
             }
         },
-        [llm, embeddings], // noteType is intentionally excluded - we check it in the function body
+        [embeddings], // noteType is intentionally excluded - we check it in the function body
     );
 
     const scheduleAutosave = useCallback(

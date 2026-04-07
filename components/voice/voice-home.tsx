@@ -21,7 +21,7 @@ export const VoiceHome: React.FC = () => {
         useTheme();
 
     // Get AI models for processing queue
-    const { llm, embeddings } = useAI();
+    const { embeddings } = useAI();
 
     const [, setVoiceState] = useState<VoiceState>({
         isListening: false,
@@ -145,7 +145,7 @@ export const VoiceHome: React.FC = () => {
             });
 
             // Queue for AI processing (with AI models)
-            aiQueue.setModels({ llm, embeddings });
+            aiQueue.setModels({ embeddings });
             aiQueue.add({ noteId: note.id, content: transcript });
 
             // Navigate to note detail

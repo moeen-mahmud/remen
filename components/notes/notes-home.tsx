@@ -9,7 +9,7 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { Text } from "@/components/ui/text";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { aiQueue } from "@/lib/ai";
-import { useAI, useAILLM } from "@/lib/ai/provider";
+import { useAI } from "@/lib/ai/provider";
 import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, pinNote, unpinNote } from "@/lib/database/database";
 import { Note, Tag } from "@/lib/database/database.types";
 import { askNotesSearch } from "@/lib/search/search";
@@ -32,11 +32,8 @@ export const NotesHome: React.FC = () => {
 
     // Get AI models for search - use ref to avoid dependency issues
     const { embeddings } = useAI();
-    const llm = useAILLM();
     const embeddingsRef = useRef(embeddings);
-    const llmRef = useRef(llm);
     embeddingsRef.current = embeddings;
-    llmRef.current = llm;
 
     const [notes, setNotes] = useState<NoteWithTags[]>([]);
     const [filteredNotes, setFilteredNotes] = useState<NoteWithTags[]>([]);
@@ -178,7 +175,7 @@ export const NotesHome: React.FC = () => {
             console.log("🔍 [Search] Searching for:", searchQuery);
 
             // Use LLM-powered search if LLM is available
-            const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current, llmRef.current);
+            const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current, null);
             const { results, temporalFilter, interpretedQuery: llmInterpretedQuery } = searchResult;
 
             console.log(`🔍 [Search] Found ${results.length} results`);

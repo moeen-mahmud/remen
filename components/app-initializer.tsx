@@ -15,10 +15,9 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     const [downloadOverlayMinimized, setDownloadOverlayMinimized] = useState(false);
     const [modelsDownloadedPreviously, setModelsDownloadedPreviously] = useState<boolean | null>(null);
     const [, setOnboardingCompleted] = useState<boolean | null>(null);
-    const { llm, embeddings, ocr, isInitializing, overallProgress, error } = useAI();
+    const { embeddings, isInitializing, overallProgress, error } = useAI();
 
-    // Track previous state to avoid duplicate logs
-    const prevStateRef = useRef({ llmReady: false, embeddingsReady: false, lastProgress: 0 });
+    const prevStateRef = useRef({ embeddingsReady: false, lastProgress: 0 });
 
     // Check if models were previously downloaded and onboarding completed
     useEffect(() => {
@@ -28,7 +27,6 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
             setOnboardingCompleted(prefs.onboardingCompleted);
             setDownloadOverlayMinimized(prefs.downloadOverlayMinimized);
 
-            // Show onboarding if not completed, otherwise show download overlay if models not downloaded
             if (!prefs.onboardingCompleted) {
                 setShowOnboarding(true);
             } else if (!prefs.modelsDownloaded && !prefs.downloadOverlayMinimized) {
@@ -64,17 +62,14 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
         initialize();
     }, []);
 
-    // Update AI models in queue when their ready state changes
-    const llmReady = llm?.isReady || false;
+    // Only need embeddings ready — LLM loads on demand via queue
     const embeddingsReady = embeddings?.isReady || false;
-    const ocrReady = ocr?.isReady || false;
-    const allModelsReady = llmReady && embeddingsReady && ocrReady;
 
-    // Mark models as downloaded when all are ready (only if no memory error)
+    // Mark models as downloaded when embeddings are ready
     useEffect(() => {
         async function markModelsDownloaded() {
-            if (allModelsReady && modelsDownloadedPreviously === false) {
-                console.log("[App] All models downloaded, saving preference...");
+            if (embeddingsReady && modelsDownloadedPreviously === false) {
+                console.log("[App] Embeddings downloaded, saving preference...");
                 await savePreferences({ modelsDownloaded: true });
                 setTimeout(() => {
                     setShowDownloadOverlay(false);
@@ -82,13 +77,12 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
             }
         }
         markModelsDownloaded();
-    }, [allModelsReady, modelsDownloadedPreviously]);
+    }, [embeddingsReady, modelsDownloadedPreviously]);
 
     // Handle notification taps to open the respective note
     useEffect(() => {
         let subscription: Notifications.EventSubscription | null = null;
         if (isReady) {
-            // Helper to navigate to a note if we have a valid ID
             const handleNavigateToNote = (noteId: unknown) => {
                 if (typeof noteId !== "string" || !noteId) return;
                 try {
@@ -110,7 +104,6 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
                 }
             })();
 
-            // Listen for taps while the app is in foreground/background
             subscription = Notifications.addNotificationResponseReceivedListener((response) => {
                 const noteId = (response.notification.request.content.data as any)?.noteId;
                 handleNavigateToNote(noteId);
@@ -122,40 +115,34 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
         };
     }, [isReady]);
 
-    // Handle onboarding completion
     const handleOnboardingComplete = useCallback(async () => {
         await savePreferences({ onboardingCompleted: true });
         setShowOnboarding(false);
         setOnboardingCompleted(true);
 
-        // Check if we should show download overlay after onboarding
         const prefs = await getPreferences();
         if (!prefs.modelsDownloaded) {
             setShowDownloadOverlay(true);
         }
     }, []);
 
-    // Handle onboarding skip
     const handleOnboardingSkip = useCallback(async () => {
         await savePreferences({ onboardingCompleted: true });
         setShowOnboarding(false);
         setOnboardingCompleted(true);
 
-        // Check if we should show download overlay after onboarding
         const prefs = await getPreferences();
         if (!prefs.modelsDownloaded && !prefs.downloadOverlayMinimized) {
             setShowDownloadOverlay(true);
         }
     }, []);
 
-    // Handle download overlay minimize
     const handleDownloadOverlayMinimize = useCallback(async () => {
         await savePreferences({ downloadOverlayMinimized: true });
         setDownloadOverlayMinimized(true);
         setShowDownloadOverlay(false);
     }, []);
 
-    // Handle download overlay close
     const handleDownloadOverlayClose = useCallback(async () => {
         await savePreferences({ downloadOverlayMinimized: true, modelsDownloaded: true });
         setDownloadOverlayMinimized(true);
@@ -165,19 +152,11 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const prev = prevStateRef.current;
 
-        // Only log when state actually changes
-        if (llmReady !== prev.llmReady || embeddingsReady !== prev.embeddingsReady) {
-            console.log(
-                `[App] AI models - LLM: ${llmReady ? "✓" : "..."}, Embeddings: ${embeddingsReady ? "✓" : "..."}`,
-            );
-            prev.llmReady = llmReady;
+        if (embeddingsReady !== prev.embeddingsReady) {
+            console.log(`[App] AI models - Embeddings: ${embeddingsReady ? "✓" : "..."}, LLM: on-demand`);
             prev.embeddingsReady = embeddingsReady;
         }
-
-        if (llm || embeddings) {
-            aiQueue.setModels({ llm, embeddings });
-        }
-    }, [llm, embeddings, llmReady, embeddingsReady]);
+    }, [embeddingsReady]);
 
     // Log AI progress at 10% intervals
     useEffect(() => {
@@ -190,7 +169,6 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
         }
     }, [isInitializing, overallProgress]);
 
-    // Log errors
     useEffect(() => {
         if (error) {
             console.error(`[App] AI error: ${error}`);
@@ -204,25 +182,18 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     return (
         <>
             {children}
-            {/* Show onboarding on first launch */}
             {showOnboarding ? <Onboarding onComplete={handleOnboardingComplete} onSkip={handleOnboardingSkip} /> : null}
 
-            {/* Show download overlay after onboarding while models are downloading (only if no memory error) */}
             {showDownloadOverlay ? (
                 <ModelDownloadOverlay
                     progress={overallProgress}
-                    llmProgress={llm?.downloadProgress || 0}
                     embeddingsProgress={embeddings?.downloadProgress || 0}
-                    ocrProgress={ocr?.downloadProgress || 0}
                     isVisible={showDownloadOverlay && isInitializing}
                     onMinimize={handleDownloadOverlayMinimize}
                     onClose={handleDownloadOverlayClose}
                     isMinimized={downloadOverlayMinimized}
                 />
             ) : null}
-
-            {/* Show memory error overlay if models failed due to memory issues */}
-            {/* {hasMemoryError ? <MemoryErrorOverlay isVisible={hasMemoryError} /> : null} */}
         </>
     );
 }

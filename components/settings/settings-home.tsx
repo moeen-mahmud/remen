@@ -21,7 +21,7 @@ import { useCallback, useEffect, useState } from "react";
 
 export const SettingsHome: React.FC = () => {
     const pathname = usePathname();
-    const { llm, embeddings, ocr, overallProgress, isInitializing } = useAI();
+    const { embeddings, overallProgress, isInitializing } = useAI();
     const { setColorScheme } = useColorScheme();
     const [preferences, setPreferences] = useState<Preferences | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -200,13 +200,7 @@ export const SettingsHome: React.FC = () => {
             />
 
             {/* AI Section */}
-            <SettingsAI
-                llm={llm}
-                embeddings={embeddings}
-                ocr={ocr}
-                overallProgress={overallProgress}
-                isInitializing={isInitializing}
-            />
+            <SettingsAI embeddings={embeddings} overallProgress={overallProgress} isInitializing={isInitializing} />
 
             {/* AI Controls Section */}
             <SettingsAIControls />
