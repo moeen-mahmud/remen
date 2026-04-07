@@ -1,7 +1,6 @@
 import { scanStyles as styles } from "@/components/scan/scan-styles";
 import { Box } from "@/components/ui/box";
 import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
-import { Text } from "@/components/ui/text";
 import { useTheme } from "@/lib/theme/use-theme";
 import { Image } from "expo-image";
 import { CheckIcon, RefreshCwIcon } from "lucide-react-native";
@@ -11,7 +10,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type ScanReviewProps = {
     capturedImagePath: string | null;
-    confidence: number;
     extractedText: string;
     setExtractedText: (text: string) => void;
     handleRetake: () => void;
@@ -22,7 +20,6 @@ type ScanReviewProps = {
 
 export const ScanReview: React.FC<ScanReviewProps> = ({
     capturedImagePath,
-    confidence,
     extractedText,
     setExtractedText,
     handleRetake,
@@ -35,7 +32,7 @@ export const ScanReview: React.FC<ScanReviewProps> = ({
 
     return (
         <KeyboardAwareScrollView className="flex-1 -mt-6 bg-background-0">
-            {/* Scanned image preview */}
+            {/* Photo preview */}
             {capturedImagePath ? (
                 <Box className="overflow-hidden mx-4 rounded-lg shadow-md dark:bg-neutral-900 bg-neutral-200">
                     <Image
@@ -44,15 +41,11 @@ export const ScanReview: React.FC<ScanReviewProps> = ({
                         contentFit="contain"
                         transition={200}
                     />
-                    <Box className="absolute right-4 bottom-4 p-2 rounded-md bg-background-0/75">
-                        <Text className="text-sm font-semibold">{Math.round(confidence * 100)}% confidence</Text>
-                    </Box>
                 </Box>
             ) : null}
 
-            {/* Extracted text */}
+            {/* Add a note — like Google Keep */}
             <Box className="mx-4 my-4">
-                <Text className="mb-4 font-medium text-left uppercase text-typography-500">Extracted Text</Text>
                 <TextInput
                     className="rounded-lg"
                     style={[
@@ -67,8 +60,9 @@ export const ScanReview: React.FC<ScanReviewProps> = ({
                     onChangeText={setExtractedText}
                     multiline
                     textAlignVertical="top"
-                    placeholder="No text detected"
+                    placeholder="Add a note..."
                     placeholderTextColor={placeholderTextColor}
+                    autoFocus={false}
                 />
             </Box>
 

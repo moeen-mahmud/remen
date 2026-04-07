@@ -1,10 +1,6 @@
 import { VoiceCallback, VoiceState } from "@/lib/capture/voice.types";
-import Voice, {
-    type SpeechEndEvent,
-    type SpeechErrorEvent,
-    type SpeechResultsEvent,
-    type SpeechStartEvent,
-} from "@react-native-community/voice";
+import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
+import type { EventSubscription } from "expo-modules-core";
 
 class VoiceCapture {
     private callback: VoiceCallback | null = null;
@@ -14,49 +10,63 @@ class VoiceCapture {
         partialResults: [],
         error: null,
     };
+    private subscriptions: EventSubscription[] = [];
 
     constructor() {
         this.setupListeners();
     }
 
     private setupListeners() {
-        Voice.onSpeechStart = this.onSpeechStart.bind(this);
-        Voice.onSpeechEnd = this.onSpeechEnd.bind(this);
-        Voice.onSpeechResults = this.onSpeechResults.bind(this);
-        Voice.onSpeechPartialResults = this.onSpeechPartialResults.bind(this);
-        Voice.onSpeechError = this.onSpeechError.bind(this);
+        this.cleanupListeners();
+
+        this.subscriptions.push(
+            ExpoSpeechRecognitionModule.addListener("start", () => {
+                this.updateState({ isListening: true, error: null });
+            }),
+        );
+
+        this.subscriptions.push(
+            ExpoSpeechRecognitionModule.addListener("end", () => {
+                this.updateState({ isListening: false });
+            }),
+        );
+
+        this.subscriptions.push(
+            ExpoSpeechRecognitionModule.addListener("result", (event) => {
+                const transcript = event.results?.[0]?.transcript ?? "";
+                if (event.isFinal) {
+                    this.updateState({
+                        results: transcript ? [transcript] : [],
+                        partialResults: [],
+                        isListening: false,
+                    });
+                } else {
+                    this.updateState({
+                        partialResults: transcript ? [transcript] : [],
+                    });
+                }
+            }),
+        );
+
+        this.subscriptions.push(
+            ExpoSpeechRecognitionModule.addListener("error", (event) => {
+                console.error("Voice error:", event.error, event.message);
+                this.updateState({
+                    isListening: false,
+                    error: event.message ?? event.error ?? "Unknown error occurred",
+                });
+            }),
+        );
+    }
+
+    private cleanupListeners() {
+        this.subscriptions.forEach((sub) => sub.remove());
+        this.subscriptions = [];
     }
 
     private updateState(partial: Partial<VoiceState>) {
         this.state = { ...this.state, ...partial };
         this.callback?.(this.state);
-    }
-
-    private onSpeechStart(_e: SpeechStartEvent) {
-        this.updateState({ isListening: true, error: null });
-    }
-
-    private onSpeechEnd(_e: SpeechEndEvent) {
-        this.updateState({ isListening: false });
-    }
-
-    private onSpeechResults(e: SpeechResultsEvent) {
-        this.updateState({
-            results: e.value ?? [],
-            isListening: false,
-        });
-    }
-
-    private onSpeechPartialResults(e: SpeechResultsEvent) {
-        this.updateState({ partialResults: e.value ?? [] });
-    }
-
-    private onSpeechError(e: SpeechErrorEvent) {
-        console.error("Voice error:", e.error);
-        this.updateState({
-            isListening: false,
-            error: e.error?.message ?? "Unknown error occurred",
-        });
     }
 
     setCallback(callback: VoiceCallback) {
@@ -70,7 +80,22 @@ class VoiceCapture {
                 partialResults: [],
                 error: null,
             });
-            await Voice.start(locale);
+
+            // Ensure permissions are granted
+            const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+            if (!granted) {
+                this.updateState({
+                    error: "Microphone permission denied",
+                    isListening: false,
+                });
+                return;
+            }
+
+            ExpoSpeechRecognitionModule.start({
+                lang: locale,
+                interimResults: true,
+                continuous: true,
+            });
         } catch (error) {
             console.error("Failed to start voice:", error);
             this.updateState({
@@ -82,7 +107,7 @@ class VoiceCapture {
 
     async stop() {
         try {
-            await Voice.stop();
+            ExpoSpeechRecognitionModule.stop();
         } catch (error) {
             console.error("Failed to stop voice:", error);
         }
@@ -90,7 +115,7 @@ class VoiceCapture {
 
     async cancel() {
         try {
-            await Voice.cancel();
+            ExpoSpeechRecognitionModule.abort();
             this.updateState({
                 isListening: false,
                 partialResults: [],
@@ -102,17 +127,18 @@ class VoiceCapture {
 
     async destroy() {
         try {
-            await Voice.destroy();
-            this.callback = null;
-        } catch (error) {
-            console.error("Failed to destroy voice:", error);
+            ExpoSpeechRecognitionModule.abort();
+        } catch (_) {
+            // ignore
         }
+        this.cleanupListeners();
+        this.callback = null;
     }
 
     async isAvailable(): Promise<boolean> {
         try {
-            const available = await Voice.isAvailable();
-            return available === 1 || Boolean(available) === true;
+            const { granted } = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+            return granted;
         } catch {
             return false;
         }
