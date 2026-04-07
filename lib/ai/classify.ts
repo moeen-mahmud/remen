@@ -1,4 +1,5 @@
 import { ClassificationResult } from "@/lib/ai/ai.types";
+import { AI_CONTENT_PREVIEW_LENGTH } from "@/lib/consts/consts";
 import type { NoteType } from "@/lib/database/database.types";
 import type { LLMModel, Message } from "./ai.types";
 
@@ -48,19 +49,16 @@ export async function classifyNoteType(content: string, llm: LLMModel | null): P
 }
 
 async function classifyWithAI(content: string, llm: LLMModel): Promise<NoteType | null> {
-    // Truncate content for focus
-    const contentPreview = content.length > 400 ? content.substring(0, 400).trim() : content.trim();
-
-    const systemPrompt = buildClassificationPrompt();
+    const preview = content.substring(0, AI_CONTENT_PREVIEW_LENGTH).trim();
 
     const messages: Message[] = [
         {
             role: "system",
-            content: systemPrompt,
+            content: "Classify this note as one word: meeting, task, idea, journal, reference, or note.",
         },
         {
             role: "user",
-            content: `Classify this note:\n\n${contentPreview}`,
+            content: `Note: ${preview}\nType:`,
         },
     ];
 
@@ -77,35 +75,14 @@ async function classifyWithAI(content: string, llm: LLMModel): Promise<NoteType 
     }
 }
 
-function buildClassificationPrompt(): string {
-    const instruction =
-        "You are a note classifier. Analyze the content and respond with exactly ONE word from this list:";
-
-    const typeDescriptions = [
-        "meeting - if about a meeting, call, sync, or discussion with others",
-        "task - if it's a to-do list, action items, or things to complete",
-        "idea - if exploring concepts, questions, or brainstorming",
-        "journal - if expressing personal feelings, reflections, or daily events",
-        "reference - if documenting information, code, guides, or resources",
-        "note - if general information that doesn't fit other categories",
-    ];
-
-    const rules = [
-        "Output ONLY one word: meeting, task, idea, journal, reference, or note",
-        "No explanations, no punctuation, no extra text",
-        "Choose the category that best matches the content's primary purpose",
-    ];
-
-    return `${instruction}\n\n${typeDescriptions.join("\n")}\n\n${rules.join("\n")}`;
-}
-
 function parseClassificationResponse(response: string): NoteType | null {
     // Clean the response aggressively
     const cleaned = response
+        .replace(/<\|[^|]*\|>/g, "") // Strip ChatML tokens
         .trim()
         .toLowerCase()
         .split("\n")[0] // Take only first line
-        .replace(/^(category|type|classification|answer|result):\s*/i, "") // Remove prefixes
+        .replace(/^(category|type|classification|answer|result|output|note):\s*/i, "") // Remove prefixes
         .replace(/[.,;!?'"]/g, "") // Remove all punctuation
         .replace(/\s+/g, " ") // Normalize spaces
         .split(/[\s]/)[0]; // Take first word only

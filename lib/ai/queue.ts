@@ -1,6 +1,6 @@
 import { AI_OPERATION_DELAY } from "@/lib/consts/consts";
 import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database/database";
-import { LLMModule, SMOLLM2_1_360M_QUANTIZED, SMOLLM2_1_135M_QUANTIZED } from "react-native-executorch";
+import { LLMModule, SMOLLM2_1_135M_QUANTIZED, SMOLLM2_1_360M_QUANTIZED } from "react-native-executorch";
 import type { EmbeddingsModel, LLMModel, Message } from "./ai.types";
 import { classifyNoteType } from "./classify";
 import { generateEmbedding } from "./embeddings";
@@ -58,9 +58,7 @@ class AIProcessingQueue {
     private addImmediate(job: NoteJob) {
         if (!this.queue.some((j) => j.noteId === job.noteId)) {
             this.queue.push(job);
-            console.log(
-                `[Queue] Added note: ${job.noteId.substring(0, 8)}... (queue size: ${this.queue.length})`,
-            );
+            console.log(`[Queue] Added note: ${job.noteId.substring(0, 8)}... (queue size: ${this.queue.length})`);
 
             const existingTimeout = this.processingTimeouts.get(job.noteId);
             if (existingTimeout) {
