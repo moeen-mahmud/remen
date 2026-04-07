@@ -1,4 +1,3 @@
-import { AI_OPERATION_DELAY } from "@/lib/consts/consts";
 import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database/database";
 import { LLMModule, SMOLLM2_1_135M_QUANTIZED, SMOLLM2_1_360M_QUANTIZED } from "react-native-executorch";
 import type { EmbeddingsModel, LLMModel, Message } from "./ai.types";
@@ -68,7 +67,7 @@ class AIProcessingQueue {
             const timeout = setTimeout(() => {
                 this.processingTimeouts.delete(job.noteId);
                 this.processNext();
-            }, 2000);
+            }, 300);
 
             this.processingTimeouts.set(job.noteId, timeout as unknown as NodeJS.Timeout);
         }
@@ -259,8 +258,8 @@ class AIProcessingQueue {
             this.currentJob = null;
 
             if (this.queue.length > 0) {
-                // More work — keep LLM loaded, process next after small delay
-                setTimeout(() => this.processNext(), AI_OPERATION_DELAY);
+                // More work — keep LLM loaded, process next after brief settle
+                setTimeout(() => this.processNext(), 300);
             } else {
                 // Queue empty — schedule LLM unload after idle timeout
                 this.scheduleLLMUnload();
@@ -321,7 +320,7 @@ class AIProcessingQueue {
                 } else {
                     console.log(`  Classifying type...`);
                     type = await classifyNoteType(content, llm);
-                    if (llm) await new Promise((resolve) => setTimeout(resolve, AI_OPERATION_DELAY));
+                    if (llm) await new Promise((resolve) => setTimeout(resolve, 200));
                     console.log(`  Type: ${type}`);
                 }
             } else {
@@ -337,7 +336,7 @@ class AIProcessingQueue {
             if (!title) {
                 console.log(`  Generating title...`);
                 title = await generateTitle(content, llm, type);
-                if (llm) await new Promise((resolve) => setTimeout(resolve, AI_OPERATION_DELAY));
+                if (llm) await new Promise((resolve) => setTimeout(resolve, 200));
                 console.log(`  Title: "${title}"`);
             } else {
                 console.log(`  Title preserved (user-set): "${title}"`);

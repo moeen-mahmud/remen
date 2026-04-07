@@ -33,7 +33,24 @@ export async function generateTitle(content: string, llm: LLMModel | null, noteT
  * Check if the generated title looks like an example that was copied
  */
 function isExampleTitle(title: string): boolean {
-    const lowerTitle = title.toLowerCase();
+    const lowerTitle = title.toLowerCase().trim();
+
+    // Reject generic meta-titles the model echoes back
+    const genericTitles = new Set([
+        "note",
+        "notes",
+        "title",
+        "untitled",
+        "output",
+        "content",
+        "text",
+        "summary",
+        "document",
+        "entry",
+    ]);
+    if (genericTitles.has(lowerTitle)) {
+        return true;
+    }
 
     // Common example indicators
     const examplePatterns = [/^example/i, /\bexample\b/i, /^e\.g\./i, /^like\b/i, /^such as\b/i];
@@ -54,7 +71,7 @@ async function generateTitleWithAI(content: string, llm: LLMModel, noteType?: No
         },
         {
             role: "user",
-            content: `Note: ${preview}\nTitle:`,
+            content: `${preview}\n\nTitle:`,
         },
     ];
 
