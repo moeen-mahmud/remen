@@ -1,4 +1,4 @@
-import type { EmbeddingsModel, LLMModel } from "@/lib/ai/ai.types";
+import type { EmbeddingsModel } from "@/lib/ai/ai.types";
 import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings";
 import { TEMPORAL_ONLY_PATTERNS } from "@/lib/config/regex-patterns";
 import { getAllNotes, searchNotes as keywordSearch, updateNote } from "@/lib/database/database";
@@ -299,7 +299,6 @@ function mergeSearchResults(semantic: SearchResult[], keyword: SearchResult[]): 
 export async function askNotesSearch(
     query: string,
     embeddingsModel: EmbeddingsModel | null,
-    _llmModel?: LLMModel | null,
 ): Promise<EnhancedSearchResult> {
     if (query.trim().length === 0) {
         return { results: [], temporalFilter: null };

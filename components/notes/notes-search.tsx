@@ -1,7 +1,6 @@
 import { Box } from "@/components/ui/box";
 import { Icon } from "@/components/ui/icon";
 import { Spinner } from "@/components/ui/spinner";
-import { Text } from "@/components/ui/text";
 import { useTheme } from "@/lib/theme/use-theme";
 import { SearchIcon, XIcon } from "lucide-react-native";
 import { Pressable, TextInput } from "react-native";
@@ -14,7 +13,6 @@ type NotesSearchProps = {
     handleSearch: () => void;
     refetchNotes: () => void;
     isSearching: boolean;
-    isUsingLLM: boolean;
 };
 
 export const NotesSearch: React.FC<NotesSearchProps> = ({
@@ -25,9 +23,8 @@ export const NotesSearch: React.FC<NotesSearchProps> = ({
     handleSearch,
     refetchNotes,
     isSearching,
-    isUsingLLM,
 }) => {
-    const { placeholderTextColor, brandColor, mutedIconColor } = useTheme();
+    const { placeholderTextColor, mutedIconColor } = useTheme();
 
     const handleClearSearch = () => {
         setSearchQuery("");
@@ -51,10 +48,7 @@ export const NotesSearch: React.FC<NotesSearchProps> = ({
                 autoCorrect={false}
             />
             {isSearching ? (
-                <Box className="flex-row gap-2 items-center">
-                    {isUsingLLM ? <Text className="text-sm text-brand">AI</Text> : null}
-                    <Spinner color={isUsingLLM ? brandColor : mutedIconColor} />
-                </Box>
+                <Spinner color={mutedIconColor} />
             ) : searchQuery ? (
                 <Pressable onPress={handleClearSearch}>
                     <Icon as={XIcon} />

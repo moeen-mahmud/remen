@@ -43,7 +43,6 @@ export const NotesHome: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [temporalFilterDescription, setTemporalFilterDescription] = useState<string | null>(null);
     const [isSearching, setIsSearching] = useState(false);
-    const [isUsingLLM, setIsUsingLLM] = useState(false);
     const [interpretedQuery, setInterpretedQuery] = useState<string | null>(null);
     const [processingNoteIds, setProcessingNoteIds] = useState<Set<string>>(new Set());
 
@@ -151,7 +150,6 @@ export const NotesHome: React.FC = () => {
             setFilteredNotes(notes);
             setTemporalFilterDescription(null);
             setIsSearching(false);
-            setIsUsingLLM(false);
             setInterpretedQuery(null);
             const pinnedNotes = notes.filter((note) => note.is_pinned);
             const unpinnedNotes = notes.filter((note) => !note.is_pinned);
@@ -167,24 +165,18 @@ export const NotesHome: React.FC = () => {
         }
 
         setIsSearching(true);
-        setIsUsingLLM(false);
         setInterpretedQuery(null);
 
-        // Debounce search
         try {
-            console.log("🔍 [Search] Searching for:", searchQuery);
+            console.log("[Search] Searching for:", searchQuery);
 
-            // Use LLM-powered search if LLM is available
-            const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current, null);
-            const { results, temporalFilter, interpretedQuery: llmInterpretedQuery } = searchResult;
+            const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current);
+            const { results, temporalFilter, interpretedQuery: searchInterpretedQuery } = searchResult;
 
-            console.log(`🔍 [Search] Found ${results.length} results`);
-            console.log(`🤖 [Search] Interpreted query:`, llmInterpretedQuery);
+            console.log(`[Search] Found ${results.length} results`);
 
-            // Update UI state
             setTemporalFilterDescription(temporalFilter?.description || null);
-            setIsUsingLLM(!!llmInterpretedQuery);
-            setInterpretedQuery(llmInterpretedQuery || null);
+            setInterpretedQuery(searchInterpretedQuery || null);
 
             // Build NoteWithTags from search results directly (don't rely on stale notes array)
             const filtered: NoteWithTags[] = await Promise.all(
@@ -203,9 +195,8 @@ export const NotesHome: React.FC = () => {
             }
             setSections(searchSections);
         } catch (error) {
-            console.error("❌ [Search] Search failed:", error);
+            console.error("[Search] Search failed:", error);
             setTemporalFilterDescription(null);
-            setIsUsingLLM(false);
             setInterpretedQuery(null);
             // Fallback to simple filtering
             const query = searchQuery.toLowerCase();
@@ -233,7 +224,6 @@ export const NotesHome: React.FC = () => {
         setTemporalFilterDescription(null);
         setInterpretedQuery(null);
         setIsSearching(false);
-        setIsUsingLLM(false);
         setIsRefreshing(true);
         loadNotes();
     }, [loadNotes]);
@@ -460,7 +450,6 @@ export const NotesHome: React.FC = () => {
                 setSearchQuery={setSearchQuery}
                 handleSearch={handleSearch}
                 isSearching={isSearching}
-                isUsingLLM={isUsingLLM}
                 refetchNotes={loadNotes}
             />
 

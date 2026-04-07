@@ -137,7 +137,10 @@ class VoiceCapture {
 
     async isAvailable(): Promise<boolean> {
         try {
-            const { granted } = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+            // Request permissions if not yet granted (first launch)
+            const { status } = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+            if (status === "granted") return true;
+            const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
             return granted;
         } catch {
             return false;
