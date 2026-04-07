@@ -96,7 +96,7 @@ export const NotesHome: React.FC = () => {
                 newSections.push({ title: "Pinned items", data: pinnedNotes });
             }
             if (unpinnedNotes.length > 0) {
-                newSections.push({ title: "Others", data: unpinnedNotes });
+                newSections.push({ title: pinnedNotes.length > 0 ? "Others" : "", data: unpinnedNotes });
             }
             setSections(newSections);
         } catch (error) {
@@ -455,6 +455,7 @@ export const NotesHome: React.FC = () => {
 
             {/* Helper text or AI interpretation */}
             <NotesSearchHelper
+                searchResultCount={filteredNotes.length}
                 interpretedQuery={interpretedQuery}
                 temporalFilterDescription={temporalFilterDescription}
                 searchQuery={searchQuery}

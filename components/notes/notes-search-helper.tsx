@@ -6,12 +6,14 @@ type NotesSearchHelperProps = {
     interpretedQuery: string | null;
     temporalFilterDescription: string | null;
     searchQuery: string | null;
+    searchResultCount: number;
 };
 
 export const NotesSearchHelper: React.FC<NotesSearchHelperProps> = ({
     interpretedQuery,
     temporalFilterDescription,
     searchQuery,
+    searchResultCount,
 }) => {
     const { brandColor } = useTheme();
     return (
@@ -19,7 +21,7 @@ export const NotesSearchHelper: React.FC<NotesSearchHelperProps> = ({
             {interpretedQuery ? (
                 <Box className="p-4 rounded-lg bg-brand/10">
                     <Text style={{ color: brandColor }} className="font-semibold">
-                        Interpreted as: &ldquo;{interpretedQuery}&rdquo;
+                        Showing {searchResultCount} results
                     </Text>
                 </Box>
             ) : temporalFilterDescription ? (
