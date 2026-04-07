@@ -292,10 +292,6 @@ class AIProcessingQueue {
         try {
             console.log(`[Queue] Starting AI processing for: ${noteId.substring(0, 8)}...`);
 
-            // Start embedding generation in parallel (uses embeddings model, not LLM)
-            console.log(`  Generating embedding...`);
-            const embeddingPromise = generateEmbedding(content, embeddings);
-
             // Load LLM on demand (or reuse if already loaded)
             let llm: LLMModel | null = null;
             try {
@@ -355,8 +351,11 @@ class AIProcessingQueue {
                 return;
             }
 
-            // Wait for embedding to complete
-            const embedding = await embeddingPromise;
+            // ===== STEP 4: Generate enriched embedding =====
+            // Feed title + content + tags into the embedding for richer semantic search
+            console.log(`  Generating enriched embedding...`);
+            const embeddingInput = `${title} ${content} ${tags.join(" ")}`.trim();
+            const embedding = await generateEmbedding(embeddingInput, embeddings);
             console.log(`  Embedding: ${embedding.length} dimensions`);
             if (isCancelled()) {
                 await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" });

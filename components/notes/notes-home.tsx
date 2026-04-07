@@ -186,15 +186,15 @@ export const NotesHome: React.FC = () => {
             setIsUsingLLM(!!llmInterpretedQuery);
             setInterpretedQuery(llmInterpretedQuery || null);
 
-            // Match results with notes to get tags
-            const resultIds = new Set(results.map((r) => r.id));
-            const filtered = notes.filter((note) => resultIds.has(note.id));
-            // Sort by the search results order
-            filtered.sort((a, b) => {
-                const aIndex = results.findIndex((r) => r.id === a.id);
-                const bIndex = results.findIndex((r) => r.id === b.id);
-                return aIndex - bIndex;
-            });
+            // Build NoteWithTags from search results directly (don't rely on stale notes array)
+            const filtered: NoteWithTags[] = await Promise.all(
+                results.map(async (result) => {
+                    // Check if we already have tags loaded for this note
+                    const existing = notes.find((n) => n.id === result.id);
+                    const tags = existing?.tags ?? (await getTagsForNote(result.id));
+                    return { ...result, tags };
+                }),
+            );
             setFilteredNotes(filtered);
             // For search results, don't separate by pinned status
             const searchSections: { title: string; data: NoteWithTags[] }[] = [];

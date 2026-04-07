@@ -1,14 +1,44 @@
 import type { EmbeddingsModel, LLMModel } from "@/lib/ai/ai.types";
 import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings";
-import { interpretQuery } from "@/lib/ask-notes/ask-notes";
-import { AskNotesResult } from "@/lib/ask-notes/ask-notes.type";
 import { TEMPORAL_ONLY_PATTERNS } from "@/lib/config/regex-patterns";
 import { getAllNotes, searchNotes as keywordSearch, updateNote } from "@/lib/database/database";
-import type { Note } from "@/lib/database/database.types";
-import { processSearchQuery } from "@/lib/search/query-nlp";
+import type { Note, NoteType } from "@/lib/database/database.types";
+import { processSearchQuery, stripNaturalLanguageFiller } from "@/lib/search/query-nlp";
 import type { EnhancedSearchResult, SearchResult } from "@/lib/search/search.types";
 import { parseTemporalQuery } from "@/lib/search/temporal-parser";
-import { shouldUseLLM } from "@/lib/utils/functions";
+
+// Detect type-filter queries like "show me my scans", "voice notes", "my tasks"
+const TYPE_QUERY_MAP: { pattern: RegExp; type: NoteType }[] = [
+    { pattern: /\b(scan|scans|scanned|photos?|images?|pictures?)\b/i, type: "scan" },
+    { pattern: /\b(voice|voice\s*notes?|recordings?|audio)\b/i, type: "voice" },
+    { pattern: /\b(tasks?|to-?dos?|checklists?)\b/i, type: "task" },
+    { pattern: /\b(meetings?|syncs?|calls?)\b/i, type: "meeting" },
+    { pattern: /\b(ideas?|brainstorms?)\b/i, type: "idea" },
+    { pattern: /\b(journals?|diary|reflections?)\b/i, type: "journal" },
+    { pattern: /\b(references?|guides?|docs?|documentation)\b/i, type: "reference" },
+];
+
+// Common filler words around type queries: "show me my task lists" → remove "my", "lists", "list", "all"
+const TYPE_FILLER = /\b(my|all|the|me|show|list|lists|every|recent)\b/gi;
+
+function detectTypeFilter(query: string): NoteType | null {
+    const stripped = stripNaturalLanguageFiller(query).toLowerCase();
+    return detectTypeFromText(stripped);
+}
+
+// Detect type keyword in any text (used by both full-query detection and temporal remainder detection)
+function detectTypeFromText(text: string): NoteType | null {
+    const cleaned = text.replace(/['']/g, "").toLowerCase(); // Strip apostrophes ("today's tasks" → "todays tasks")
+    for (const { pattern, type } of TYPE_QUERY_MAP) {
+        if (pattern.test(cleaned)) {
+            const withoutType = cleaned.replace(pattern, "").replace(TYPE_FILLER, "").replace(/[?\s]+/g, " ").trim();
+            if (withoutType.length < 3) {
+                return type;
+            }
+        }
+    }
+    return null;
+}
 
 function isTemporalOnlyRemainder(q: string): boolean {
     const s = q.replace(/[?.]/g, " ").trim();
@@ -42,14 +72,19 @@ export async function searchNotesEnhanced(
     const searchQuery = (temporalFilter?.query || query).trim();
     const processed = processSearchQuery(searchQuery);
 
-    // If we have a temporal filter and the remaining text is empty or temporal-only
-    // filler ("what i wrote", "what I was thinking", etc.), treat as time-only: filter
-    // all notes by the time range.
-    if (temporalFilter && isTemporalOnlyRemainder(searchQuery)) {
-        console.log(`🔍 [Search] Temporal-only query, filtering notes by time: ${temporalFilter.description}`);
+    // Check if temporal remainder is a type-filter query (e.g., "today's tasks" → temporal=today + type=task)
+    // Or if remainder is temporal-only filler (e.g., "what I wrote" → just time filter)
+    if (temporalFilter && (isTemporalOnlyRemainder(searchQuery) || detectTypeFromText(searchQuery))) {
+        const typeFromRemainder = detectTypeFromText(searchQuery);
+        console.log(
+            `🔍 [Search] Temporal${typeFromRemainder ? `+type(${typeFromRemainder})` : "-only"} query: ${temporalFilter.description}`,
+        );
         const allNotes = await getAllNotes();
         const inRange = (t: number) => t >= temporalFilter.startTime && t <= temporalFilter.endTime;
-        const filteredNotes = allNotes.filter((note) => inRange(note.created_at) || inRange(note.updated_at));
+        let filteredNotes = allNotes.filter((note) => inRange(note.created_at) || inRange(note.updated_at));
+        if (typeFromRemainder) {
+            filteredNotes = filteredNotes.filter((note) => note.type === typeFromRemainder);
+        }
 
         // Rank temporal-only queries:
         // 1) Notes CREATED in the time window
@@ -176,28 +211,6 @@ async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | 
             `🧠 [Semantic Search] Found ${results.length} semantic matches (threshold: ${embeddingsModel?.isReady ? 0.25 : 0.2})`,
         );
 
-        // Fallback: if nothing cleared the threshold, still return the best matches
-        // so the UI can show "closest" notes instead of empty results.
-        if (results.length === 0 && scoredNotes.length > 0) {
-            const sorted = scoredNotes
-                .filter((s) => Number.isFinite(s.similarity))
-                .sort((a, b) => b.similarity - a.similarity);
-
-            const best = sorted[0]?.similarity ?? 0;
-            const min = embeddingsModel?.isReady ? 0.1 : 0.08;
-
-            if (best >= min) {
-                const top = sorted.slice(0, 5);
-                console.log(
-                    `🧠 [Semantic Search] No strong matches, returning top ${top.length} low-confidence results (best: ${Math.round(best * 100) / 100})`,
-                );
-                return top.map(({ note, similarity }) => ({
-                    ...note,
-                    relevanceScore: similarity,
-                    matchType: "semantic",
-                }));
-            }
-        }
         const removeEmptyResults = results.filter((result) => result.content.trim().length > 0);
 
         // Sort by relevance
@@ -253,19 +266,17 @@ async function keywordSearchWithScoring(query: string): Promise<SearchResult[]> 
 function mergeSearchResults(semantic: SearchResult[], keyword: SearchResult[]): SearchResult[] {
     const resultMap = new Map<string, SearchResult>();
 
-    // Add semantic results
     for (const result of semantic) {
         resultMap.set(result.id, result);
     }
 
-    // Add keyword results, updating if already exists
     for (const result of keyword) {
         const existing = resultMap.get(result.id);
         if (existing) {
-            // Combine scores for notes found by both methods
+            // Use the stronger signal + bonus for dual match (don't dilute with average)
             resultMap.set(result.id, {
                 ...existing,
-                relevanceScore: (existing.relevanceScore + result.relevanceScore) / 2 + 0.1, // Bonus for appearing in both
+                relevanceScore: Math.max(existing.relevanceScore, result.relevanceScore) + 0.15,
                 matchType: "both",
             });
         } else {
@@ -273,84 +284,118 @@ function mergeSearchResults(semantic: SearchResult[], keyword: SearchResult[]): 
         }
     }
 
-    // Convert to array and sort by relevance
-    return Array.from(resultMap.values())
-        .sort((a, b) => b.relevanceScore - a.relevanceScore)
-        .slice(0, 50); // Limit results
+    // Apply recency boost — linear decay over 30 days
+    const now = Date.now();
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+
+    const results = Array.from(resultMap.values()).map((result) => ({
+        ...result,
+        relevanceScore: result.relevanceScore + 0.1 * Math.max(0, 1 - (now - result.created_at) / thirtyDaysMs),
+    }));
+
+    return results.sort((a, b) => b.relevanceScore - a.relevanceScore).slice(0, 50);
 }
 
 export async function askNotesSearch(
     query: string,
     embeddingsModel: EmbeddingsModel | null,
-    llmModel: LLMModel | null,
+    _llmModel?: LLMModel | null,
 ): Promise<EnhancedSearchResult> {
     if (query.trim().length === 0) {
         return { results: [], temporalFilter: null };
     }
 
-    console.log(`🤖 [Ask Notes Search] Starting LLM-powered search for: "${query}"`);
-    console.log(`🤖 [Ask Notes Search] Should use LLM: ${shouldUseLLM(query)}`);
+    // === LAYER 0: Strip NL filler ===
+    const stripped = stripNaturalLanguageFiller(query);
+    const isNaturalLanguage = stripped !== query.trim();
 
-    // Check if we should use LLM interpretation
-    if (!shouldUseLLM(query) || !llmModel?.isReady) {
-        console.log(`🤖 [Ask Notes Search] Falling back to regular search`);
-        return searchNotesEnhanced(query, embeddingsModel);
+    // === LAYER 1: Time filter (highest priority) ===
+    const temporalFilter = parseTemporalQuery(stripped);
+    const afterTemporal = temporalFilter ? temporalFilter.query.trim() : stripped;
+
+    // === LAYER 2: Type filter ===
+    const typeFilter = detectTypeFromText(afterTemporal) || detectTypeFilter(query);
+
+    // === LAYER 3: Content query (what's left after removing time + type) ===
+    let contentQuery = afterTemporal;
+    if (typeFilter) {
+        // Remove type keywords from the remaining content query
+        for (const { pattern } of TYPE_QUERY_MAP) {
+            contentQuery = contentQuery.replace(pattern, "");
+        }
+        contentQuery = contentQuery.replace(TYPE_FILLER, "").replace(/[''?.!\s]+/g, " ").trim();
     }
+    const hasContent = contentQuery.length >= 2 && !isTemporalOnlyRemainder(contentQuery);
 
-    try {
-        // Use LLM to interpret the query
-        const interpretation: AskNotesResult = await interpretQuery(query, llmModel);
-        console.log(`🤖 [Ask Notes Search] LLM interpretation complete:`, interpretation);
+    // Log what we extracted
+    const parts = [
+        temporalFilter ? `time=${temporalFilter.description}` : null,
+        typeFilter ? `type=${typeFilter}` : null,
+        hasContent ? `content="${contentQuery}"` : null,
+    ]
+        .filter(Boolean)
+        .join(" + ");
+    console.log(`[Ask Notes] "${query}" → ${parts || "plain search"}`);
 
-        // Create a combined search query from the interpreted terms
-        let combinedQuery = interpretation.searchTerms.join(" ");
+    // === DISPATCH: combine all signals ===
 
-        // Add topics to search terms if they're distinct
-        const uniqueTopics = interpretation.topics.filter(
-            (topic) => !interpretation.searchTerms.some((term) => term.toLowerCase().includes(topic.toLowerCase())),
-        );
-        if (uniqueTopics.length > 0) {
-            combinedQuery += " " + uniqueTopics.join(" ");
+    // If we have temporal or type filters, fetch all notes and filter
+    if (temporalFilter || typeFilter) {
+        let notes = await getAllNotes();
+
+        // Apply temporal filter — use created_at only (updated_at catches AI reprocessing noise)
+        if (temporalFilter) {
+            const inRange = (t: number) => t >= temporalFilter.startTime && t <= temporalFilter.endTime;
+            notes = notes.filter((note) => inRange(note.created_at));
         }
 
-        // If the LLM detected a temporal hint, include it in the query we pass to the temporal parser.
-        const queryForSearch = interpretation.temporalHint
-            ? `notes from ${interpretation.temporalHint} ${combinedQuery}`.trim()
-            : combinedQuery.trim();
-
-        console.log(`🤖 [Ask Notes Search] Combined search query: "${queryForSearch}"`);
-
-        // Perform the actual search with the interpreted query
-        const searchResult = await searchNotesEnhanced(queryForSearch, embeddingsModel);
-
-        // If we have a temporal hint from LLM, try to parse it
-        let temporalFilter = searchResult.temporalFilter;
-        if (interpretation.temporalHint && !temporalFilter) {
-            // Try to parse the temporal hint as a query
-            const temporalQuery = `notes from ${interpretation.temporalHint}`;
-            temporalFilter = parseTemporalQuery(temporalQuery);
-            if (temporalFilter) {
-                console.log(`🤖 [Ask Notes Search] Applied LLM temporal hint: ${temporalFilter.description}`);
-                // Re-filter results with temporal constraint
-                searchResult.results = searchResult.results.filter(
-                    (result) =>
-                        result.created_at >= temporalFilter!.startTime && result.created_at <= temporalFilter!.endTime,
-                );
-            }
+        // Apply type filter
+        if (typeFilter) {
+            notes = notes.filter((note) => note.type === typeFilter);
         }
 
-        // Add interpretation metadata to the result
+        // If there's a content query, rank by semantic similarity
+        if (hasContent && embeddingsModel?.isReady) {
+            const queryEmbedding = await generateEmbedding(contentQuery, embeddingsModel);
+            const scored = notes
+                .map((note) => {
+                    let similarity = 0;
+                    if (note.embedding) {
+                        try {
+                            const noteEmbedding = JSON.parse(note.embedding);
+                            similarity = cosineSimilarity(queryEmbedding, noteEmbedding);
+                        } catch {}
+                    }
+                    return { ...note, relevanceScore: similarity, matchType: "semantic" as const };
+                })
+                .sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+            return {
+                results: scored,
+                temporalFilter,
+                interpretedQuery: isNaturalLanguage ? parts : undefined,
+            };
+        }
+
+        // No content query — sort by recency
+        const results: SearchResult[] = notes
+            .sort((a, b) => b.created_at - a.created_at)
+            .map((note) => ({ ...note, relevanceScore: 1, matchType: "keyword" as const }));
+
         return {
-            ...searchResult,
+            results,
             temporalFilter,
-            // Store the interpreted query for UI display
-            interpretedQuery: interpretation.interpretedQuery,
+            interpretedQuery: isNaturalLanguage ? parts : undefined,
         };
-    } catch (error) {
-        console.error("❌ [Ask Notes Search] LLM interpretation failed, falling back:", error);
-        // Fallback to regular search
-        return searchNotesEnhanced(query, embeddingsModel);
     }
+
+    // No temporal or type filter — pure content search
+    const searchResult = await searchNotesEnhanced(stripped, embeddingsModel);
+
+    return {
+        ...searchResult,
+        interpretedQuery: isNaturalLanguage ? contentQuery : undefined,
+    };
 }
 
 export async function findRelatedNotes(

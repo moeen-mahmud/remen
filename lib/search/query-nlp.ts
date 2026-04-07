@@ -7,6 +7,20 @@ export interface ProcessedQuery {
     keywords: string[];
 }
 
+// Natural language filler phrases to strip before search
+// "What I was thinking about job switching" → "job switching"
+// "Show me notes about React hooks" → "React hooks"
+// "Find everything related to project deadlines" → "project deadlines"
+const NL_FILLER_PATTERNS = [
+    /^(what|where|when|how|why|which|who|show|find|search|get|give|tell)\s+(i|me|my|we|us|did|do|was|were|have|had|am)\b/i,
+    /^(what\s+)?(i\s+)?(was|were|am|have been)\s+(thinking|writing|noting|working|talking|reading)\s+(about|on|regarding)\s*/i,
+    /^(show|find|search|get|give|tell)\s+(me\s+)?(all\s+)?(my\s+)?(notes?|things?|stuff|everything|entries?|items?)\s*(about|on|regarding|related to|for|with)?\s*/i,
+    /^(do\s+i\s+have\s+)?(any\s+)?(notes?|things?|stuff|entries?)\s*(about|on|regarding|related to|for|with)\s*/i,
+    /^(everything|anything)\s+(i\s+)?(wrote|noted|captured|saved|recorded)\s*(about|on|regarding)?\s*/i,
+    /^(what\s+)?(did\s+)?(i\s+)?(write|note|capture|save|record|think|say)\s*(about|on|regarding)?\s*/i,
+    /^(notes?\s+)?(about|on|regarding|related to|for)\s+/i,
+];
+
 const STOP_WORDS = new Set([
     "a",
     "an",
@@ -141,11 +155,26 @@ const STOP_WORDS = new Set([
     "just",
 ]);
 
+/**
+ * Strip natural language filler from the query.
+ * "What I was thinking about job switching" → "job switching"
+ */
+export function stripNaturalLanguageFiller(query: string): string {
+    let stripped = query.trim();
+    for (const pattern of NL_FILLER_PATTERNS) {
+        stripped = stripped.replace(pattern, "").trim();
+    }
+    return stripped || query.trim(); // If everything got stripped, use original
+}
+
 export function processSearchQuery(query: string): ProcessedQuery {
     const original = query;
     const normalized = normalizeText(query);
 
-    const tokens = normalized.split(" ").filter(Boolean);
+    // Strip NL filler before tokenizing
+    const stripped = stripNaturalLanguageFiller(normalized);
+
+    const tokens = stripped.split(" ").filter(Boolean);
 
     const quoted: string[] = [];
     const quoteMatches = original.match(/"([^"]{1,80})"/g) || [];

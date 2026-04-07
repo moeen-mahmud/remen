@@ -5,6 +5,7 @@ import {
     LAST_WEEK_GLOBAL,
     LAST_YEAR,
     LAST_YEAR_GLOBAL,
+    normalizeWordNumbers,
     RELATIVE_TIME_PATTERNS,
     THIS_MONTH,
     THIS_MONTH_GLOBAL,
@@ -16,7 +17,8 @@ import { TemporalFilter } from "@/lib/search/search.types";
 import { getLastDayOfWeek, getStartOfWeek, getThisDayOfWeek } from "@/lib/utils/functions";
 
 export function parseTemporalQuery(query: string): TemporalFilter | null {
-    const lowerQuery = query.toLowerCase().trim();
+    // Normalize word numbers: "one hour ago" → "1 hour ago"
+    const lowerQuery = normalizeWordNumbers(query.toLowerCase().trim());
 
     // Try to match various patterns
     let result: TemporalFilter | null = null;
@@ -234,23 +236,26 @@ function parseLastThisPeriod(query: string): TemporalFilter | null {
 function parseDateMention(query: string): TemporalFilter | null {
     const now = new Date();
 
-    // "in [month]" pattern
     for (let i = 0; i < MONTHS.length; i++) {
         const month = MONTHS[i];
-        const inPattern = new RegExp(`in\\s+${month}`, "i");
-        if (inPattern.test(query)) {
-            // Assume current or previous year
+
+        // Match: "in January", "last January", "in last January", "in the last January", or bare "January"
+        const monthPattern = new RegExp(`(?:in\\s+(?:the\\s+)?)?(?:last\\s+)?${month}\\b`, "i");
+        if (monthPattern.test(query)) {
+            // "last {month}" or future month → previous year; otherwise current year
+            const hasLast = new RegExp(`last\\s+${month}`, "i").test(query);
             let year = now.getFullYear();
-            if (i > now.getMonth()) {
-                year--; // If month is in the future, use last year
+            if (hasLast || i > now.getMonth()) {
+                year--;
             }
             const startOfMonth = new Date(year, i, 1);
             const endOfMonth = new Date(year, i + 1, 1);
+            const monthName = month.charAt(0).toUpperCase() + month.slice(1);
             return {
                 startTime: startOfMonth.getTime(),
                 endTime: endOfMonth.getTime(),
-                description: `${month.charAt(0).toUpperCase() + month.slice(1)} ${year}`,
-                query: query.replace(inPattern, "").trim(),
+                description: `${monthName} ${year}`,
+                query: query.replace(monthPattern, "").trim(),
             };
         }
     }

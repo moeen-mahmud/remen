@@ -562,11 +562,13 @@ export async function searchNotes(query: string): Promise<Note[]> {
     const searchTerm = `%${query}%`;
 
     const results = await database.getAllAsync<NoteRow>(
-        `SELECT * FROM notes 
-         WHERE (content LIKE ? OR title LIKE ?)
-         AND is_archived = 0 AND is_deleted = 0
-         ORDER BY created_at DESC`,
-        [searchTerm, searchTerm],
+        `SELECT DISTINCT n.* FROM notes n
+         LEFT JOIN note_tags nt ON n.id = nt.note_id
+         LEFT JOIN tags t ON nt.tag_id = t.id
+         WHERE (n.content LIKE ? OR n.title LIKE ? OR t.name LIKE ?)
+         AND n.is_archived = 0 AND n.is_deleted = 0
+         ORDER BY n.created_at DESC`,
+        [searchTerm, searchTerm, searchTerm],
     );
 
     return results.map(rowToNote);
