@@ -1,7 +1,7 @@
 import { useTheme } from "@/lib/theme/use-theme";
 import { Circle, CircleCheck } from "lucide-react-native";
 import { useRef } from "react";
-import { Pressable, StyleSheet, TextInput } from "react-native";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 interface EditorTaskLineProps {
     content: string;
@@ -34,7 +34,7 @@ export function EditorTaskLine({
     };
 
     return (
-        <Pressable style={styles.container}>
+        <View style={styles.container}>
             <Pressable onPress={onToggle} style={styles.checkbox} hitSlop={6}>
                 {isCompleted ? (
                     <CircleCheck size={22} color={taskCompletedColor} />
@@ -62,7 +62,7 @@ export function EditorTaskLine({
                 blurOnSubmit={false}
                 returnKeyType="next"
             />
-        </Pressable>
+        </View>
     );
 }
 
