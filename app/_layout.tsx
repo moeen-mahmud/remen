@@ -4,12 +4,15 @@ import { AIProvider } from "@/lib/ai";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { initExecutorch } from "react-native-executorch";
+import { ExpoResourceFetcher } from "react-native-executorch-expo-resource-fetcher";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-get-random-values";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import "../global.css";
 
 SplashScreen.preventAutoHideAsync();
+initExecutorch({ resourceFetcher: ExpoResourceFetcher });
 
 export default function RootLayout() {
     return (

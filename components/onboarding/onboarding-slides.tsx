@@ -1,4 +1,4 @@
-import { Bot, Camera, Mic, Search, Shield } from "lucide-react-native";
+import { Bot, Mic, Search, Shield } from "lucide-react-native";
 
 type OnboardingSlide = {
     id: string;
@@ -30,13 +30,13 @@ export const onboardingSlides: OnboardingSlide[] = [
         description: "Capture ideas instantly. AI transcribes and organizes your spoken thoughts.",
         gradient: ["#f093fb", "#f5576c"],
     },
-    {
-        id: "scan",
-        icon: <Camera size={48} color="#fff" />,
-        title: "Document Scanning",
-        description: "Scan documents and handwritten notes with OCR.",
-        gradient: ["#4facfe", "#00f2fe"],
-    },
+    // {
+    //     id: "scan",
+    //     icon: <Camera size={48} color="#fff" />,
+    //     title: "Document Scanning",
+    //     description: "Scan documents and handwritten notes with OCR.",
+    //     gradient: ["#4facfe", "#00f2fe"],
+    // },
     {
         id: "search",
         icon: <Search size={48} color="#fff" />,

@@ -1,3 +1,4 @@
+import { ContextualRecallTray } from "@/components/editor/contextual-recall-tray";
 import { editorStyles } from "@/components/editor/editor-styles";
 import { PageLoader } from "@/components/ui/page-loader";
 import { useAI } from "@/lib/ai/provider";
@@ -6,8 +7,10 @@ import { TASK_PATTERNS } from "@/lib/config/regex-patterns";
 import { AUTOSAVE_DELAY } from "@/lib/consts/consts";
 import { createNote, getNoteById, updateNote } from "@/lib/database/database";
 import { NoteType } from "@/lib/database/database.types";
+import { useContextualRecall } from "@/lib/hooks/use-contextual-recall";
 import { syncTasksFromText } from "@/lib/tasks/tasks";
 import { useTheme } from "@/lib/theme/use-theme";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, ScrollView, TextInput } from "react-native";
 import { KeyboardGestureArea } from "react-native-keyboard-controller";
@@ -29,6 +32,7 @@ export default function Editor({
     const { bottom } = useSafeAreaInsets();
     const { textColor, placeholderTextColor } = useTheme();
 
+    const router = useRouter();
     const { embeddings } = useAI();
 
     const [isLoading, setIsLoading] = useState(!!initialNoteId);
@@ -41,6 +45,8 @@ export default function Editor({
 
     const scrollViewRef = useRef<ScrollView>(null);
     const textInputRef = useRef<TextInput>(null);
+
+    const { relatedNotes, isDismissed, dismiss } = useContextualRecall(currentNoteId, content, embeddings);
 
     useEffect(() => {
         async function loadNote() {
@@ -300,6 +306,13 @@ export default function Editor({
                     scrollEnabled={false}
                 />
             </ScrollView>
+            {!isDismissed && (
+                <ContextualRecallTray
+                    notes={relatedNotes}
+                    onNotePress={(note) => router.push(`/notes/${note.id}` as any)}
+                    onDismiss={dismiss}
+                />
+            )}
         </KeyboardGestureArea>
     );
 }
