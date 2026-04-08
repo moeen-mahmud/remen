@@ -116,8 +116,7 @@ class AIProcessingQueue {
         for (const { source, name } of modelsToTry) {
             try {
                 console.log(`[Queue] Loading SMOLLM ${name} quantized...`);
-                const module = new LLMModule();
-                await module.load(source);
+                const module = await LLMModule.fromModelName(source);
                 module.configure({ generationConfig: { temperature: 0.3, topp: 0.9 } });
                 this.llmModule = module;
                 this.llmModelName = name;

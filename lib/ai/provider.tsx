@@ -78,7 +78,7 @@ export function AIProvider({ children }: AIProviderProps) {
         }
 
         if (embeddingsHook?.error) {
-            const errorMessage = (embeddingsHook.error as unknown as Error).message;
+            const errorMessage = embeddingsHook.error.message || String(embeddingsHook.error);
             setError(errorMessage);
             console.error("[AI] Embeddings loading error:", errorMessage);
         }
@@ -119,7 +119,7 @@ export function AIProvider({ children }: AIProviderProps) {
             forward: embeddingsForward,
             isReady: embeddingsHook.isReady,
             isGenerating: embeddingsHook.isGenerating || false,
-            error: embeddingsHook.error || null,
+            error: embeddingsHook.error?.message || null,
             downloadProgress: embeddingsHook.downloadProgress || 0,
         }),
         [
