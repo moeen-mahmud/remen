@@ -2,6 +2,7 @@ import { SettingsAbout } from "@/components/settings/settings-about";
 import { SettingsAI } from "@/components/settings/settings-ai";
 import { SettingsAppearance } from "@/components/settings/settings-appearance";
 import { SettingsData } from "@/components/settings/settings-data";
+import { SettingsHelp } from "@/components/settings/settings-help";
 import { SettingsICloud } from "@/components/settings/settings-icloud";
 import { PageLoader } from "@/components/ui/page-loader";
 
@@ -165,6 +166,12 @@ export const SettingsHome: React.FC = () => {
         }
     }, [preferences, isSyncing]);
 
+    const handleHowItWorks = useCallback(() => {
+        const { triggerOnboarding } = require("@/components/app-initializer");
+        triggerOnboarding();
+        router.back();
+    }, []);
+
     if (!preferences) {
         return <Box className="flex-1 bg-background-50" />;
     }
@@ -204,6 +211,9 @@ export const SettingsHome: React.FC = () => {
 
             {/* AI Controls Section */}
             <SettingsAIControls />
+
+            {/* Help & Support Section */}
+            <SettingsHelp onHowItWorks={handleHowItWorks} />
 
             {/* About Section */}
             <SettingsAbout />

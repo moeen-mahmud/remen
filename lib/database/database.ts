@@ -1,3 +1,4 @@
+import { scheduleAutoSync } from "@/lib/cloud/auto-sync";
 import type {
     CreateNoteInput,
     Note,
@@ -167,6 +168,7 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
         ],
     );
 
+    scheduleAutoSync();
     return note;
 }
 
@@ -276,12 +278,19 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
         ],
     );
 
+    // Auto-sync on user-facing changes (not internal AI processing updates)
+    const isAIUpdate = input.ai_status !== undefined || input.embedding !== undefined || input.is_processed !== undefined;
+    if (!isAIUpdate) {
+        scheduleAutoSync();
+    }
+
     return updated;
 }
 
 export async function deleteNote(id: string): Promise<boolean> {
     const database = await getDatabase();
     const result = await database.runAsync("DELETE FROM notes WHERE id = ?", [id]);
+    if (result.changes > 0) scheduleAutoSync();
     return result.changes > 0;
 }
 

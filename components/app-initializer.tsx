@@ -9,6 +9,12 @@ import { router, SplashScreen } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LLAMA3_2_1B_SPINQUANT, LLMModule, SMOLLM2_1_360M_QUANTIZED } from "react-native-executorch";
 
+// Module-level trigger so settings can request onboarding replay
+let onboardingTrigger: (() => void) | null = null;
+export function triggerOnboarding() {
+    onboardingTrigger?.();
+}
+
 export function AppInitializer({ children }: { children: React.ReactNode }) {
     const [isReady, setIsReady] = useState(false);
     const [showOnboarding, setShowOnboarding] = useState(false);
@@ -21,6 +27,14 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     const { embeddings, isInitializing, overallProgress, error } = useAI();
 
     const prevStateRef = useRef({ embeddingsReady: false, lastProgress: 0 });
+
+    // Register the onboarding trigger so external code can replay it
+    useEffect(() => {
+        onboardingTrigger = () => setShowOnboarding(true);
+        return () => {
+            onboardingTrigger = null;
+        };
+    }, []);
 
     // Check if models were previously downloaded and onboarding completed
     useEffect(() => {
