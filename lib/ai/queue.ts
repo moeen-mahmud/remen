@@ -1,5 +1,10 @@
 import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database/database";
-import { LLMModule, SMOLLM2_1_135M_QUANTIZED, SMOLLM2_1_360M_QUANTIZED } from "react-native-executorch";
+import {
+    LLAMA3_2_1B_SPINQUANT,
+    LLMModule,
+    // SMOLLM2_1_135M_QUANTIZED,
+    SMOLLM2_1_360M_QUANTIZED,
+} from "react-native-executorch";
 import type { EmbeddingsModel, LLMModel, Message } from "./ai.types";
 import { classifyNoteType } from "./classify";
 import { generateEmbedding } from "./embeddings";
@@ -109,21 +114,21 @@ class AIProcessingQueue {
 
         // Try 360M quantized first (better quality), fall back to 135M quantized
         const modelsToTry = [
-            { source: SMOLLM2_1_360M_QUANTIZED, name: "360M" },
-            { source: SMOLLM2_1_135M_QUANTIZED, name: "135M" },
+            { source: LLAMA3_2_1B_SPINQUANT, name: "LLAMA3.2 1B Spinquant" },
+            { source: SMOLLM2_1_360M_QUANTIZED, name: "SMOLLM2.1 360M Quantized" },
         ];
 
         for (const { source, name } of modelsToTry) {
             try {
-                console.log(`[Queue] Loading SMOLLM ${name} quantized...`);
+                console.log(`[Queue] Loading ${name}...`);
                 const module = await LLMModule.fromModelName(source);
                 module.configure({ generationConfig: { temperature: 0.3, topp: 0.9 } });
                 this.llmModule = module;
                 this.llmModelName = name;
-                console.log(`[Queue] SMOLLM ${name} loaded and configured (temp=0.3)`);
+                console.log(`[Queue] ${name} loaded and configured (temp=0.3)`);
                 return this.createLLMWrapper();
             } catch (error) {
-                console.warn(`[Queue] SMOLLM ${name} failed to load:`, error);
+                console.warn(`[Queue] ${name} failed to load:`, error);
             }
         }
 

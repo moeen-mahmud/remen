@@ -10,6 +10,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 interface ModelDownloadOverlayProps {
     progress: number; // 0 to 1
     embeddingsProgress: number;
+    llmProgress: number;
     isVisible: boolean;
     onMinimize?: () => void;
     onClose?: () => void;
@@ -19,6 +20,7 @@ interface ModelDownloadOverlayProps {
 export function ModelDownloadOverlay({
     progress,
     embeddingsProgress,
+    llmProgress,
     isVisible,
     onMinimize,
     onClose,
@@ -189,8 +191,8 @@ export function ModelDownloadOverlay({
                     />
                     <ModelProgressItem
                         name="Language Model"
-                        progress={embeddingsProgress >= 1 ? 1 : 0}
-                        description="Loads on demand when processing notes"
+                        progress={llmProgress}
+                        description="Downloads once, loads on demand"
                     />
                 </View>
             </View>

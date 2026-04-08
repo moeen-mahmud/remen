@@ -80,16 +80,18 @@ export const SettingsAIControls: React.FC = () => {
                         </Box>
                     ) : null}
                 </Box>
-                <Pressable
-                    className="flex-row justify-between items-center p-4 mt-2 rounded-lg dark:bg-error-500 bg-error-50"
-                    onPress={handleStopAIProcessing}
-                >
-                    <Box className="flex-row gap-2 items-center">
-                        <Icon as={CircleStop} className="text-error-900 dark:text-error-50" size="lg" />
-                        <Text className="font-semibold text-error-900 dark:text-error-50">Stop AI processes</Text>
-                    </Box>
-                    <Icon as={ChevronRight} className="text-error-900 dark:text-error-50" size="lg" />
-                </Pressable>
+                {queueStatus.isProcessing ? (
+                    <Pressable
+                        className="flex-row justify-between items-center p-4 mt-2 rounded-lg dark:bg-error-500 bg-error-50"
+                        onPress={handleStopAIProcessing}
+                    >
+                        <Box className="flex-row gap-2 items-center">
+                            <Icon as={CircleStop} className="text-error-900 dark:text-error-50" size="lg" />
+                            <Text className="font-semibold text-error-900 dark:text-error-50">Stop AI processes</Text>
+                        </Box>
+                        <Icon as={ChevronRight} className="text-error-900 dark:text-error-50" size="lg" />
+                    </Pressable>
+                ) : null}
             </Box>
         </Box>
     );
