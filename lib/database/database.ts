@@ -1,3 +1,4 @@
+import { scheduleAutoSync } from "@/lib/cloud/auto-sync";
 import type {
     CreateNoteInput,
     Note,
@@ -167,6 +168,7 @@ export async function createNote(input: CreateNoteInput): Promise<Note> {
         ],
     );
 
+    scheduleAutoSync();
     return note;
 }
 
@@ -276,12 +278,19 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
         ],
     );
 
+    // Auto-sync on user-facing changes (not internal AI processing updates)
+    const isAIUpdate = input.ai_status !== undefined || input.embedding !== undefined || input.is_processed !== undefined;
+    if (!isAIUpdate) {
+        scheduleAutoSync();
+    }
+
     return updated;
 }
 
 export async function deleteNote(id: string): Promise<boolean> {
     const database = await getDatabase();
     const result = await database.runAsync("DELETE FROM notes WHERE id = ?", [id]);
+    if (result.changes > 0) scheduleAutoSync();
     return result.changes > 0;
 }
 
@@ -562,11 +571,13 @@ export async function searchNotes(query: string): Promise<Note[]> {
     const searchTerm = `%${query}%`;
 
     const results = await database.getAllAsync<NoteRow>(
-        `SELECT * FROM notes 
-         WHERE (content LIKE ? OR title LIKE ?)
-         AND is_archived = 0 AND is_deleted = 0
-         ORDER BY created_at DESC`,
-        [searchTerm, searchTerm],
+        `SELECT DISTINCT n.* FROM notes n
+         LEFT JOIN note_tags nt ON n.id = nt.note_id
+         LEFT JOIN tags t ON nt.tag_id = t.id
+         WHERE (n.content LIKE ? OR n.title LIKE ? OR t.name LIKE ?)
+         AND n.is_archived = 0 AND n.is_deleted = 0
+         ORDER BY n.created_at DESC`,
+        [searchTerm, searchTerm, searchTerm],
     );
 
     return results.map(rowToNote);

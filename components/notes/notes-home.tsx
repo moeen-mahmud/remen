@@ -9,7 +9,7 @@ import { PageLoader } from "@/components/ui/page-loader";
 import { Text } from "@/components/ui/text";
 import { useSelectionMode } from "@/hooks/use-selection-mode";
 import { aiQueue } from "@/lib/ai";
-import { useAI, useAILLM } from "@/lib/ai/provider";
+import { useAI } from "@/lib/ai/provider";
 import { archiveNote, getAllNotes, getTagsForNote, moveToTrash, pinNote, unpinNote } from "@/lib/database/database";
 import { Note, Tag } from "@/lib/database/database.types";
 import { askNotesSearch } from "@/lib/search/search";
@@ -32,11 +32,8 @@ export const NotesHome: React.FC = () => {
 
     // Get AI models for search - use ref to avoid dependency issues
     const { embeddings } = useAI();
-    const llm = useAILLM();
     const embeddingsRef = useRef(embeddings);
-    const llmRef = useRef(llm);
     embeddingsRef.current = embeddings;
-    llmRef.current = llm;
 
     const [notes, setNotes] = useState<NoteWithTags[]>([]);
     const [filteredNotes, setFilteredNotes] = useState<NoteWithTags[]>([]);
@@ -46,7 +43,6 @@ export const NotesHome: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [temporalFilterDescription, setTemporalFilterDescription] = useState<string | null>(null);
     const [isSearching, setIsSearching] = useState(false);
-    const [isUsingLLM, setIsUsingLLM] = useState(false);
     const [interpretedQuery, setInterpretedQuery] = useState<string | null>(null);
     const [processingNoteIds, setProcessingNoteIds] = useState<Set<string>>(new Set());
 
@@ -100,7 +96,7 @@ export const NotesHome: React.FC = () => {
                 newSections.push({ title: "Pinned items", data: pinnedNotes });
             }
             if (unpinnedNotes.length > 0) {
-                newSections.push({ title: "Others", data: unpinnedNotes });
+                newSections.push({ title: pinnedNotes.length > 0 ? "Others" : "", data: unpinnedNotes });
             }
             setSections(newSections);
         } catch (error) {
@@ -154,7 +150,6 @@ export const NotesHome: React.FC = () => {
             setFilteredNotes(notes);
             setTemporalFilterDescription(null);
             setIsSearching(false);
-            setIsUsingLLM(false);
             setInterpretedQuery(null);
             const pinnedNotes = notes.filter((note) => note.is_pinned);
             const unpinnedNotes = notes.filter((note) => !note.is_pinned);
@@ -170,34 +165,28 @@ export const NotesHome: React.FC = () => {
         }
 
         setIsSearching(true);
-        setIsUsingLLM(false);
         setInterpretedQuery(null);
 
-        // Debounce search
         try {
-            console.log("🔍 [Search] Searching for:", searchQuery);
+            console.log("[Search] Searching for:", searchQuery);
 
-            // Use LLM-powered search if LLM is available
-            const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current, llmRef.current);
-            const { results, temporalFilter, interpretedQuery: llmInterpretedQuery } = searchResult;
+            const searchResult = await askNotesSearch(searchQuery, embeddingsRef.current);
+            const { results, temporalFilter, interpretedQuery: searchInterpretedQuery } = searchResult;
 
-            console.log(`🔍 [Search] Found ${results.length} results`);
-            console.log(`🤖 [Search] Interpreted query:`, llmInterpretedQuery);
+            console.log(`[Search] Found ${results.length} results`);
 
-            // Update UI state
             setTemporalFilterDescription(temporalFilter?.description || null);
-            setIsUsingLLM(!!llmInterpretedQuery);
-            setInterpretedQuery(llmInterpretedQuery || null);
+            setInterpretedQuery(searchInterpretedQuery || null);
 
-            // Match results with notes to get tags
-            const resultIds = new Set(results.map((r) => r.id));
-            const filtered = notes.filter((note) => resultIds.has(note.id));
-            // Sort by the search results order
-            filtered.sort((a, b) => {
-                const aIndex = results.findIndex((r) => r.id === a.id);
-                const bIndex = results.findIndex((r) => r.id === b.id);
-                return aIndex - bIndex;
-            });
+            // Build NoteWithTags from search results directly (don't rely on stale notes array)
+            const filtered: NoteWithTags[] = await Promise.all(
+                results.map(async (result) => {
+                    // Check if we already have tags loaded for this note
+                    const existing = notes.find((n) => n.id === result.id);
+                    const tags = existing?.tags ?? (await getTagsForNote(result.id));
+                    return { ...result, tags };
+                }),
+            );
             setFilteredNotes(filtered);
             // For search results, don't separate by pinned status
             const searchSections: { title: string; data: NoteWithTags[] }[] = [];
@@ -206,9 +195,8 @@ export const NotesHome: React.FC = () => {
             }
             setSections(searchSections);
         } catch (error) {
-            console.error("❌ [Search] Search failed:", error);
+            console.error("[Search] Search failed:", error);
             setTemporalFilterDescription(null);
-            setIsUsingLLM(false);
             setInterpretedQuery(null);
             // Fallback to simple filtering
             const query = searchQuery.toLowerCase();
@@ -236,7 +224,6 @@ export const NotesHome: React.FC = () => {
         setTemporalFilterDescription(null);
         setInterpretedQuery(null);
         setIsSearching(false);
-        setIsUsingLLM(false);
         setIsRefreshing(true);
         loadNotes();
     }, [loadNotes]);
@@ -463,12 +450,12 @@ export const NotesHome: React.FC = () => {
                 setSearchQuery={setSearchQuery}
                 handleSearch={handleSearch}
                 isSearching={isSearching}
-                isUsingLLM={isUsingLLM}
                 refetchNotes={loadNotes}
             />
 
             {/* Helper text or AI interpretation */}
             <NotesSearchHelper
+                searchResultCount={filteredNotes.length}
                 interpretedQuery={interpretedQuery}
                 temporalFilterDescription={temporalFilterDescription}
                 searchQuery={searchQuery}

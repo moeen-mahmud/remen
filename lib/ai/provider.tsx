@@ -1,33 +1,22 @@
 /**
  * AI Provider Context
  *
- * Initializes and provides access to all ExecutorTorch AI models:
- * - LLM (SmallLM 2.1 360M) for title generation, classification, and tag extraction
- * - Text Embeddings (MiniLM) for semantic search
- * - OCR for document scanning
+ * Initializes and provides access to the embeddings model (always loaded).
+ * The LLM is managed by the AI queue (load on demand, unload after idle).
+ * OCR has been removed to free memory for larger LLM models.
  */
 
 import { usePathname } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-    ALL_MINILM_L6_V2,
-    OCR_ENGLISH,
-    SMOLLM2_1_135M,
-    useLLM,
-    useOCR,
-    useTextEmbeddings,
-} from "react-native-executorch";
-import { AIContextType, EmbeddingsModel, LLMModel, Message, OCRDetection, OCRModel } from "./ai.types";
+import { ALL_MINILM_L6_V2, useTextEmbeddings } from "react-native-executorch";
+import { AIContextType, EmbeddingsModel } from "./ai.types";
 import { aiQueue } from "./queue";
 
 const AIContext = createContext<AIContextType>({
-    llm: null,
     embeddings: null,
-    ocr: null,
     isInitializing: true,
     overallProgress: 0,
     error: null,
-    hasMemoryError: false,
 });
 
 export function useAI(): AIContextType {
@@ -38,22 +27,10 @@ export function useAI(): AIContextType {
     return context;
 }
 
-// Hook to get just the LLM
-export function useAILLM(): LLMModel | null {
-    const { llm } = useAI();
-    return llm;
-}
-
 // Hook to get just the embeddings model
 export function useAIEmbeddings(): EmbeddingsModel | null {
     const { embeddings } = useAI();
     return embeddings;
-}
-
-// Hook to get just the OCR model
-export function useAIOCR(): OCRModel | null {
-    const { ocr } = useAI();
-    return ocr;
 }
 
 interface AIProviderProps {
@@ -63,52 +40,24 @@ interface AIProviderProps {
 export function AIProvider({ children }: AIProviderProps) {
     const [isInitializing, setIsInitializing] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [hasMemoryError, setHasMemoryError] = useState(false);
     const pathname = usePathname();
 
-    // Track previous states for logging changes
     const prevStatesRef = useRef({
-        llmReady: false,
         embeddingsReady: false,
-        ocrReady: false,
-        classificationReady: false,
     });
 
-    // Initialize LLM (Llama 3.2 1B)
-    const llmHook = useLLM({
-        model: SMOLLM2_1_135M,
-    });
-
+    // Only load embeddings eagerly — needed for search at any time (~91MB)
+    // LLM is managed by the queue (loaded on demand, unloaded after 30s idle)
     const embeddingsHook = useTextEmbeddings({
         model: ALL_MINILM_L6_V2,
     });
 
-    const ocrHook = useOCR({
-        model: OCR_ENGLISH,
-    });
-
-    // Track overall initialization progress
-    const overallProgress =
-        ((llmHook?.downloadProgress || 0) +
-            (embeddingsHook?.downloadProgress || 0) +
-            (ocrHook?.downloadProgress || 0)) /
-        3;
+    const overallProgress = embeddingsHook?.downloadProgress || 0;
 
     // Log model status changes
     useEffect(() => {
         const prev = prevStatesRef.current;
 
-        // Log LLM status changes
-        if (llmHook && llmHook.isReady !== prev.llmReady) {
-            if (llmHook.isReady) {
-                console.log("[AI] LLM (Llama 3.2 1B) is READY");
-            } else {
-                console.log(`[AI] LLM downloading: ${Math.round((llmHook.downloadProgress || 0) * 100)}%`);
-            }
-            prev.llmReady = llmHook.isReady;
-        }
-
-        // Log Embeddings status changes
         if (embeddingsHook && embeddingsHook.isReady !== prev.embeddingsReady) {
             if (embeddingsHook.isReady) {
                 console.log("[AI] Embeddings (MiniLM) is READY");
@@ -119,99 +68,33 @@ export function AIProvider({ children }: AIProviderProps) {
             }
             prev.embeddingsReady = embeddingsHook.isReady;
         }
+    }, [embeddingsHook?.isReady, embeddingsHook?.downloadProgress]);
 
-        // Log OCR status changes
-        if (ocrHook && ocrHook.isReady !== prev.ocrReady) {
-            if (ocrHook.isReady) {
-                console.log("[AI] OCR (English) is READY");
-            } else {
-                console.log(`[AI] OCR downloading: ${Math.round((ocrHook.downloadProgress || 0) * 100)}%`);
-            }
-            prev.ocrReady = ocrHook.isReady;
-        }
-    }, [
-        llmHook?.isReady,
-        llmHook?.downloadProgress,
-        embeddingsHook?.isReady,
-        embeddingsHook?.downloadProgress,
-        ocrHook?.isReady,
-        ocrHook?.downloadProgress,
-    ]);
-
-    // Check if all models are ready
+    // Embeddings ready = app ready (LLM loads on demand via queue)
     useEffect(() => {
-        const allReady = llmHook?.isReady && embeddingsHook?.isReady && ocrHook?.isReady;
-
-        if (allReady && isInitializing) {
+        if (embeddingsHook?.isReady && isInitializing) {
             setIsInitializing(false);
-            console.log("[AI] All models loaded successfully!");
+            console.log("[AI] Embeddings loaded — app ready. LLM will load on demand.");
         }
 
-        // Check for errors
-        const errors = [llmHook?.error, embeddingsHook?.error, ocrHook?.error].filter(Boolean);
-        if (errors.length > 0) {
-            const errorMessages = errors.map((error) => (error as unknown as Error).message);
-            setError(errorMessages.join("; "));
-            console.error("[AI] Model loading errors:", errors);
-
-            // Check for memory errors
-            const hasBadAlloc = errorMessages.some((message) => message.includes("bad_alloc"));
-            if (hasBadAlloc && !hasMemoryError) {
-                setHasMemoryError(true);
-                console.error("[AI] Memory allocation error detected - models require too much RAM");
-            }
+        if (embeddingsHook?.error) {
+            const errorMessage = embeddingsHook.error.message || String(embeddingsHook.error);
+            setError(errorMessage);
+            console.error("[AI] Embeddings loading error:", errorMessage);
         }
-    }, [
-        llmHook?.isReady,
-        embeddingsHook?.isReady,
-        ocrHook?.isReady,
-        llmHook?.error,
-        embeddingsHook?.error,
-        ocrHook?.error,
-        isInitializing,
-        hasMemoryError,
-    ]);
+    }, [embeddingsHook?.isReady, embeddingsHook?.error, isInitializing]);
 
     // Track navigation to pause/resume AI processing on editing pages
     useEffect(() => {
-        // Check if current route is an editing page
         const isEditingPage = pathname === "/" || pathname.startsWith("/edit/");
-
-        // Update queue with editing page status
         if (aiQueue) {
             aiQueue.setOnEditingPage(isEditingPage);
         }
     }, [pathname]);
 
-    // Store hook references in refs to avoid stale closures (only if hooks are available)
-    const llmHookRef = useRef(llmHook);
+    // Store hook reference in ref to avoid stale closures
     const embeddingsHookRef = useRef(embeddingsHook);
-    const ocrHookRef = useRef(ocrHook);
-
-    // Keep refs updated (only if hooks exist)
-    if (llmHook) llmHookRef.current = llmHook;
     if (embeddingsHook) embeddingsHookRef.current = embeddingsHook;
-    if (ocrHook) ocrHookRef.current = ocrHook;
-
-    // Memoized generate function for LLM
-    const llmGenerate = useCallback(async (messages: Message[]): Promise<string> => {
-        const hook = llmHookRef.current;
-        if (!hook.isReady) {
-            throw new Error("LLM model not ready");
-        }
-        if (hook.isGenerating) {
-            throw new Error("LLM is currently generating");
-        }
-        console.log("🤖 [AI] LLM generating response...");
-        try {
-            await hook.generate(messages);
-        } catch (error) {
-            console.error("❌ [AI] LLM generation failed:", error);
-            return "";
-        }
-        console.log("🤖 [AI] LLM response complete");
-        return hook.response || "";
-    }, []);
 
     // Memoized forward function for Embeddings
     const embeddingsForward = useCallback(async (text: string): Promise<number[]> => {
@@ -222,59 +105,21 @@ export function AIProvider({ children }: AIProviderProps) {
         if (hook.isGenerating) {
             throw new Error("Embeddings model is currently processing");
         }
-        console.log("📊 [AI] Embeddings processing text...");
         try {
             const result = await hook.forward(text);
             return Array.from(result);
         } catch (error) {
-            console.error("❌ [AI] Embeddings inference failed:", error);
+            console.error("[AI] Embeddings inference failed:", error);
             return [];
         }
     }, []);
-
-    // Memoized forward function for OCR
-    const ocrForward = useCallback(async (imagePath: string): Promise<OCRDetection[]> => {
-        const hook = ocrHookRef.current;
-        if (!hook.isReady) {
-            throw new Error("OCR model not ready");
-        }
-        if (hook.isGenerating) {
-            throw new Error("OCR model is currently processing");
-        }
-        try {
-            console.log("📷 [AI] OCR processing image...");
-            const result = await hook.forward(imagePath);
-            console.log(`📷 [AI] OCR found ${result.length} text regions`);
-            // Map the result to our OCRDetection type
-            return result.map((r) => ({
-                bbox: r.bbox,
-                text: r.text,
-                score: r.score,
-            }));
-        } catch (error) {
-            console.error("❌ [AI] OCR inference failed:", error);
-            return [];
-        }
-    }, []);
-
-    // Memoize model wrapper objects to prevent unnecessary re-renders
-    const llm: LLMModel = useMemo(
-        () => ({
-            generate: llmGenerate,
-            isReady: llmHook.isReady,
-            isGenerating: llmHook.isGenerating || false,
-            error: llmHook.error || null,
-            downloadProgress: llmHook.downloadProgress || 0,
-        }),
-        [llmGenerate, llmHook.isReady, llmHook.isGenerating, llmHook.error, llmHook.downloadProgress],
-    );
 
     const embeddings: EmbeddingsModel = useMemo(
         () => ({
             forward: embeddingsForward,
             isReady: embeddingsHook.isReady,
             isGenerating: embeddingsHook.isGenerating || false,
-            error: embeddingsHook.error || null,
+            error: embeddingsHook.error?.message || null,
             downloadProgress: embeddingsHook.downloadProgress || 0,
         }),
         [
@@ -286,29 +131,22 @@ export function AIProvider({ children }: AIProviderProps) {
         ],
     );
 
-    const ocr: OCRModel = useMemo(
-        () => ({
-            forward: ocrForward,
-            isReady: ocrHook.isReady,
-            isGenerating: ocrHook.isGenerating || false,
-            error: ocrHook.error || null,
-            downloadProgress: ocrHook.downloadProgress || 0,
-        }),
-        [ocrForward, ocrHook.isReady, ocrHook.isGenerating, ocrHook.error, ocrHook.downloadProgress],
-    );
+    // Pass embeddings to queue when ready
+    const embeddingsReady = embeddings?.isReady || false;
+    useEffect(() => {
+        if (embeddings) {
+            aiQueue.setModels({ embeddings });
+        }
+    }, [embeddings, embeddingsReady]);
 
-    // Memoize context value
     const contextValue: AIContextType = useMemo(
         () => ({
-            llm,
             embeddings,
-            ocr,
             isInitializing,
             overallProgress,
             error,
-            hasMemoryError,
         }),
-        [llm, embeddings, ocr, isInitializing, overallProgress, error, hasMemoryError],
+        [embeddings, isInitializing, overallProgress, error],
     );
 
     return <AIContext.Provider value={contextValue}>{children}</AIContext.Provider>;

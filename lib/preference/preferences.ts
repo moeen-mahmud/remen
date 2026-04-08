@@ -7,6 +7,7 @@ const DEFAULT_PREFERENCES: Preferences = {
     hapticFeedback: true,
     autoSaveDelay: 3000,
     modelsDownloaded: false,
+    llmDownloaded: false,
     onboardingCompleted: false,
     downloadOverlayMinimized: false,
     iCloudSyncEnabled: false,

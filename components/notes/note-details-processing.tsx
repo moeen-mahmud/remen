@@ -30,12 +30,7 @@ export const NoteDetailsProcessing: React.FC<NoteDetailsProcessingProps> = ({
                     <Spinner className="mr-2" size="small" color="grey" />
                     <Text className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">Queued for AI…</Text>
                 </>
-            ) : aiStatus === "cancelled" ? (
-                <>
-                    <Icon size="sm" as={XCircle} className="mr-2" color={mutedIconColor} />
-                    <Text className="text-sm font-semibold text-neutral-500 dark:text-neutral-400">AI cancelled</Text>
-                </>
-            ) : aiStatus === "failed" ? (
+            ) : aiStatus === "failed" || aiStatus === "cancelled" ? (
                 <Pressable
                     hitSlop={20}
                     className="flex-row gap-2 items-center"
@@ -44,7 +39,9 @@ export const NoteDetailsProcessing: React.FC<NoteDetailsProcessingProps> = ({
                 >
                     <Icon size="sm" as={XCircle} color={dangerColor} />
                     <Text className="text-sm font-semibold" style={{ color: dangerColorInverse }}>
-                        AI organization failed. Tap to re-organize.
+                        {aiStatus === "failed"
+                            ? "AI organization failed. Tap to re-organize."
+                            : "AI organization cancelled. Tap to re-queue."}
                     </Text>
                 </Pressable>
             ) : (

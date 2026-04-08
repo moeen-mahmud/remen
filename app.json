@@ -24,22 +24,6 @@
             },
             "appleTeamId": "M333T6NJKB"
         },
-        // "android": {
-        //     "adaptiveIcon": {
-        //         "backgroundColor": "#E6F4FE",
-        //         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        //         "backgroundImage": "./assets/images/android-icon-background.png",
-        //         "monochromeImage": "./assets/images/android-icon-monochrome.png"
-        //     },
-        //     "edgeToEdgeEnabled": true,
-        //     "predictiveBackGestureEnabled": false,
-        //     "permissions": [
-        //         "android.permission.RECORD_AUDIO",
-        //         "android.permission.CAMERA",
-        //         "android.permission.RECORD_AUDIO",
-        //         "android.permission.CAMERA"
-        //     ]
-        // },
         "web": {
             "output": "static",
             "favicon": "./assets/images/favicon.png"
@@ -58,13 +42,6 @@
                     "ios": {
                         "customBuildFlags": ["-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"]
                     }
-                }
-            ],
-            [
-                "@react-native-voice/voice",
-                {
-                    "microphonePermission": "Remen uses the microphone for voice note capture",
-                    "speechRecognitionPermission": "Remen uses speech recognition to transcribe voice notes"
                 }
             ],
             [
@@ -108,7 +85,15 @@
                 }
             ],
             "react-native-cloud-storage",
-            "expo-font"
+            "expo-font",
+            "expo-asset",
+            [
+                "expo-speech-recognition",
+                {
+                    "microphonePermissionText": "Remen uses the microphone for voice note capture",
+                    "speechRecognitionPermission": "Remen uses speech recognition to transcribe voice notes"
+                }
+            ]
         ],
         "experiments": {
             "typedRoutes": true,
@@ -126,6 +111,10 @@
         },
         "updates": {
             "url": "https://u.expo.dev/e06444c6-047b-4269-afa2-aa643f3d4ace"
+        },
+        "android": {
+            "permissions": ["android.permission.CAMERA"],
+            "package": "com.remennote.app"
         }
     }
 }

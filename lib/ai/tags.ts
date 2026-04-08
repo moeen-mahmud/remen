@@ -1,3 +1,4 @@
+import { AI_CONTENT_PREVIEW_LENGTH } from "@/lib/consts/consts";
 import type { NoteType } from "@/lib/database/database.types";
 import type { LLMModel, Message } from "./ai.types";
 
@@ -31,106 +32,27 @@ export async function extractTags(content: string, llm: LLMModel | null, noteTyp
 }
 
 function containsExampleTags(tags: string[]): boolean {
-    const exampleWords = new Set([
-        "example",
-        "team",
-        "planning",
-        "design", // meeting examples
-        "urgent",
-        "work",
-        "deadline", // task examples
-        "product",
-        "innovation",
-        "future", // idea examples
-        "gratitude",
-        "health",
-        "reflection", // journal examples
-        "coding",
-        "tutorial",
-        "docs", // reference examples
-        "important",
-        "project", // default examples
-        "actionable",
-        "decision",
-        "review",
-        "recurring",
-        "urgent",
-        "blocked",
-        "quick-win",
-        "product",
-        "experimental",
-        "improvement",
-        "exploratory",
-        "goals",
-        "gratitude",
-        "learning",
-        "reflection",
-        "coding",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-        "code",
-        "tutorial",
-        "docs",
-        "example",
-        "finance",
-        "contact",
-        "link",
-    ]);
+    // Only reject tags that are clearly meta/placeholder words from prompts
+    const exampleWords = new Set(["example", "e-g", "such-as", "like-this", "sample-tag", "placeholder"]);
 
-    // If 2+ tags are from example set, likely copied
     const exampleMatches = tags.filter((tag) => exampleWords.has(tag.toLowerCase()));
-    return exampleMatches.length >= 2;
+    return exampleMatches.length >= 3;
 }
 
 /**
  * AI-based tag extraction using LLM
  */
 async function extractTagsWithAI(content: string, llm: LLMModel, noteType?: NoteType): Promise<string[]> {
-    // Truncate content to focus model on key parts
-    const contentPreview = content.length > 400 ? content.substring(0, 400).trim() : content.trim();
-
-    const systemPrompt = buildTagSystemPrompt(noteType);
+    const preview = content.substring(0, AI_CONTENT_PREVIEW_LENGTH).trim();
 
     const messages: Message[] = [
         {
             role: "system",
-            content: systemPrompt,
+            content: "Tag extractor. Output 2-4 comma-separated topic words, nothing else.",
         },
         {
             role: "user",
-            content: `Content:\n${contentPreview}`,
+            content: `Note: ${preview}\nTags:`,
         },
     ];
 
@@ -148,54 +70,18 @@ async function extractTagsWithAI(content: string, llm: LLMModel, noteType?: Note
 }
 
 /**
- * Build system prompt for tag extraction
- */
-function buildTagSystemPrompt(noteType?: NoteType): string {
-    const baseInstruction = "You are a tag extractor. Read the content and identify 2-4 relevant topic tags.";
-
-    const rules = [
-        "Output ONLY comma-separated words",
-        "No hashtags, no quotes, no explanations",
-        "Single words or short phrases only",
-        "Be specific to the actual content topics",
-    ];
-
-    let typeGuidance = "";
-    switch (noteType) {
-        case "meeting":
-            typeGuidance = "Focus on: who attended, what was discussed, action items.";
-            break;
-        case "task":
-            typeGuidance = "Focus on: priority level, category, deadline status.";
-            break;
-        case "idea":
-            typeGuidance = "Focus on: domain, novelty, purpose.";
-            break;
-        case "journal":
-            typeGuidance = "Focus on: main themes, emotions, activities.";
-            break;
-        case "reference":
-            typeGuidance = "Focus on: subject area, type of information.";
-            break;
-        default:
-            typeGuidance = "Focus on: main topics and categories.";
-    }
-
-    return `${baseInstruction}\n\n${rules.join("\n")}\n\n${typeGuidance}`;
-}
-
-/**
  * Parse and clean tag response from LLM
  */
 function parseTagResponse(response: string, noteType?: NoteType): string[] {
-    // Clean and parse the response
     const tags = response
+        .replace(/<\|[^|]*\|>/g, "") // Strip ChatML tokens
         .trim()
         .toLowerCase()
         .split("\n")[0] // Take only first line
-        .replace(/^(tags?|keywords?|topics?):\s*/i, "") // Remove prefixes
+        .replace(/^(tags?|keywords?|topics?|output):\s*/i, "") // Remove prefixes
         .replace(/[\[\]"'`]/g, "") // Remove brackets and quotes
         .replace(/^[-•*]\s*/gm, "") // Remove bullet points
+        .replace(/\d+[.)]\s*/g, "") // Remove numbered list markers (1. 2. etc.)
         .split(/[,\n;]+/) // Split by common separators
         .map((tag) => cleanTag(tag))
         .filter((tag) => isValidTag(tag, noteType));

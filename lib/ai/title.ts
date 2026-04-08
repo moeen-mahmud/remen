@@ -1,12 +1,19 @@
 import type { LLMModel, Message } from "@/lib/ai/ai.types";
-import { MAX_TITLE_LENGTH } from "@/lib/consts/consts";
+import { AI_CONTENT_PREVIEW_LENGTH, MAX_TITLE_LENGTH } from "@/lib/consts/consts";
 import type { NoteType } from "@/lib/database/database.types";
 
 /**
  * Generate a title for the given note content using AI
  */
 export async function generateTitle(content: string, llm: LLMModel | null, noteType?: NoteType): Promise<string> {
-    // Try AI generation if model is ready and not busy
+    // Rule-based first — if the content has an explicit heading or structured pattern, use it.
+    // This is faster and more reliable than the LLM for structured content.
+    const ruleBasedTitle = extractTitleFromContent(content, noteType);
+    if (ruleBasedTitle) {
+        return ruleBasedTitle;
+    }
+
+    // No obvious title in the content — try LLM generation
     if (llm?.isReady && !llm.isGenerating) {
         try {
             const aiTitle = await generateTitleWithAI(content, llm, noteType);
@@ -18,12 +25,6 @@ export async function generateTitle(content: string, llm: LLMModel | null, noteT
         }
     }
 
-    // Try rule-based title extraction (faster, no AI needed)
-    const ruleBasedTitle = extractTitleFromContent(content, noteType);
-    if (ruleBasedTitle) {
-        return ruleBasedTitle;
-    }
-
     // Final fallback: first line truncated
     return getFallbackTitle(content, noteType);
 }
@@ -32,20 +33,27 @@ export async function generateTitle(content: string, llm: LLMModel | null, noteT
  * Check if the generated title looks like an example that was copied
  */
 function isExampleTitle(title: string): boolean {
-    const lowerTitle = title.toLowerCase();
+    const lowerTitle = title.toLowerCase().trim();
+
+    // Reject generic meta-titles the model echoes back
+    const genericTitles = new Set([
+        "note",
+        "notes",
+        "title",
+        "untitled",
+        "output",
+        "content",
+        "text",
+        "summary",
+        "document",
+        "entry",
+    ]);
+    if (genericTitles.has(lowerTitle)) {
+        return true;
+    }
 
     // Common example indicators
-    const examplePatterns = [
-        /^example/i,
-        /\bexample\b/i,
-        /^e\.g\./i,
-        /^like\b/i,
-        /^such as\b/i,
-        // Specific examples that might get copied
-        /team sync|design review|daily tasks|finish report/i,
-        /ai automation|gratitude today|react hooks guide/i,
-        /meeting notes|project ideas/i,
-    ];
+    const examplePatterns = [/^example/i, /\bexample\b/i, /^e\.g\./i, /^like\b/i, /^such as\b/i];
 
     return examplePatterns.some((pattern) => pattern.test(lowerTitle));
 }
@@ -54,20 +62,16 @@ function isExampleTitle(title: string): boolean {
  * Generate title using LLM (SmolLM 360M via ExecutorTorch)
  */
 async function generateTitleWithAI(content: string, llm: LLMModel, noteType?: NoteType): Promise<string | null> {
-    // Truncate very long content to save tokens and improve focus
-    const truncatedContent = content.length > 500 ? content.substring(0, 500) + "..." : content;
-
-    // Build a clearer, more direct prompt
-    const systemPrompt = buildSystemPrompt(noteType);
+    const preview = content.substring(0, AI_CONTENT_PREVIEW_LENGTH).trim();
 
     const messages: Message[] = [
         {
             role: "system",
-            content: systemPrompt,
+            content: "Title generator. Output only a short title, nothing else.",
         },
         {
             role: "user",
-            content: `Content:\n${truncatedContent}`,
+            content: `${preview}\n\nTitle:`,
         },
     ];
 
@@ -93,51 +97,17 @@ async function generateTitleWithAI(content: string, llm: LLMModel, noteType?: No
 }
 
 /**
- * Build a better system prompt based on note type
- */
-function buildSystemPrompt(noteType?: NoteType): string {
-    const baseInstruction =
-        "You are a title generator. Read the content and create a short, descriptive title (maximum 30 characters).";
-
-    const rules = [
-        "Output ONLY the title text",
-        "No quotes, no punctuation at the end",
-        "No prefixes like 'Title:' or 'Subject:'",
-        "Be specific to the actual content",
-    ];
-
-    let typeGuidance = "";
-    switch (noteType) {
-        case "meeting":
-            typeGuidance = "Focus on who met or what was discussed.";
-            break;
-        case "task":
-            typeGuidance = "Focus on the main action or task.";
-            break;
-        case "idea":
-            typeGuidance = "Capture the core concept briefly.";
-            break;
-        case "journal":
-            typeGuidance = "Reflect the main theme or feeling.";
-            break;
-        case "reference":
-            typeGuidance = "Describe what the reference is about.";
-            break;
-    }
-
-    return `${baseInstruction}\n\n${rules.join("\n")}${typeGuidance ? `\n\n${typeGuidance}` : ""}`;
-}
-
-/**
  * Clean up the generated title response
  */
 function cleanGeneratedTitle(response: string): string {
     return response
+        .replace(/<\|[^|]*\|>/g, "") // Strip ChatML tokens (<|im_start|>, <|im_end|>, <|endoftext|>)
         .trim()
         .split("\n")[0] // Take only first line
         .replace(/^["'`]|["'`]$/g, "") // Remove surrounding quotes
-        .replace(/^(Title|Subject|Name|Heading|Topic):\s*/i, "") // Remove common prefixes
-        .replace(/^\s*[-–—]\s*/, "") // Remove leading dashes
+        .replace(/^(Title|Subject|Name|Heading|Topic|Note|Output):\s*/i, "") // Remove common prefixes
+        .replace(/^\s*[-–—•*]\s*/, "") // Remove leading dashes/bullets
+        .replace(/^\d+[.)]\s*/, "") // Remove numbered list prefix
         .replace(/\s+/g, " ") // Normalize spaces
         .replace(/[.!?,;:]$/, "") // Remove trailing punctuation
         .trim();

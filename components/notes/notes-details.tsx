@@ -173,7 +173,7 @@ export const NoteDetails: React.FC<{ id: string }> = ({ id }) => {
 
         Alert.alert(
             "Re-organize with AI",
-            "This will regenerate the note’s title, type, tags, and embedding. Your note content won’t change.",
+            "This will regenerate the note’s title, type, and tags. Your note content won’t change.",
             [
                 { text: "Cancel", style: "cancel" },
                 {

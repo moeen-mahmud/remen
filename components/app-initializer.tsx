@@ -7,6 +7,13 @@ import { getPreferences, savePreferences } from "@/lib/preference/preferences";
 import * as Notifications from "expo-notifications";
 import { router, SplashScreen } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { LLAMA3_2_1B_SPINQUANT, LLMModule, SMOLLM2_1_360M_QUANTIZED } from "react-native-executorch";
+
+// Module-level trigger so settings can request onboarding replay
+let onboardingTrigger: (() => void) | null = null;
+export function triggerOnboarding() {
+    onboardingTrigger?.();
+}
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
     const [isReady, setIsReady] = useState(false);
@@ -15,10 +22,19 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     const [downloadOverlayMinimized, setDownloadOverlayMinimized] = useState(false);
     const [modelsDownloadedPreviously, setModelsDownloadedPreviously] = useState<boolean | null>(null);
     const [, setOnboardingCompleted] = useState<boolean | null>(null);
-    const { llm, embeddings, ocr, isInitializing, overallProgress, error } = useAI();
+    const [llmDownloadProgress, setLlmDownloadProgress] = useState(0);
+    const [llmDownloadStarted, setLlmDownloadStarted] = useState(false);
+    const { embeddings, isInitializing, overallProgress, error } = useAI();
 
-    // Track previous state to avoid duplicate logs
-    const prevStateRef = useRef({ llmReady: false, embeddingsReady: false, lastProgress: 0 });
+    const prevStateRef = useRef({ embeddingsReady: false, lastProgress: 0 });
+
+    // Register the onboarding trigger so external code can replay it
+    useEffect(() => {
+        onboardingTrigger = () => setShowOnboarding(true);
+        return () => {
+            onboardingTrigger = null;
+        };
+    }, []);
 
     // Check if models were previously downloaded and onboarding completed
     useEffect(() => {
@@ -28,7 +44,6 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
             setOnboardingCompleted(prefs.onboardingCompleted);
             setDownloadOverlayMinimized(prefs.downloadOverlayMinimized);
 
-            // Show onboarding if not completed, otherwise show download overlay if models not downloaded
             if (!prefs.onboardingCompleted) {
                 setShowOnboarding(true);
             } else if (!prefs.modelsDownloaded && !prefs.downloadOverlayMinimized) {
@@ -64,16 +79,13 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
         initialize();
     }, []);
 
-    // Update AI models in queue when their ready state changes
-    const llmReady = llm?.isReady || false;
+    // Only need embeddings ready — LLM loads on demand via queue
     const embeddingsReady = embeddings?.isReady || false;
-    const ocrReady = ocr?.isReady || false;
-    const allModelsReady = llmReady && embeddingsReady && ocrReady;
 
-    // Mark models as downloaded when all are ready (only if no memory error)
+    // Mark models as downloaded when both embeddings and LLM are ready
     useEffect(() => {
         async function markModelsDownloaded() {
-            if (allModelsReady && modelsDownloadedPreviously === false) {
+            if (embeddingsReady && llmDownloadProgress >= 1 && modelsDownloadedPreviously === false) {
                 console.log("[App] All models downloaded, saving preference...");
                 await savePreferences({ modelsDownloaded: true });
                 setTimeout(() => {
@@ -82,13 +94,55 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
             }
         }
         markModelsDownloaded();
-    }, [allModelsReady, modelsDownloadedPreviously]);
+    }, [embeddingsReady, llmDownloadProgress, modelsDownloadedPreviously]);
+
+    // Pre-download LLM after embeddings are ready (download only, then free RAM)
+    useEffect(() => {
+        if (!embeddingsReady || llmDownloadStarted) return;
+
+        (async () => {
+            const prefs = await getPreferences();
+            if (prefs.llmDownloaded) {
+                setLlmDownloadProgress(1);
+                return;
+            }
+
+            setLlmDownloadStarted(true);
+            console.log("[App] Pre-downloading LLM...");
+
+            const modelsToTry = [
+                { source: LLAMA3_2_1B_SPINQUANT, name: "Llama 3.2 1B SpinQuant" },
+                { source: SMOLLM2_1_360M_QUANTIZED, name: "SmolLM 360M" },
+            ];
+
+            for (const { source, name } of modelsToTry) {
+                try {
+                    console.log(`[App] Downloading ${name}...`);
+                    const module = await LLMModule.fromModelName(source, (progress) => {
+                        setLlmDownloadProgress(progress);
+                    });
+                    // Downloaded + loaded — immediately free RAM
+                    module.delete();
+                    console.log(`[App] ${name} pre-downloaded and freed from RAM`);
+                    await savePreferences({ llmDownloaded: true });
+                    setLlmDownloadProgress(1);
+                    return;
+                } catch (err) {
+                    console.warn(`[App] ${name} pre-download failed:`, err);
+                }
+            }
+
+            // All models failed — mark as done anyway so we don't block forever
+            console.warn("[App] LLM pre-download failed for all models");
+            setLlmDownloadProgress(1);
+            await savePreferences({ llmDownloaded: true });
+        })();
+    }, [embeddingsReady, llmDownloadStarted]);
 
     // Handle notification taps to open the respective note
     useEffect(() => {
         let subscription: Notifications.EventSubscription | null = null;
         if (isReady) {
-            // Helper to navigate to a note if we have a valid ID
             const handleNavigateToNote = (noteId: unknown) => {
                 if (typeof noteId !== "string" || !noteId) return;
                 try {
@@ -110,7 +164,6 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
                 }
             })();
 
-            // Listen for taps while the app is in foreground/background
             subscription = Notifications.addNotificationResponseReceivedListener((response) => {
                 const noteId = (response.notification.request.content.data as any)?.noteId;
                 handleNavigateToNote(noteId);
@@ -122,40 +175,34 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
         };
     }, [isReady]);
 
-    // Handle onboarding completion
     const handleOnboardingComplete = useCallback(async () => {
         await savePreferences({ onboardingCompleted: true });
         setShowOnboarding(false);
         setOnboardingCompleted(true);
 
-        // Check if we should show download overlay after onboarding
         const prefs = await getPreferences();
         if (!prefs.modelsDownloaded) {
             setShowDownloadOverlay(true);
         }
     }, []);
 
-    // Handle onboarding skip
     const handleOnboardingSkip = useCallback(async () => {
         await savePreferences({ onboardingCompleted: true });
         setShowOnboarding(false);
         setOnboardingCompleted(true);
 
-        // Check if we should show download overlay after onboarding
         const prefs = await getPreferences();
         if (!prefs.modelsDownloaded && !prefs.downloadOverlayMinimized) {
             setShowDownloadOverlay(true);
         }
     }, []);
 
-    // Handle download overlay minimize
     const handleDownloadOverlayMinimize = useCallback(async () => {
         await savePreferences({ downloadOverlayMinimized: true });
         setDownloadOverlayMinimized(true);
         setShowDownloadOverlay(false);
     }, []);
 
-    // Handle download overlay close
     const handleDownloadOverlayClose = useCallback(async () => {
         await savePreferences({ downloadOverlayMinimized: true, modelsDownloaded: true });
         setDownloadOverlayMinimized(true);
@@ -165,19 +212,11 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const prev = prevStateRef.current;
 
-        // Only log when state actually changes
-        if (llmReady !== prev.llmReady || embeddingsReady !== prev.embeddingsReady) {
-            console.log(
-                `[App] AI models - LLM: ${llmReady ? "✓" : "..."}, Embeddings: ${embeddingsReady ? "✓" : "..."}`,
-            );
-            prev.llmReady = llmReady;
+        if (embeddingsReady !== prev.embeddingsReady) {
+            console.log(`[App] AI models - Embeddings: ${embeddingsReady ? "✓" : "..."}, LLM: on-demand`);
             prev.embeddingsReady = embeddingsReady;
         }
-
-        if (llm || embeddings) {
-            aiQueue.setModels({ llm, embeddings });
-        }
-    }, [llm, embeddings, llmReady, embeddingsReady]);
+    }, [embeddingsReady]);
 
     // Log AI progress at 10% intervals
     useEffect(() => {
@@ -190,7 +229,6 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
         }
     }, [isInitializing, overallProgress]);
 
-    // Log errors
     useEffect(() => {
         if (error) {
             console.error(`[App] AI error: ${error}`);
@@ -204,25 +242,19 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     return (
         <>
             {children}
-            {/* Show onboarding on first launch */}
             {showOnboarding ? <Onboarding onComplete={handleOnboardingComplete} onSkip={handleOnboardingSkip} /> : null}
 
-            {/* Show download overlay after onboarding while models are downloading (only if no memory error) */}
             {showDownloadOverlay ? (
                 <ModelDownloadOverlay
-                    progress={overallProgress}
-                    llmProgress={llm?.downloadProgress || 0}
+                    progress={(overallProgress + llmDownloadProgress) / 2}
                     embeddingsProgress={embeddings?.downloadProgress || 0}
-                    ocrProgress={ocr?.downloadProgress || 0}
-                    isVisible={showDownloadOverlay && isInitializing}
+                    llmProgress={llmDownloadProgress}
+                    isVisible={showDownloadOverlay && (isInitializing || llmDownloadProgress < 1)}
                     onMinimize={handleDownloadOverlayMinimize}
                     onClose={handleDownloadOverlayClose}
                     isMinimized={downloadOverlayMinimized}
                 />
             ) : null}
-
-            {/* Show memory error overlay if models failed due to memory issues */}
-            {/* {hasMemoryError ? <MemoryErrorOverlay isVisible={hasMemoryError} /> : null} */}
         </>
     );
 }
