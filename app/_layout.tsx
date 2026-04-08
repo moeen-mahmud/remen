@@ -21,10 +21,16 @@ export default function RootLayout() {
     const [themeLoaded, setThemeLoaded] = useState(false);
 
     useEffect(() => {
-        getPreferences().then((prefs) => {
-            setThemeMode(prefs.theme);
-            setThemeLoaded(true);
-        });
+        getPreferences()
+            .then((prefs) => {
+                setThemeMode(prefs.theme);
+            })
+            .catch(() => {
+                setThemeMode("system");
+            })
+            .finally(() => {
+                setThemeLoaded(true);
+            });
     }, []);
 
     // Don't render until we know the saved theme — prevents flash of wrong theme
