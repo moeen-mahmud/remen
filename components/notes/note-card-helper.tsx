@@ -4,15 +4,12 @@ import { parseTasksFromText } from "@/lib/tasks/tasks";
 import { truncateText } from "@/lib/utils/functions";
 
 export const hasTitle = (note: Note) => note.title && note.title.trim().length > 0;
-export const hasTaskTypeTitle = (note: Note) => TASK_PATTERNS.test(note.title ?? "");
 export const hasTaskTypeContent = (note: Note) => TASK_PATTERNS.test(note.content);
 export const hasContent = (note: Note) => note.content.trim().length > 0;
 
 export const renderDisplayTitle = (note: Note) =>
     hasTitle(note)
-        ? hasTaskTypeTitle(note)
-            ? "Tasks list"
-            : note.title
+        ? note.title
         : hasTaskTypeContent(note)
           ? "Task list"
           : `${note.content ? truncateText(note.content, 10) : "Empty note"}`;

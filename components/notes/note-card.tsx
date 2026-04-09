@@ -16,7 +16,7 @@ import { noteCardStyles as styles } from "@/components/notes/note.styles";
 import type { Note, Tag } from "@/lib/database/database.types";
 import { useTheme } from "@/lib/theme/use-theme";
 import * as Haptics from "expo-haptics";
-import { useEffect, type FC } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { Pressable } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from "react-native-reanimated";
 
@@ -33,7 +33,7 @@ export interface NoteCardProps {
     isProcessing?: boolean;
 }
 
-export const NoteCard: FC<NoteCardProps> = ({
+function NoteCardBase({
     note,
     tags = [],
     onPress,
@@ -42,11 +42,17 @@ export const NoteCard: FC<NoteCardProps> = ({
     isSelected = false,
     onToggleSelect,
     isProcessing = false,
-}) => {
+}: NoteCardProps) {
     const { brandColor } = useTheme();
 
     const typeBadge = getNoteTypeBadge(note.type);
     const typeIcon = getNoteTypeIcon(note.type, typeBadge.color);
+
+    // Memoize expensive derived values — computed once per content change
+    const displayTitle = useMemo(() => renderDisplayTitle(note), [note.title, note.content, note.type]);
+    const preview = useMemo(() => renderPreview(note), [note.title, note.content]);
+    const isTaskContent = useMemo(() => hasTaskTypeContent(note), [note.content]);
+    const parsedTasks = useMemo(() => (isTaskContent ? tasksParser(note) : null), [note.content, isTaskContent]);
 
     // Animation values
     const scale = useSharedValue(1);
@@ -144,16 +150,16 @@ export const NoteCard: FC<NoteCardProps> = ({
             />
             {/* Title */}
             <Heading size="sm" className="flex-wrap" style={styles.title}>
-                {renderDisplayTitle(note)}
+                {displayTitle}
             </Heading>
 
             {/* Preview */}
-            {renderPreview(note) && renderPreview(note).length > 0 && (
+            {preview && preview.length > 0 && (
                 <NoteCardContent
-                    hasTaskTypeContent={hasTaskTypeContent(note)}
-                    parsedTasks={tasksParser(note)}
-                    totalTasks={tasksParser(note)?.length}
-                    preview={renderPreview(note)}
+                    hasTaskTypeContent={isTaskContent}
+                    parsedTasks={parsedTasks || []}
+                    totalTasks={parsedTasks?.length || 0}
+                    preview={preview}
                 />
             )}
 
@@ -169,4 +175,6 @@ export const NoteCard: FC<NoteCardProps> = ({
             </Box>
         </AnimatedPressable>
     );
-};
+}
+
+export const NoteCard = memo(NoteCardBase);

@@ -18,7 +18,8 @@ import { addPermanentlyDeletedIds, getPreferences, savePreferences } from "@/lib
 import * as Haptics from "expo-haptics";
 import { router, usePathname } from "expo-router";
 import { useColorScheme } from "nativewind";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { getLlmDownloadProgress } from "@/components/app-initializer";
 
 export const SettingsHome: React.FC = () => {
     const pathname = usePathname();
@@ -30,6 +31,23 @@ export const SettingsHome: React.FC = () => {
     const [trashedCount, setTrashedCount] = useState(0);
     const [iCloudAvailable, setICloudAvailable] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [llmProgress, setLlmProgress] = useState(getLlmDownloadProgress());
+
+    // Poll LLM download progress while it's downloading
+    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    useEffect(() => {
+        if (llmProgress >= 1) return;
+        pollRef.current = setInterval(() => {
+            const p = getLlmDownloadProgress();
+            setLlmProgress(p);
+            if (p >= 1 && pollRef.current) {
+                clearInterval(pollRef.current);
+            }
+        }, 500);
+        return () => {
+            if (pollRef.current) clearInterval(pollRef.current);
+        };
+    }, [llmProgress]);
 
     // Load preferences, counts, and iCloud availability
     useEffect(() => {
@@ -207,7 +225,12 @@ export const SettingsHome: React.FC = () => {
             />
 
             {/* AI Section */}
-            <SettingsAI embeddings={embeddings} overallProgress={overallProgress} isInitializing={isInitializing} />
+            <SettingsAI
+                embeddings={embeddings}
+                overallProgress={overallProgress}
+                isInitializing={isInitializing}
+                llmDownloadProgress={llmProgress}
+            />
 
             {/* AI Controls Section */}
             <SettingsAIControls />
