@@ -68,9 +68,7 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({
                                 ) : (
                                     <Box style={styles.statusRow}>
                                         <Icon as={Download} color={brandColor} />
-                                        <Text style={{ color: brandColor }}>
-                                            {Math.round(model.progress * 100)}%
-                                        </Text>
+                                        <Text style={{ color: brandColor }}>{Math.round(model.progress * 100)}%</Text>
                                     </Box>
                                 )}
                             </Box>

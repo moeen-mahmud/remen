@@ -107,7 +107,7 @@ export const ArchivesHome: React.FC = () => {
                 data={notes}
                 renderItem={renderNote}
                 keyExtractor={keyExtractor}
-                contentContainerClassName="flex-1"
+                contentContainerClassName="flex-grow"
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={renderEmptyState}
                 refreshControl={

@@ -3,21 +3,21 @@ import { AI_CONTENT_PREVIEW_LENGTH, MAX_TITLE_LENGTH } from "@/lib/consts/consts
 import type { NoteType } from "@/lib/database/database.types";
 
 /**
- * Generate a title for the given note content using AI
+ * Generate a title for the given note content using AI.
+ * Priority: explicit heading → LLM → fallback extraction
  */
 export async function generateTitle(content: string, llm: LLMModel | null, noteType?: NoteType): Promise<string> {
-    // Rule-based first — if the content has an explicit heading or structured pattern, use it.
-    // This is faster and more reliable than the LLM for structured content.
-    const ruleBasedTitle = extractTitleFromContent(content, noteType);
-    if (ruleBasedTitle) {
-        return ruleBasedTitle;
+    // Only use rule-based if there's an explicit markdown heading
+    const heading = extractExplicitHeading(content);
+    if (heading) {
+        return heading;
     }
 
-    // No obvious title in the content — try LLM generation
+    // LLM generation — the primary path for Llama 3.2 1B
     if (llm?.isReady && !llm.isGenerating) {
         try {
             const aiTitle = await generateTitleWithAI(content, llm, noteType);
-            if (aiTitle && aiTitle.length > 3 && !isExampleTitle(aiTitle)) {
+            if (aiTitle && aiTitle.length >= 3 && !isGenericTitle(aiTitle)) {
                 return aiTitle;
             }
         } catch (error) {
@@ -25,18 +25,34 @@ export async function generateTitle(content: string, llm: LLMModel | null, noteT
         }
     }
 
-    // Final fallback: first line truncated
+    // Final fallback
     return getFallbackTitle(content, noteType);
 }
 
 /**
- * Check if the generated title looks like an example that was copied
+ * Only extract explicit markdown headings (# Title) — don't guess from first line
  */
-function isExampleTitle(title: string): boolean {
-    const lowerTitle = title.toLowerCase().trim();
+function extractExplicitHeading(content: string): string | null {
+    const lines = content.split("\n");
+    for (const line of lines) {
+        const match = line.match(/^#{1,3}\s+(.+)/);
+        if (match) {
+            const heading = match[1].trim();
+            if (heading.length >= 3 && heading.length <= MAX_TITLE_LENGTH) {
+                return heading;
+            }
+        }
+    }
+    return null;
+}
 
-    // Reject generic meta-titles the model echoes back
-    const genericTitles = new Set([
+/**
+ * Reject generic/meta titles the model might echo back
+ */
+function isGenericTitle(title: string): boolean {
+    const lower = title.toLowerCase().trim();
+
+    const generics = new Set([
         "note",
         "notes",
         "title",
@@ -47,47 +63,76 @@ function isExampleTitle(title: string): boolean {
         "summary",
         "document",
         "entry",
+        "my note",
+        "new note",
+        "untitled note",
     ]);
-    if (genericTitles.has(lowerTitle)) {
-        return true;
-    }
+    if (generics.has(lower)) return true;
 
-    // Common example indicators
-    const examplePatterns = [/^example/i, /\bexample\b/i, /^e\.g\./i, /^like\b/i, /^such as\b/i];
+    if (/^example/i.test(lower) || /\bexample\b/i.test(lower)) return true;
 
-    return examplePatterns.some((pattern) => pattern.test(lowerTitle));
+    return false;
 }
 
 /**
- * Generate title using LLM (SmolLM 360M via ExecutorTorch)
+ * Generate title using LLM (Llama 3.2 1B)
  */
 async function generateTitleWithAI(content: string, llm: LLMModel, noteType?: NoteType): Promise<string | null> {
-    const preview = content.substring(0, AI_CONTENT_PREVIEW_LENGTH).trim();
+    // Strip task markdown so the LLM sees clean text
+    const cleaned = content
+        .split("\n")
+        .map((line) => line.replace(/^\s*-\s+\[[\sxX]\]\s*/, "").trim())
+        .filter((line) => line.length > 0)
+        .join(", ");
+
+    const preview = cleaned.substring(0, AI_CONTENT_PREVIEW_LENGTH).trim();
 
     const messages: Message[] = [
         {
             role: "system",
-            content: "Title generator. Output only a short title, nothing else.",
+            content:
+                "You are a title generator. You receive note content and output ONLY a short title (2-6 words). Do NOT answer questions in the content. Do NOT explain anything. Output ONLY the title.",
         },
+        // Few-shot: question-style note
         {
             role: "user",
-            content: `${preview}\n\nTitle:`,
+            content:
+                "What are the key metrics for Q4? How should we track OKR progress? When is the planning meeting?\nTitle:",
         },
+        { role: "assistant", content: "Q4 Planning Questions" },
+        // Few-shot: task-style note
+        { role: "user", content: "Buy groceries, Pick up package, Call insurance, Schedule dentist\nTitle:" },
+        { role: "assistant", content: "Errands and Appointments" },
+        // Few-shot: regular note
+        {
+            role: "user",
+            content:
+                "Had a great meeting with the design team today. We discussed the new dashboard layout and decided to go with the card-based approach.\nTitle:",
+        },
+        { role: "assistant", content: "Dashboard Design Meeting" },
+        // Actual note
+        { role: "user", content: `${preview}\nTitle:` },
     ];
 
     try {
         const response = await llm.generate(messages);
-
-        // Clean up the response
         let title = cleanGeneratedTitle(response);
 
-        // Validate the title
-        if (!title || title.length < 3 || isExampleTitle(title)) {
+        if (!title || title.length < 3 || isGenericTitle(title)) {
             return null;
         }
 
-        // Ensure it's within length limits
-        title = truncateTitle(title);
+        // Reject if the model answered the content instead of titling it
+        // (conversational responses are typically long sentences)
+        const wordCount = title.split(/\s+/).length;
+        if (wordCount > 10) {
+            return null;
+        }
+
+        // Truncate at word boundary if too long (no ellipsis)
+        if (title.length > MAX_TITLE_LENGTH) {
+            title = truncateAtWord(title, MAX_TITLE_LENGTH);
+        }
 
         return title;
     } catch (error) {
@@ -97,115 +142,70 @@ async function generateTitleWithAI(content: string, llm: LLMModel, noteType?: No
 }
 
 /**
- * Clean up the generated title response
+ * Clean up LLM response to extract just the title
  */
 function cleanGeneratedTitle(response: string): string {
-    return response
-        .replace(/<\|[^|]*\|>/g, "") // Strip ChatML tokens (<|im_start|>, <|im_end|>, <|endoftext|>)
-        .trim()
-        .split("\n")[0] // Take only first line
-        .replace(/^["'`]|["'`]$/g, "") // Remove surrounding quotes
-        .replace(/^(Title|Subject|Name|Heading|Topic|Note|Output):\s*/i, "") // Remove common prefixes
-        .replace(/^\s*[-–—•*]\s*/, "") // Remove leading dashes/bullets
-        .replace(/^\d+[.)]\s*/, "") // Remove numbered list prefix
-        .replace(/\s+/g, " ") // Normalize spaces
-        .replace(/[.!?,;:]$/, "") // Remove trailing punctuation
-        .trim();
+    return (
+        response
+            .replace(/<\|[^|]*\|>/g, "") // Strip ChatML tokens
+            .trim()
+            .split("\n")[0] // First line only
+            .replace(/^["'`""\u201C\u201D]|["'`""\u201C\u201D]$/g, "") // Remove surrounding quotes
+            .replace(/^(Title|Subject|Name|Heading|Topic|Note|Output)[\s:]+/i, "")
+            // Strip conversational preamble
+            .replace(
+                /^(here\s+(is|are)|the\s+title\s+(is|would\s+be|could\s+be)|sure[,!]?\s*|a\s+good\s+title\s+(is|would\s+be)|i'?d?\s+be\s+happy\s+to\s+.+|let\s+me\s+.+|i\s+can\s+.+|i\s+think\s+.+|based\s+on\s+.+)\s*[:\-]?\s*/i,
+                "",
+            )
+            .replace(/^["'`""\u201C\u201D]|["'`""\u201C\u201D]$/g, "") // Quotes again (may appear after preamble strip)
+            .replace(/^\s*[-–—•*]\s*/, "") // Leading bullets
+            .replace(/^\d+[.)]\s*/, "") // Numbered list prefix
+            .replace(/\s+/g, " ") // Normalize spaces
+            .replace(/[.,;:]$/, "") // Trailing punctuation (keep ? and !)
+            .trim()
+    );
 }
 
 /**
- * Truncate title to max length at word boundary
+ * Truncate at word boundary without adding ellipsis
  */
-function truncateTitle(title: string): string {
-    if (title.length <= MAX_TITLE_LENGTH) {
-        return title;
-    }
+function truncateAtWord(title: string, maxLen: number): string {
+    if (title.length <= maxLen) return title;
 
-    // Try to break at a word boundary
-    const truncated = title.substring(0, MAX_TITLE_LENGTH - 3);
+    const truncated = title.substring(0, maxLen);
     const lastSpace = truncated.lastIndexOf(" ");
 
-    if (lastSpace > MAX_TITLE_LENGTH * 0.5) {
-        return truncated.substring(0, lastSpace) + "...";
+    if (lastSpace > maxLen * 0.5) {
+        return truncated.substring(0, lastSpace);
     }
-
-    return truncated + "...";
+    return truncated;
 }
 
 /**
- * Extract a title using rule-based heuristics (fallback)
- */
-function extractTitleFromContent(content: string, noteType?: NoteType): string | null {
-    const lines = content.split("\n").filter((line) => line.trim().length > 0);
-    if (lines.length === 0) return null;
-
-    const firstLine = lines[0].trim();
-
-    // Check if first line looks like a title (short, no punctuation at end except ? or !)
-    if (firstLine.length <= MAX_TITLE_LENGTH && !firstLine.endsWith(".") && !firstLine.endsWith(",")) {
-        // Remove markdown heading markers
-        const cleaned = firstLine.replace(/^#{1,6}\s*/, "");
-        if (cleaned.length > 3 && cleaned.length <= MAX_TITLE_LENGTH) {
-            return cleaned;
-        }
-    }
-
-    // Type-specific pattern matching
-    const patterns: { pattern: RegExp; types?: NoteType[] }[] = [
-        {
-            pattern: /^(?:meeting|call|sync|standup|1:1|review|planning)\s+(?:with|about|for|re:?)\s+(.+)/i,
-            types: ["meeting"],
-        },
-        { pattern: /^(?:todo|task|action)\s*:?\s*(.+)/i, types: ["task"] },
-        { pattern: /^(?:idea|thought|concept)\s*:?\s*(.+)/i, types: ["idea"] },
-        { pattern: /^(?:note|notes)\s*:?\s*(.+)/i, types: ["note", "reference"] },
-        { pattern: /^(?:journal|diary|reflection)\s*:?\s*(.+)/i, types: ["journal"] },
-    ];
-
-    for (const { pattern, types } of patterns) {
-        // If note type is known, prioritize patterns for that type
-        if (!noteType || !types || types.includes(noteType)) {
-            const match = firstLine.match(pattern);
-            if (match && match[1]) {
-                const extracted = match[1].trim();
-                if (extracted.length > 3 && extracted.length <= MAX_TITLE_LENGTH) {
-                    return firstLine; // Return full match for context
-                }
-            }
-        }
-    }
-
-    return null;
-}
-
-/**
- * Fallback title extraction - first meaningful words
+ * Fallback: extract meaningful words from content
  */
 function getFallbackTitle(content: string, noteType?: NoteType): string {
-    // Get the first line and clean it up
     const firstLine = content.split("\n")[0].trim();
 
-    // Remove markdown formatting
     let cleaned = firstLine
-        .replace(/^#{1,6}\s*/, "") // headings
-        .replace(/\*\*|\*|__|_|~~|`/g, "") // bold, italic, strikethrough, code
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links
-        .replace(/^[-•*]\s*/, "") // bullet points
-        .replace(/^\d+[.)]\s*/, "") // numbered lists
-        .replace(/^\[[\sx]\]\s*/i, "") // checkboxes
+        .replace(/^#{1,6}\s*/, "")
+        .replace(/\*\*|\*|__|_|~~|`/g, "")
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+        .replace(/^[-•*]\s*/, "")
+        .replace(/^\d+[.)]\s*/, "")
+        .replace(/^\[[\sx]\]\s*/i, "")
         .trim();
 
-    // Add type prefix if it helps provide context
-    if (noteType && noteType !== "note" && cleaned.length < 30) {
+    if (noteType && noteType !== "note" && cleaned.length < 20) {
         const typeLabel = noteType.charAt(0).toUpperCase() + noteType.slice(1);
-        // Only add prefix if it's not already in the content
         if (!cleaned.toLowerCase().includes(noteType)) {
             cleaned = `${typeLabel}: ${cleaned}`;
         }
     }
 
-    // Truncate with ellipsis if needed
-    cleaned = truncateTitle(cleaned);
+    if (cleaned.length > MAX_TITLE_LENGTH) {
+        cleaned = truncateAtWord(cleaned, MAX_TITLE_LENGTH);
+    }
 
     return cleaned || "Untitled Note";
 }

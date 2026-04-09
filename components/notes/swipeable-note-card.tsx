@@ -4,7 +4,7 @@ import { gestureThresholds, timingConfigs } from "@/lib/config/animation-config"
 import { useTheme } from "@/lib/theme/use-theme";
 import * as Haptics from "expo-haptics";
 import { ArchiveIcon, Pin, PinOff, Trash2, UndoIcon } from "lucide-react-native";
-import { type FC, useCallback } from "react";
+import { memo, useCallback } from "react";
 import { Alert, Dimensions, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -26,7 +26,7 @@ interface SwipeableNoteCardProps extends NoteCardProps {
     showLeftAction?: boolean;
 }
 
-export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
+function SwipeableNoteCardBase({
     note,
     tags,
     onPress,
@@ -44,7 +44,7 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
     isSelected,
     onToggleSelect,
     isProcessing,
-}) => {
+}: SwipeableNoteCardProps) {
     const { brandColor, dangerColor, taskCompletedColor, warningColor, textColorInverse } = useTheme();
 
     const translateX = useSharedValue(0);
@@ -250,7 +250,9 @@ export const SwipeableNoteCard: FC<SwipeableNoteCardProps> = ({
             </GestureDetector>
         </View>
     );
-};
+}
+
+export const SwipeableNoteCard = memo(SwipeableNoteCardBase);
 
 const styles = StyleSheet.create({
     container: {

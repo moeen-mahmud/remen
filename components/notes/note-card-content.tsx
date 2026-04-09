@@ -4,7 +4,7 @@ import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
 import { ParsedTask } from "@/lib/tasks/tasks.type";
 import { useTheme } from "@/lib/theme/use-theme";
-import React from "react";
+import React, { memo } from "react";
 
 type NoteCardContentProps = {
     hasTaskTypeContent: boolean;
@@ -13,12 +13,7 @@ type NoteCardContentProps = {
     preview: string;
 };
 
-export const NoteCardContent: React.FC<NoteCardContentProps> = ({
-    hasTaskTypeContent,
-    parsedTasks,
-    totalTasks,
-    preview,
-}) => {
+function NoteCardContentBase({ hasTaskTypeContent, parsedTasks, totalTasks, preview }: NoteCardContentProps) {
     const { mutedTextColor, mutedIconColor } = useTheme();
     return (
         <Box>
@@ -53,4 +48,6 @@ export const NoteCardContent: React.FC<NoteCardContentProps> = ({
             )}
         </Box>
     );
-};
+}
+
+export const NoteCardContent = memo(NoteCardContentBase);

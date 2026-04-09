@@ -4,8 +4,8 @@ import { SettingsNoteCounter } from "@/components/settings/settings-note-counter
 import { Box } from "@/components/ui/box";
 import { PageLoader } from "@/components/ui/page-loader";
 import { deleteNote, getTagsForNote, getTrashedNotes, restoreFromTrash } from "@/lib/database/database";
-import { addPermanentlyDeletedIds } from "@/lib/preference/preferences";
 import { Note, Tag } from "@/lib/database/database.types";
+import { addPermanentlyDeletedIds } from "@/lib/preference/preferences";
 import { useTheme } from "@/lib/theme/use-theme";
 import { useRouter } from "expo-router";
 import { Recycle } from "lucide-react-native";
@@ -110,7 +110,7 @@ export const TrashHome: React.FC = () => {
                 data={notes}
                 renderItem={renderNote}
                 keyExtractor={keyExtractor}
-                contentContainerClassName="flex-1"
+                contentContainerClassName="flex-grow"
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={renderEmptyState}
                 refreshControl={
