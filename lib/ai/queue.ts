@@ -1,15 +1,19 @@
 import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database/database";
-import {
-    LLAMA3_2_1B_SPINQUANT,
-    LLMModule,
-    // SMOLLM2_1_135M_QUANTIZED,
-    SMOLLM2_1_360M_QUANTIZED,
-} from "react-native-executorch";
+import { LLMModule, SMOLLM2_1_360M_QUANTIZED } from "react-native-executorch";
 import type { EmbeddingsModel, LLMModel, Message } from "./ai.types";
 import { classifyNoteType } from "./classify";
 import { generateEmbedding } from "./embeddings";
 import { extractTags } from "./tags";
 import { generateTitle } from "./title";
+
+// Llama 3.2 1B SpinQuant — pinned to v0.7.0 tag (v0.8.0 tag missing on HuggingFace)
+const LLAMA_3_2_1B_SPINQUANT_URLS = {
+    model: "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.7.0/llama-3.2-1B/spinquant/llama3_2_spinquant.pte",
+    tokenizer:
+        "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.7.0/tokenizer.json",
+    tokenizerConfig:
+        "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.7.0/tokenizer_config.json",
+};
 
 export interface NoteJob {
     noteId: string;
@@ -112,16 +116,27 @@ class AIProcessingQueue {
             return this.createLLMWrapper();
         }
 
-        // Try 360M quantized first (better quality), fall back to 135M quantized
-        const modelsToTry = [
-            { source: LLAMA3_2_1B_SPINQUANT, name: "LLAMA3.2 1B Spinquant" },
-            { source: SMOLLM2_1_360M_QUANTIZED, name: "SMOLLM2.1 360M Quantized" },
+        // Try Llama 3.2 1B SpinQuant first (best quality), fall back to SmolLM 360M
+        const modelsToTry: { name: string; load: () => Promise<LLMModule> }[] = [
+            {
+                name: "Llama 3.2 1B SpinQuant",
+                load: () =>
+                    LLMModule.fromCustomModel(
+                        LLAMA_3_2_1B_SPINQUANT_URLS.model,
+                        LLAMA_3_2_1B_SPINQUANT_URLS.tokenizer,
+                        LLAMA_3_2_1B_SPINQUANT_URLS.tokenizerConfig,
+                    ),
+            },
+            {
+                name: "SmolLM 360M",
+                load: () => LLMModule.fromModelName(SMOLLM2_1_360M_QUANTIZED),
+            },
         ];
 
-        for (const { source, name } of modelsToTry) {
+        for (const { name, load } of modelsToTry) {
             try {
                 console.log(`[Queue] Loading ${name}...`);
-                const module = await LLMModule.fromModelName(source);
+                const module = await load();
                 module.configure({ generationConfig: { temperature: 0.3, topp: 0.9 } });
                 this.llmModule = module;
                 this.llmModelName = name;

@@ -7,12 +7,27 @@ import { getPreferences, savePreferences } from "@/lib/preference/preferences";
 import * as Notifications from "expo-notifications";
 import { router, SplashScreen } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { LLAMA3_2_1B_SPINQUANT, LLMModule, SMOLLM2_1_360M_QUANTIZED } from "react-native-executorch";
+import { LLMModule, SMOLLM2_1_360M_QUANTIZED } from "react-native-executorch";
+
+// Llama 3.2 1B SpinQuant — pinned to v0.7.0 tag (v0.8.0 tag missing on HuggingFace)
+const LLAMA_3_2_1B_SPINQUANT_URLS = {
+    model: "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.7.0/llama-3.2-1B/spinquant/llama3_2_spinquant.pte",
+    tokenizer:
+        "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.7.0/tokenizer.json",
+    tokenizerConfig:
+        "https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/resolve/v0.7.0/tokenizer_config.json",
+};
 
 // Module-level trigger so settings can request onboarding replay
 let onboardingTrigger: (() => void) | null = null;
 export function triggerOnboarding() {
     onboardingTrigger?.();
+}
+
+// Module-level LLM download progress so settings can read it
+let _llmDownloadProgress = 0;
+export function getLlmDownloadProgress(): number {
+    return _llmDownloadProgress;
 }
 
 export function AppInitializer({ children }: { children: React.ReactNode }) {
@@ -22,7 +37,11 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     const [downloadOverlayMinimized, setDownloadOverlayMinimized] = useState(false);
     const [modelsDownloadedPreviously, setModelsDownloadedPreviously] = useState<boolean | null>(null);
     const [, setOnboardingCompleted] = useState<boolean | null>(null);
-    const [llmDownloadProgress, setLlmDownloadProgress] = useState(0);
+    const [llmDownloadProgress, _setLlmDownloadProgress] = useState(0);
+    const setLlmDownloadProgress = useCallback((p: number) => {
+        _llmDownloadProgress = p;
+        _setLlmDownloadProgress(p);
+    }, []);
     const [llmDownloadStarted, setLlmDownloadStarted] = useState(false);
     const { embeddings, isInitializing, overallProgress, error } = useAI();
 
@@ -82,19 +101,20 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     // Only need embeddings ready — LLM loads on demand via queue
     const embeddingsReady = embeddings?.isReady || false;
 
-    // Mark models as downloaded when both embeddings and LLM are ready
+    // Mark models as downloaded when BOTH embeddings AND LLM are ready
+    const allModelsReady = embeddingsReady && llmDownloadProgress >= 1;
     useEffect(() => {
         async function markModelsDownloaded() {
-            if (embeddingsReady && llmDownloadProgress >= 1 && modelsDownloadedPreviously === false) {
+            if (allModelsReady && modelsDownloadedPreviously === false) {
                 console.log("[App] All models downloaded, saving preference...");
                 await savePreferences({ modelsDownloaded: true });
                 setTimeout(() => {
                     setShowDownloadOverlay(false);
-                }, 500);
+                }, 1000);
             }
         }
         markModelsDownloaded();
-    }, [embeddingsReady, llmDownloadProgress, modelsDownloadedPreviously]);
+    }, [allModelsReady, modelsDownloadedPreviously]);
 
     // Pre-download LLM after embeddings are ready (download only, then free RAM)
     useEffect(() => {
@@ -108,17 +128,35 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
             }
 
             setLlmDownloadStarted(true);
+
+            // Show download overlay if not already visible
+            if (!showDownloadOverlay && !prefs.downloadOverlayMinimized) {
+                setShowDownloadOverlay(true);
+            }
+
             console.log("[App] Pre-downloading LLM...");
 
-            const modelsToTry = [
-                { source: LLAMA3_2_1B_SPINQUANT, name: "Llama 3.2 1B SpinQuant" },
-                { source: SMOLLM2_1_360M_QUANTIZED, name: "SmolLM 360M" },
+            const modelsToTry: { name: string; load: (onProgress: (p: number) => void) => Promise<LLMModule> }[] = [
+                {
+                    name: "Llama 3.2 1B SpinQuant",
+                    load: (onProgress) =>
+                        LLMModule.fromCustomModel(
+                            LLAMA_3_2_1B_SPINQUANT_URLS.model,
+                            LLAMA_3_2_1B_SPINQUANT_URLS.tokenizer,
+                            LLAMA_3_2_1B_SPINQUANT_URLS.tokenizerConfig,
+                            onProgress,
+                        ),
+                },
+                {
+                    name: "SmolLM 360M",
+                    load: (onProgress) => LLMModule.fromModelName(SMOLLM2_1_360M_QUANTIZED, onProgress),
+                },
             ];
 
-            for (const { source, name } of modelsToTry) {
+            for (const { name, load } of modelsToTry) {
                 try {
                     console.log(`[App] Downloading ${name}...`);
-                    const module = await LLMModule.fromModelName(source, (progress) => {
+                    const module = await load((progress) => {
                         setLlmDownloadProgress(progress);
                     });
                     // Downloaded + loaded — immediately free RAM
@@ -137,7 +175,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
             setLlmDownloadProgress(1);
             await savePreferences({ llmDownloaded: true });
         })();
-    }, [embeddingsReady, llmDownloadStarted]);
+    }, [embeddingsReady, llmDownloadStarted, showDownloadOverlay]);
 
     // Handle notification taps to open the respective note
     useEffect(() => {
@@ -204,10 +242,14 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
     }, []);
 
     const handleDownloadOverlayClose = useCallback(async () => {
-        await savePreferences({ downloadOverlayMinimized: true, modelsDownloaded: true });
+        // Only mark as fully downloaded if both models are actually done
+        await savePreferences({
+            downloadOverlayMinimized: true,
+            modelsDownloaded: allModelsReady,
+        });
         setDownloadOverlayMinimized(true);
         setShowDownloadOverlay(false);
-    }, []);
+    }, [allModelsReady]);
 
     useEffect(() => {
         const prev = prevStateRef.current;
@@ -249,7 +291,7 @@ export function AppInitializer({ children }: { children: React.ReactNode }) {
                     progress={(overallProgress + llmDownloadProgress) / 2}
                     embeddingsProgress={embeddings?.downloadProgress || 0}
                     llmProgress={llmDownloadProgress}
-                    isVisible={showDownloadOverlay && (isInitializing || llmDownloadProgress < 1)}
+                    isVisible={showDownloadOverlay && !allModelsReady}
                     onMinimize={handleDownloadOverlayMinimize}
                     onClose={handleDownloadOverlayClose}
                     isMinimized={downloadOverlayMinimized}

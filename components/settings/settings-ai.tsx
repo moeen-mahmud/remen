@@ -5,34 +5,45 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { EmbeddingsModel } from "@/lib/ai";
 import { useTheme } from "@/lib/theme/use-theme";
-import { CheckCircle, Download, XCircle, Zap } from "lucide-react-native";
+import { CheckCircle, Download, Zap } from "lucide-react-native";
 import { useMemo } from "react";
 
 type SettingsAIProps = {
     embeddings: EmbeddingsModel | null;
     overallProgress: number;
     isInitializing: boolean;
+    llmDownloadProgress: number;
 };
 
-export const SettingsAI: React.FC<SettingsAIProps> = ({ embeddings, overallProgress = 0, isInitializing = false }) => {
+export const SettingsAI: React.FC<SettingsAIProps> = ({
+    embeddings,
+    overallProgress = 0,
+    isInitializing = false,
+    llmDownloadProgress = 1,
+}) => {
     const { mutedTextColor, brandColor } = useTheme();
+
+    const embeddingsReady = embeddings?.isReady || false;
+    const llmReady = llmDownloadProgress >= 1;
+    const isDownloading = isInitializing || !llmReady;
+    const combinedProgress = isDownloading ? (overallProgress + llmDownloadProgress) / 2 : 1;
 
     const modelRows = useMemo(() => {
         return [
             {
                 name: "Semantic Search",
                 description: "Intelligent note discovery",
-                isReady: embeddings?.isReady,
-                downloadProgress: embeddings?.downloadProgress,
+                isReady: embeddingsReady,
+                progress: embeddings?.downloadProgress || 0,
             },
             {
                 name: "Language Model",
-                description: "Loads on demand for note processing",
-                isReady: true, // LLM is queue-managed, loads when needed
-                downloadProgress: 1,
+                description: "Titles, tags, and classification",
+                isReady: llmReady,
+                progress: llmDownloadProgress,
             },
         ];
-    }, [embeddings]);
+    }, [embeddings, embeddingsReady, llmReady, llmDownloadProgress]);
 
     return (
         <Box className="px-4 mt-6">
@@ -54,17 +65,12 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({ embeddings, overallProgr
                                         <Icon as={CheckCircle} color={brandColor} />
                                         <Text style={{ color: brandColor }}>Ready</Text>
                                     </Box>
-                                ) : isInitializing ? (
+                                ) : (
                                     <Box style={styles.statusRow}>
                                         <Icon as={Download} color={brandColor} />
                                         <Text style={{ color: brandColor }}>
-                                            {Math.round((model.downloadProgress || 0) * 100)}%
+                                            {Math.round(model.progress * 100)}%
                                         </Text>
-                                    </Box>
-                                ) : (
-                                    <Box style={styles.statusRow}>
-                                        <Icon as={XCircle} color={mutedTextColor} />
-                                        <Text style={{ color: mutedTextColor }}>Not loaded</Text>
                                     </Box>
                                 )}
                             </Box>
@@ -76,7 +82,7 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({ embeddings, overallProgr
                 ))}
             </Box>
 
-            {isInitializing && (
+            {isDownloading && (
                 <Box className="p-4 mt-4 rounded-lg bg-brand/10">
                     <Box className="flex-row justify-between items-center">
                         <Box className="flex-row gap-2 items-center">
@@ -86,7 +92,7 @@ export const SettingsAI: React.FC<SettingsAIProps> = ({ embeddings, overallProgr
                             </Text>
                         </Box>
                         <Text className="text-sm" style={{ color: brandColor }}>
-                            {Math.round(overallProgress * 100)}%
+                            {Math.round(combinedProgress * 100)}%
                         </Text>
                     </Box>
                 </Box>
