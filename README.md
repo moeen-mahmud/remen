@@ -2,7 +2,7 @@
 
 Remen turns thoughts into something you can return to.
 
-A notes app for iOS: Zero-friction capture with voice or camera, search with natural language, and keep everything in sync with iCloud. AI runs on-device.
+A notes app for iOS: Zero-friction capture, search with natural language, and keep everything in sync with iCloud. AI runs on-device.
 
 ## Backstory
 
@@ -12,7 +12,6 @@ I've been using Apple Notes and Google Keep for years. I'm a big fan of the simp
 
 - **Notes** — Create and edit notes (task notes, reminders). Pin, archive, trash or delete permanently.
 - **Voice** — Record speech and save as a note (transcription).
-- **Scan** — Capture a photo, extract text with on-device OCR, save as a note.
 - **Search** — Keyword, semantic, and natural-language search (“what I wrote last week”).
 - **AI** — On-device LLM and embeddings for search and auto categorization and tagging (models downloaded in-app).
 - **iCloud** — Backup and sync notes; permanent deletes stay deleted across sync.
