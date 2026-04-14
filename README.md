@@ -32,9 +32,8 @@ I've been using Apple Notes and Google Keep for years. I'm a big fan of the simp
 
 ## AI Models Used
 
-- [SMOLLM 2.1 135M](https://huggingface.co/software-mansion/react-native-executorch-smolLm-2/tree/main/smolLm-2-135M/original) for LLM
+- [LLAM 3.2 1B SpinQuant](https://huggingface.co/software-mansion/react-native-executorch-llama-3.2/tree/main/llama-3.2-1B/spinquant) for LLM
 - [ALL-MINILM-L6-V2](https://huggingface.co/software-mansion/react-native-executorch-all-MiniLM-L6-v2) for embeddings
-- [OCR_ENGLISH](https://huggingface.co/software-mansion/react-native-executorch-recognizer-crnn.en) for OCR
 
 ## Prerequisites
 
