@@ -5,18 +5,18 @@ import { Divider } from "@/components/ui/divider";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useTheme } from "@/lib/theme/use-theme";
+import { openExternalUrl } from "@/lib/utils/functions";
 import { nativeApplicationVersion } from "expo-application";
 import { FileText, HandHelping, ShieldCheck, Star } from "lucide-react-native";
-import { Alert, Linking, Platform, Pressable } from "react-native";
+import { Alert, Platform, Pressable } from "react-native";
 
 const APP_STORE_ID = ""; // TODO: Add App Store ID after publishing
 const PRIVACY_POLICY_URL = "https://remennote.com/privacy";
 const TERMS_URL = "https://remennote.com/terms";
+const CONTRIBUTE_URL = "https://github.com/moeen-mahmud/remen";
 
 export const SettingsAbout: React.FC = () => {
     const { mutedTextColor } = useTheme();
-
-    const contributeUrl = "https://github.com/moeen-mahmud/remen";
 
     const handleRateApp = async () => {
         if (!APP_STORE_ID) {
@@ -29,17 +29,7 @@ export const SettingsAbout: React.FC = () => {
                 ? `itms-apps://itunes.apple.com/app/id${APP_STORE_ID}?action=write-review`
                 : `market://details?id=com.remennote.app`;
 
-        const canOpen = await Linking.canOpenURL(url);
-        if (canOpen) {
-            await Linking.openURL(url);
-        }
-    };
-
-    const handleOpenURL = async (url: string) => {
-        const canOpen = await Linking.canOpenURL(url);
-        if (canOpen) {
-            await Linking.openURL(url);
-        }
+        await openExternalUrl(url);
     };
 
     return (
@@ -66,7 +56,7 @@ export const SettingsAbout: React.FC = () => {
                 <Divider className="bg-background-50 dark:bg-background-100" />
 
                 {/* Contribute */}
-                <Pressable style={styles.row} onPress={() => handleOpenURL(contributeUrl)}>
+                <Pressable style={styles.row} onPress={() => openExternalUrl(CONTRIBUTE_URL)}>
                     <Box style={styles.rowLeft}>
                         <Icon as={HandHelping} color={mutedTextColor} />
                         <Text>Contribute</Text>
@@ -76,7 +66,7 @@ export const SettingsAbout: React.FC = () => {
                 <Divider className="bg-background-50 dark:bg-background-100" />
 
                 {/* Privacy Policy */}
-                <Pressable style={styles.row} onPress={() => handleOpenURL(PRIVACY_POLICY_URL)}>
+                <Pressable style={styles.row} onPress={() => openExternalUrl(PRIVACY_POLICY_URL)}>
                     <Box style={styles.rowLeft}>
                         <Icon as={ShieldCheck} color={mutedTextColor} />
                         <Text>Privacy Policy</Text>
@@ -86,7 +76,7 @@ export const SettingsAbout: React.FC = () => {
                 <Divider className="bg-background-50 dark:bg-background-100" />
 
                 {/* Terms of Service */}
-                <Pressable style={styles.row} onPress={() => handleOpenURL(TERMS_URL)}>
+                <Pressable style={styles.row} onPress={() => openExternalUrl(TERMS_URL)}>
                     <Box style={styles.rowLeft}>
                         <Icon as={FileText} color={mutedTextColor} />
                         <Text>Terms of Service</Text>
