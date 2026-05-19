@@ -16,8 +16,13 @@ on:
                 type: boolean
                 default: false
 
+    pull_request:
+        types: [closed]
+        branches: [main]
+
 jobs:
     release:
+        if: ${{github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))}}
         runs-on: ubuntu-latest
         permissions:
             contents: write
@@ -29,7 +34,7 @@ jobs:
                   fetch-depth: 0
                   token: ${{ secrets.GITHUB_TOKEN }}
 
-            - uses: moeen-mahmud/tagline-release-agent-action@main
+            - uses: moeen-mahmud/tagline-release-agent-action@v1
               with:
                   release_plan: ${{ inputs.release_plan }}
                   github_token: ${{ secrets.GITHUB_TOKEN }}
