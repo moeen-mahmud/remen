@@ -5,11 +5,13 @@ import type { Note } from "@/lib/database/database.types";
 import { useDebouncedValue } from "@/lib/hooks/use-debounce";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const DEBOUNCE_MS = 3000;
-const MIN_CONTENT_LENGTH = 30;
-const SIMILARITY_THRESHOLD = 0.35;
-const SKIP_SIMILARITY = 0.95; // Skip if content barely changed
-const MAX_RESULTS = 3;
+import {
+    DEBOUNCE_MS,
+    MAX_RESULTS,
+    MIN_CONTENT_LENGTH,
+    SIMILARITY_THRESHOLD,
+    SKIP_SIMILARITY,
+} from "@/lib/consts/consts";
 
 interface ContextualRecallResult {
     relatedNotes: Note[];

@@ -52,3 +52,9 @@ export const SIZES = {
     md: { fontSize: 20, iconSize: 24, gap: 8 },
     lg: { fontSize: 32, iconSize: 36, gap: 10 },
 };
+
+export const DEBOUNCE_MS = 3000;
+export const MIN_CONTENT_LENGTH = 30;
+export const SIMILARITY_THRESHOLD = 0.35;
+export const SKIP_SIMILARITY = 0.95; // Skip if content barely changed
+export const MAX_RESULTS = 3;

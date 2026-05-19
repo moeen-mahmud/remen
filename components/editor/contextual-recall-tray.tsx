@@ -3,8 +3,9 @@ import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
 import type { Note } from "@/lib/database/database.types";
 import { useTheme } from "@/lib/theme/use-theme";
-import { FlatList, LayoutAnimation, Platform, Pressable, StyleSheet, UIManager } from "react-native";
+import { FlatList, LayoutAnimation, Platform, Pressable, UIManager } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ContextualRecallStyles as styles } from "./editor-styles";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -31,9 +32,6 @@ export function ContextualRecallTray({ notes, onNotePress, onDismiss }: Contextu
         >
             <Box style={styles.header}>
                 <Text className="text-xs font-medium text-typography-500 dark:text-typography-400">Related</Text>
-                {/* <Pressable onPress={onDismiss} hitSlop={8}>
-                    <Text className="text-xs text-typography-400 dark:text-typography-500">Dismiss</Text>
-                </Pressable> */}
             </Box>
             <FlatList
                 horizontal
@@ -64,26 +62,3 @@ export function ContextualRecallTray({ notes, onNotePress, onDismiss }: Contextu
         </Box>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        paddingTop: 8,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        paddingHorizontal: 16,
-        marginBottom: 6,
-    },
-    listContent: {
-        paddingHorizontal: 16,
-        gap: 8,
-    },
-    card: {
-        width: 180,
-        padding: 10,
-        borderRadius: 8,
-        borderWidth: 1,
-    },
-});

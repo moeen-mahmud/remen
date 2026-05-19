@@ -11,3 +11,26 @@ export const editorStyles = StyleSheet.create({
         paddingHorizontal: 16,
     },
 });
+
+export const ContextualRecallStyles = StyleSheet.create({
+    container: {
+        paddingTop: 8,
+    },
+    header: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+        paddingHorizontal: 16,
+        marginBottom: 6,
+    },
+    listContent: {
+        paddingHorizontal: 16,
+        gap: 8,
+    },
+    card: {
+        width: 180,
+        padding: 10,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+});
