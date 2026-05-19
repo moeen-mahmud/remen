@@ -90,3 +90,17 @@ export const VoiceStyles = StyleSheet.create({
         letterSpacing: 0.2,
     },
 });
+
+export const WaveformStyles = StyleSheet.create({
+    container: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+    },
+    bar: {
+        width: 8,
+        height: "100%",
+        borderRadius: 4,
+    },
+});
