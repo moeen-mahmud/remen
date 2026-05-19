@@ -12,7 +12,7 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { PageLoader } from "@/components/ui/page-loader";
 import { Text } from "@/components/ui/text";
-import { getNoteTypeBadge } from "@/lib/ai/classify";
+import { getNoteTypeBadge } from "@/lib/utils/functions";
 import { useAI } from "@/lib/ai/provider";
 import { aiQueue } from "@/lib/ai/queue";
 import { getNoteById, getTagsForNote, updateNote } from "@/lib/database/database";

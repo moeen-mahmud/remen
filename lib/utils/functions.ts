@@ -1,4 +1,5 @@
 import { LINK_MATCHER } from "@/lib/config";
+import type { NoteType } from "@/lib/database/database.types";
 import { Linking } from "react-native";
 
 export async function openExternalUrl(url: string): Promise<boolean> {
@@ -83,6 +84,27 @@ export function truncateUrl(url: string, maxLength: number = 50): string {
 export function truncateText(text: string, maxLength: number): string {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength).trim() + "...";
+}
+
+export function getNoteTypeBadge(type: NoteType): { label: string; color: string; bgColor: string } {
+    switch (type) {
+        case "meeting":
+            return { label: "Meeting", color: "#3B82F6", bgColor: "#3B82F620" };
+        case "task":
+            return { label: "Task", color: "#F59E0B", bgColor: "#F59E0B20" };
+        case "idea":
+            return { label: "Idea", color: "#8B5CF6", bgColor: "#8B5CF620" };
+        case "journal":
+            return { label: "Journal", color: "#10B981", bgColor: "#10B98120" };
+        case "reference":
+            return { label: "Reference", color: "#6B7280", bgColor: "#6B728020" };
+        case "voice":
+            return { label: "Voice", color: "#EF4444", bgColor: "#EF444420" };
+        case "scan":
+            return { label: "Scan", color: "#D97706", bgColor: "#D9770620" };
+        default:
+            return { label: "Note", color: "#9CA3AF", bgColor: "#9CA3AF20" };
+    }
 }
 
 // Format relative time
