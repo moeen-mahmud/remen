@@ -6,6 +6,13 @@ const MAX_TAGS = 5;
 const MIN_TAG_LENGTH = 2;
 const MAX_TAG_LENGTH = 20;
 
+const STOPWORDS = new Set([
+    "the", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with",
+    "by", "from", "up", "about", "into", "through", "during", "before", "after",
+    "above", "below", "between", "this", "that", "these", "those", "then", "than",
+    "very", "note", "notes", "content", "text", "item", "example",
+]);
+
 export async function extractTags(content: string, llm: LLMModel | null, noteType?: NoteType): Promise<string[]> {
     // Skip AI for very short content
     if (content.trim().length < 20) {
@@ -116,47 +123,7 @@ function isValidTag(tag: string, noteType?: NoteType): boolean {
         return false;
     }
 
-    // Filter out common stopwords that aren't useful as tags
-    const stopwords = new Set([
-        "the",
-        "and",
-        "or",
-        "but",
-        "in",
-        "on",
-        "at",
-        "to",
-        "for",
-        "of",
-        "with",
-        "by",
-        "from",
-        "up",
-        "about",
-        "into",
-        "through",
-        "during",
-        "before",
-        "after",
-        "above",
-        "below",
-        "between",
-        "this",
-        "that",
-        "these",
-        "those",
-        "then",
-        "than",
-        "very",
-        "note",
-        "notes",
-        "content",
-        "text",
-        "item",
-        "example",
-    ]);
-
-    if (stopwords.has(tag)) {
+    if (STOPWORDS.has(tag)) {
         return false;
     }
 

@@ -1,4 +1,5 @@
 import { addTagToNote, getNoteById, getTagsForNote, removeTagFromNote, updateNote } from "@/lib/database/database";
+import type { UpdateNoteInput } from "@/lib/database/database.types";
 import { LLMModule, SMOLLM2_1_360M_QUANTIZED } from "react-native-executorch";
 import type { EmbeddingsModel, LLMModel, Message } from "./ai.types";
 import { classifyNoteType } from "./classify";
@@ -187,7 +188,7 @@ class AIProcessingQueue {
                 console.log("[Queue] Unloading LLM after idle timeout...");
                 try {
                     this.llmModule.interrupt();
-                } catch (_) {
+                } catch {
                     // ignore — may not be generating
                 }
                 this.llmModule.delete();
@@ -290,6 +291,7 @@ class AIProcessingQueue {
         const { noteId, content } = job;
 
         const isCancelled = () => tokenAtStart !== this.cancelToken;
+        const markCancelled = () => updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" });
 
         // Verify note still exists
         const note = await getNoteById(noteId);
@@ -321,7 +323,7 @@ class AIProcessingQueue {
             }
 
             if (isCancelled()) {
-                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" });
+                await markCancelled();
                 return;
             }
 
@@ -342,7 +344,7 @@ class AIProcessingQueue {
                 console.log(`  Type: ${type} (explicit)`);
             }
             if (isCancelled()) {
-                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" });
+                await markCancelled();
                 return;
             }
 
@@ -357,7 +359,7 @@ class AIProcessingQueue {
                 console.log(`  Title preserved (user-set): "${title}"`);
             }
             if (isCancelled()) {
-                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" });
+                await markCancelled();
                 return;
             }
 
@@ -366,7 +368,7 @@ class AIProcessingQueue {
             const tags = await extractTags(content, llm, type);
             console.log(`  Tags: [${tags.join(", ")}]`);
             if (isCancelled()) {
-                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" });
+                await markCancelled();
                 return;
             }
 
@@ -377,22 +379,20 @@ class AIProcessingQueue {
             const embedding = await generateEmbedding(embeddingInput, embeddings);
             console.log(`  Embedding: ${embedding.length} dimensions`);
             if (isCancelled()) {
-                await updateNote(noteId, { ai_status: "cancelled", ai_error: "Cancelled by user" });
+                await markCancelled();
                 return;
             }
 
             // Update note with AI-generated metadata
-            const updateData: any = {
+            const updatePayload: UpdateNoteInput = {
                 type,
                 is_processed: true,
                 ai_status: "organized",
                 ai_error: null,
                 embedding: JSON.stringify(embedding),
+                ...(!note.title && { title }),
             };
-            if (!note.title) {
-                updateData.title = title;
-            }
-            await updateNote(noteId, updateData);
+            await updateNote(noteId, updatePayload);
 
             // Replace existing auto tags
             const existingTags = await getTagsForNote(noteId);

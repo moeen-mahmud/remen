@@ -1,5 +1,6 @@
 export type { AIContextType, EmbeddingsModel, LLMModel, Message, OCRDetection, OCRModel } from "./ai.types";
-export { classifyNoteType, getNoteTypeBadge } from "./classify";
+export { classifyNoteType } from "./classify";
+export { getNoteTypeBadge } from "@/lib/utils/functions";
 export { cosineSimilarity, generateEmbedding, isNeuralEmbedding } from "./embeddings";
 export { AIProvider, useAI, useAIEmbeddings } from "./provider";
 export { aiQueue } from "./queue";
