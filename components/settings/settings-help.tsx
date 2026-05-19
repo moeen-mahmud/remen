@@ -4,8 +4,9 @@ import { Divider } from "@/components/ui/divider";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useTheme } from "@/lib/theme/use-theme";
+import { openExternalUrl } from "@/lib/utils/functions";
 import { BookOpen, MessageSquare } from "lucide-react-native";
-import { Alert, Linking, Pressable } from "react-native";
+import { Alert, Pressable } from "react-native";
 
 const SUPPORT_EMAIL = "moeen@osmynt.dev";
 
@@ -21,10 +22,8 @@ export const SettingsHelp: React.FC<SettingsHelpProps> = ({ onHowItWorks }) => {
         const body = encodeURIComponent("\n\n---\nSent from Remen app");
         const url = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
 
-        const canOpen = await Linking.canOpenURL(url);
-        if (canOpen) {
-            await Linking.openURL(url);
-        } else {
+        const opened = await openExternalUrl(url);
+        if (!opened) {
             Alert.alert("No Email App", `You can reach us at ${SUPPORT_EMAIL}`);
         }
     };
