@@ -196,10 +196,6 @@ export default function Index() {
         [createReminderNoteWithDate],
     );
 
-    // const handleInsertTask = useCallback(() => {
-    //     insertTaskRef.current?.();
-    // }, []);
-
     return (
         <PageWrapper disableBottomPadding>
             <EditorHeader
