@@ -58,3 +58,17 @@ export const MIN_CONTENT_LENGTH = 30;
 export const SIMILARITY_THRESHOLD = 0.35;
 export const SKIP_SIMILARITY = 0.95; // Skip if content barely changed
 export const MAX_RESULTS = 3;
+export const AUTO_SYNC_DEBOUNCE = 15_000; // 15 seconds after last change
+
+// Common filler words around type queries: "show me my task lists" → remove "my", "lists", "list", "all"
+export const TYPE_FILLER = /\b(my|all|the|me|show|list|lists|every|recent)\b/gi;
+
+export const NL_FILLER_PATTERNS = [
+    /^(what|where|when|how|why|which|who|show|find|search|get|give|tell)\s+(i|me|my|we|us|did|do|was|were|have|had|am)\b/i,
+    /^(what\s+)?(i\s+)?(was|were|am|have been)\s+(thinking|writing|noting|working|talking|reading)\s+(about|on|regarding)\s*/i,
+    /^(show|find|search|get|give|tell)\s+(me\s+)?(all\s+)?(my\s+)?(notes?|things?|stuff|everything|entries?|items?)\s*(about|on|regarding|related to|for|with)?\s*/i,
+    /^(do\s+i\s+have\s+)?(any\s+)?(notes?|things?|stuff|entries?)\s*(about|on|regarding|related to|for|with)\s*/i,
+    /^(everything|anything)\s+(i\s+)?(wrote|noted|captured|saved|recorded)\s*(about|on|regarding)?\s*/i,
+    /^(what\s+)?(did\s+)?(i\s+)?(write|note|capture|save|record|think|say)\s*(about|on|regarding)?\s*/i,
+    /^(notes?\s+)?(about|on|regarding|related to|for)\s+/i,
+];

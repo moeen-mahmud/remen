@@ -63,9 +63,6 @@ export async function syncNotesToCloud(): Promise<SyncResult> {
         // Get all notes from local database (excludes deleted and archived)
         const notes = await getAllNotes();
 
-        console.log(`[Sync] Backing up ${notes.length} notes to iCloud`);
-
-        // Get tags for each note
         const notesWithTags: NoteWithTags[] = await Promise.all(
             notes.map(async (note) => {
                 const tags = await getTagsForNote(note.id);
