@@ -73,46 +73,27 @@ async function initializeDatabase(database: SQLite.SQLiteDatabase): Promise<void
         CREATE INDEX IF NOT EXISTS idx_notes_deleted ON notes(is_deleted);
     `);
 
-    // Migration: Add new columns if they don't exist (for existing databases)
-    try {
-        await database.execAsync(`ALTER TABLE notes ADD COLUMN is_archived INTEGER DEFAULT 0`);
-    } catch {
-        // Column already exists
+    // Migration: Add new columns for existing databases
+    const migrations = [
+        "is_archived INTEGER DEFAULT 0",
+        "is_deleted INTEGER DEFAULT 0",
+        "deleted_at INTEGER",
+        "ai_status TEXT DEFAULT 'unprocessed'",
+        "ai_error TEXT",
+        "reminder_at INTEGER",
+        "notification_id TEXT",
+        "is_pinned INTEGER DEFAULT 0",
+    ];
+    for (const column of migrations) {
+        await addColumnIfMissing(database, "notes", column);
     }
-    try {
-        await database.execAsync(`ALTER TABLE notes ADD COLUMN is_deleted INTEGER DEFAULT 0`);
-    } catch {
-        // Column already exists
-    }
-    try {
-        await database.execAsync(`ALTER TABLE notes ADD COLUMN deleted_at INTEGER`);
-    } catch {
-        // Column already exists
-    }
-    try {
-        await database.execAsync(`ALTER TABLE notes ADD COLUMN ai_status TEXT DEFAULT 'unprocessed'`);
-    } catch {
-        // Column already exists
-    }
-    try {
-        await database.execAsync(`ALTER TABLE notes ADD COLUMN ai_error TEXT`);
-    } catch {
-        // Column already exists
-    }
-    try {
-        await database.execAsync(`ALTER TABLE notes ADD COLUMN reminder_at INTEGER`);
-    } catch {
-        // Column already exists
-    }
-    try {
-        await database.execAsync(`ALTER TABLE notes ADD COLUMN notification_id TEXT`);
-    } catch {
-        // Column already exists
-    }
-    try {
-        await database.execAsync(`ALTER TABLE notes ADD COLUMN is_pinned INTEGER DEFAULT 0`);
-    } catch {
-        // Column already exists
+}
+
+async function addColumnIfMissing(db: SQLite.SQLiteDatabase, table: string, columnDefinition: string): Promise<void> {
+    const columnName = columnDefinition.split(" ")[0];
+    const info = await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`);
+    if (!info.some((col) => col.name === columnName)) {
+        await db.execAsync(`ALTER TABLE ${table} ADD COLUMN ${columnDefinition}`);
     }
 }
 
@@ -204,11 +185,6 @@ export async function getAllNotes(): Promise<Note[]> {
     );
 
     return results.map(rowToNote);
-}
-
-// Get active notes (not archived, not deleted)
-export async function getActiveNotes(): Promise<Note[]> {
-    return getAllNotes();
 }
 
 // Get archived notes

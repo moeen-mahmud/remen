@@ -3,7 +3,7 @@ import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings";
 import { TEMPORAL_ONLY_PATTERNS } from "@/lib/config/regex-patterns";
 import { TYPE_FILLER } from "@/lib/consts/consts";
 import { getAllNotes, searchNotes as keywordSearch, updateNote } from "@/lib/database/database";
-import type { Note, NoteType } from "@/lib/database/database.types";
+import type { NoteType } from "@/lib/database/database.types";
 import { processSearchQuery, stripNaturalLanguageFiller } from "@/lib/search/query-nlp";
 import type { EnhancedSearchResult, SearchResult } from "@/lib/search/search.types";
 import { parseTemporalQuery } from "@/lib/search/temporal-parser";
@@ -141,6 +141,26 @@ export async function searchNotesEnhanced(
     return { results: mergedResults, temporalFilter };
 }
 
+async function resolveEmbedding(
+    note: { id: string; content: string; embedding: string | null },
+    referenceLength: number,
+    embeddingsModel: EmbeddingsModel | null,
+): Promise<number[]> {
+    if (note.embedding) {
+        try {
+            const parsed: number[] = JSON.parse(note.embedding);
+            if (parsed.length === referenceLength || !embeddingsModel?.isReady) {
+                return parsed;
+            }
+        } catch {
+            // fall through to regenerate
+        }
+    }
+    const fresh = await generateEmbedding(note.content, embeddingsModel);
+    await updateNote(note.id, { embedding: JSON.stringify(fresh) });
+    return fresh;
+}
+
 async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | null): Promise<SearchResult[]> {
     try {
         console.log(`🧠 [Semantic Search] Starting for: "${query}"`);
@@ -153,70 +173,20 @@ async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | 
         const allNotes = await getAllNotes();
         console.log(`🧠 [Semantic Search] Comparing against ${allNotes.length} notes`);
 
-        // Calculate similarity for each note
+        const threshold = embeddingsModel?.isReady ? 0.25 : 0.2;
         const results: SearchResult[] = [];
-        const scoredNotes: { note: Note; similarity: number }[] = [];
-        const allScores: { title: string; similarity: number; noteDim: number }[] = [];
 
         for (const note of allNotes) {
-            // Generate embedding for note if not already done
-            let noteEmbedding: number[];
-            let needsRegeneration = false;
-
-            if (note.embedding) {
-                try {
-                    noteEmbedding = JSON.parse(note.embedding);
-                    // Regenerate if dimension mismatch (old fallback vs new neural)
-                    if (noteEmbedding.length !== queryEmbedding.length && embeddingsModel?.isReady) {
-                        needsRegeneration = true;
-                    }
-                } catch {
-                    needsRegeneration = true;
-                    noteEmbedding = [];
-                }
-            } else {
-                needsRegeneration = true;
-                noteEmbedding = [];
-            }
-
-            // Regenerate embedding if needed
-            if (needsRegeneration) {
-                noteEmbedding = await generateEmbedding(note.content, embeddingsModel);
-                await updateNote(note.id, { embedding: JSON.stringify(noteEmbedding) });
-            }
-
-            // Calculate similarity
+            const noteEmbedding = await resolveEmbedding(note, queryEmbedding.length, embeddingsModel);
             const similarity = cosineSimilarity(queryEmbedding, noteEmbedding);
-            scoredNotes.push({ note, similarity });
-
-            // Track all scores for debugging
-            allScores.push({
-                title: (note.title || note.content.substring(0, 30)).substring(0, 20),
-                similarity: Math.round(similarity * 100) / 100,
-                noteDim: noteEmbedding.length,
-            });
-
-            // Lower threshold for better recall - 0.25 for neural, 0.2 for fallback
-            const threshold = embeddingsModel?.isReady ? 0.25 : 0.2;
             if (similarity > threshold) {
-                results.push({
-                    ...note,
-                    relevanceScore: similarity,
-                    matchType: "semantic",
-                });
+                results.push({ ...note, relevanceScore: similarity, matchType: "semantic" });
             }
         }
 
-        // Log all similarity scores for debugging
-        console.log(`🧠 [Semantic Search] Similarity scores:`, allScores);
-        console.log(
-            `🧠 [Semantic Search] Found ${results.length} semantic matches (threshold: ${embeddingsModel?.isReady ? 0.25 : 0.2})`,
-        );
+        console.log(`🧠 [Semantic Search] Found ${results.length} semantic matches (threshold: ${threshold})`);
 
-        const removeEmptyResults = results.filter((result) => result.content.trim().length > 0);
-
-        // Sort by relevance
-        return removeEmptyResults.sort((a, b) => b.relevanceScore - a.relevanceScore);
+        return results.filter((r) => r.content.trim().length > 0).sort((a, b) => b.relevanceScore - a.relevanceScore);
     } catch (error) {
         console.error("❌ [Semantic Search] Failed:", error);
         return [];
@@ -415,65 +385,17 @@ export async function findRelatedNotes(
             return [];
         }
 
-        // Get or generate target note embedding
-        let targetEmbedding: number[];
-        if (targetNote.embedding) {
-            try {
-                targetEmbedding = JSON.parse(targetNote.embedding);
-                // Regenerate if we have neural model but old fallback embedding
-                if (targetEmbedding.length === 256 && embeddingsModel?.isReady) {
-                    targetEmbedding = await generateEmbedding(targetNote.content, embeddingsModel);
-                    await updateNote(noteId, { embedding: JSON.stringify(targetEmbedding) });
-                }
-            } catch {
-                targetEmbedding = await generateEmbedding(targetNote.content, embeddingsModel);
-                await updateNote(noteId, { embedding: JSON.stringify(targetEmbedding) });
-            }
-        } else {
-            targetEmbedding = await generateEmbedding(targetNote.content, embeddingsModel);
-            await updateNote(noteId, { embedding: JSON.stringify(targetEmbedding) });
-        }
+        const targetEmbedding = await resolveEmbedding(targetNote, 0, embeddingsModel);
 
-        // Calculate similarity with all other notes
+        const threshold = embeddingsModel?.isReady ? 0.3 : 0.25;
         const results: SearchResult[] = [];
 
         for (const note of allNotes) {
-            if (note.id === noteId) continue; // Skip the target note itself
-
-            let noteEmbedding: number[];
-            let needsRegeneration = false;
-
-            if (note.embedding) {
-                try {
-                    noteEmbedding = JSON.parse(note.embedding);
-                    // Regenerate if dimension mismatch
-                    if (noteEmbedding.length !== targetEmbedding.length && embeddingsModel?.isReady) {
-                        needsRegeneration = true;
-                    }
-                } catch {
-                    needsRegeneration = true;
-                    noteEmbedding = [];
-                }
-            } else {
-                needsRegeneration = true;
-                noteEmbedding = [];
-            }
-
-            if (needsRegeneration) {
-                noteEmbedding = await generateEmbedding(note.content, embeddingsModel);
-                await updateNote(note.id, { embedding: JSON.stringify(noteEmbedding) });
-            }
-
+            if (note.id === noteId) continue;
+            const noteEmbedding = await resolveEmbedding(note, targetEmbedding.length, embeddingsModel);
             const similarity = cosineSimilarity(targetEmbedding, noteEmbedding);
-
-            // Lower threshold for related notes - 0.3 for neural, 0.25 for fallback
-            const threshold = embeddingsModel?.isReady ? 0.3 : 0.25;
             if (similarity > threshold) {
-                results.push({
-                    ...note,
-                    relevanceScore: similarity,
-                    matchType: "semantic",
-                });
+                results.push({ ...note, relevanceScore: similarity, matchType: "semantic" });
             }
         }
 
