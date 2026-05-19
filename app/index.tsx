@@ -224,3 +224,5 @@ export default function Index() {
         </PageWrapper>
     );
 }
+
+// Note: The above code is the main screen of the app where users can quickly capture notes using different methods (voice, scan, task, reminder). It also includes a date picker modal for setting custom reminder times.
