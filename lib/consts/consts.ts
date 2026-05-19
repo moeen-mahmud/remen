@@ -46,3 +46,9 @@ export const MAX_PERMANENTLY_DELETED_IDS = 2000;
 
 export const NUM_BARS = 5;
 export const BAR_DELAYS = [0, 100, 200, 100, 0];
+
+export const SIZES = {
+    sm: { fontSize: 18, iconSize: 20, gap: 6 },
+    md: { fontSize: 20, iconSize: 24, gap: 8 },
+    lg: { fontSize: 32, iconSize: 36, gap: 10 },
+};

@@ -1,4 +1,5 @@
 import { Text } from "@/components/ui/text";
+import { SIZES } from "@/lib/consts/consts";
 import { useColorScheme } from "nativewind";
 import { type FC, useEffect } from "react";
 import { StyleSheet, View } from "react-native";
@@ -17,12 +18,6 @@ interface RemenLogoProps {
     showIcon?: boolean;
     animated?: boolean;
 }
-
-const SIZES = {
-    sm: { fontSize: 18, iconSize: 20, gap: 6 },
-    md: { fontSize: 20, iconSize: 24, gap: 8 },
-    lg: { fontSize: 32, iconSize: 36, gap: 10 },
-};
 
 export const RemenLogo: FC<RemenLogoProps> = ({
     size = "md",
