@@ -8,7 +8,7 @@ import {
 } from "@/components/notes/note-card-helper";
 import { Box } from "@/components/ui/box";
 import { Heading } from "@/components/ui/heading";
-import { getNoteTypeBadge } from "@/lib/ai/classify";
+import { getNoteTypeBadge } from "@/lib/utils/functions";
 import { scaleValues, springConfigs, timingConfigs } from "@/lib/config/animation-config";
 
 import { NoteCardContent } from "@/components/notes/note-card-content";
