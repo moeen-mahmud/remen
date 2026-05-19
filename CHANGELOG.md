@@ -74,3 +74,9 @@
               **Other**
 
     - Onboarding slides; haptic feedback; selection mode for notes; share
+
+## [0.2.2] - 2026-05-19
+
+### Added
+
+- improved designs ([#19](https://github.com/moeen-mahmud/remen/pull/19))
