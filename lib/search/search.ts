@@ -1,6 +1,7 @@
 import type { EmbeddingsModel } from "@/lib/ai/ai.types";
 import { cosineSimilarity, generateEmbedding } from "@/lib/ai/embeddings";
 import { TEMPORAL_ONLY_PATTERNS } from "@/lib/config/regex-patterns";
+import { TYPE_FILLER } from "@/lib/consts/consts";
 import { getAllNotes, searchNotes as keywordSearch, updateNote } from "@/lib/database/database";
 import type { Note, NoteType } from "@/lib/database/database.types";
 import { processSearchQuery, stripNaturalLanguageFiller } from "@/lib/search/query-nlp";
@@ -18,9 +19,6 @@ const TYPE_QUERY_MAP: { pattern: RegExp; type: NoteType }[] = [
     { pattern: /\b(references?|guides?|docs?|documentation)\b/i, type: "reference" },
 ];
 
-// Common filler words around type queries: "show me my task lists" → remove "my", "lists", "list", "all"
-const TYPE_FILLER = /\b(my|all|the|me|show|list|lists|every|recent)\b/gi;
-
 function detectTypeFilter(query: string): NoteType | null {
     const stripped = stripNaturalLanguageFiller(query).toLowerCase();
     return detectTypeFromText(stripped);
@@ -31,7 +29,11 @@ function detectTypeFromText(text: string): NoteType | null {
     const cleaned = text.replace(/['']/g, "").toLowerCase(); // Strip apostrophes ("today's tasks" → "todays tasks")
     for (const { pattern, type } of TYPE_QUERY_MAP) {
         if (pattern.test(cleaned)) {
-            const withoutType = cleaned.replace(pattern, "").replace(TYPE_FILLER, "").replace(/[?\s]+/g, " ").trim();
+            const withoutType = cleaned
+                .replace(pattern, "")
+                .replace(TYPE_FILLER, "")
+                .replace(/[?\s]+/g, " ")
+                .trim();
             if (withoutType.length < 3) {
                 return type;
             }
@@ -322,7 +324,10 @@ export async function askNotesSearch(
         for (const { pattern } of TYPE_QUERY_MAP) {
             contentQuery = contentQuery.replace(pattern, "");
         }
-        contentQuery = contentQuery.replace(TYPE_FILLER, "").replace(/[''?.!\s]+/g, " ").trim();
+        contentQuery = contentQuery
+            .replace(TYPE_FILLER, "")
+            .replace(/[''?.!\s]+/g, " ")
+            .trim();
     }
     const hasContent = contentQuery.length >= 2 && !isTemporalOnlyRemainder(contentQuery);
 

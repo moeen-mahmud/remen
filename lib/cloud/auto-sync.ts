@@ -2,7 +2,7 @@ import { getPreferences } from "@/lib/preference/preferences";
 import { Platform } from "react-native";
 import { isICloudAvailable, performFullSync } from "./cloud-sync";
 
-const AUTO_SYNC_DEBOUNCE = 15_000; // 15 seconds after last change
+import { AUTO_SYNC_DEBOUNCE } from "@/lib/consts/consts";
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let isSyncing = false;
 

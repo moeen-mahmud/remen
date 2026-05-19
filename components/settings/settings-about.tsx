@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useTheme } from "@/lib/theme/use-theme";
 import { nativeApplicationVersion } from "expo-application";
-import { FileText, ShieldCheck, Star } from "lucide-react-native";
+import { FileText, HandHelping, ShieldCheck, Star } from "lucide-react-native";
 import { Alert, Linking, Platform, Pressable } from "react-native";
 
 const APP_STORE_ID = ""; // TODO: Add App Store ID after publishing
@@ -15,6 +15,8 @@ const TERMS_URL = "https://remennote.com/terms";
 
 export const SettingsAbout: React.FC = () => {
     const { mutedTextColor } = useTheme();
+
+    const contributeUrl = "https://github.com/moeen-mahmud/remen";
 
     const handleRateApp = async () => {
         if (!APP_STORE_ID) {
@@ -46,7 +48,7 @@ export const SettingsAbout: React.FC = () => {
 
             <Box className="rounded-lg bg-background-0">
                 {/* App Info */}
-                <Box className="flex-row justify-between items-center p-4">
+                <Box className="flex-row items-center justify-between p-4">
                     <RemenLogo size="sm" showIcon={false} animated={true} />
                     <Text className="text-typography-500">{nativeApplicationVersion}</Text>
                 </Box>
@@ -58,6 +60,16 @@ export const SettingsAbout: React.FC = () => {
                     <Box style={styles.rowLeft}>
                         <Icon as={Star} color={mutedTextColor} />
                         <Text>Rate Remen</Text>
+                    </Box>
+                </Pressable>
+
+                <Divider className="bg-background-50 dark:bg-background-100" />
+
+                {/* Contribute */}
+                <Pressable style={styles.row} onPress={() => handleOpenURL(contributeUrl)}>
+                    <Box style={styles.rowLeft}>
+                        <Icon as={HandHelping} color={mutedTextColor} />
+                        <Text>Contribute</Text>
                     </Box>
                 </Pressable>
 
