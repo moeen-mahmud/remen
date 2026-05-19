@@ -40,38 +40,38 @@
     - Task notes with checkboxes
     - Reminders with date picker and notifications
 
-              **Capture**
+                    **Capture**
 
     - Voice: record speech, transcribe, save as note
     - Scan: camera capture, on-device OCR, extract text from images, save note with image
 
-              **Search**
+                    **Search**
 
     - Keyword and semantic search (embeddings)
     - Natural language / “ask notes” (LLM interprets query)
     - Temporal search (e.g. yesterday, last week)
 
-              **Note details**
+                    **Note details**
 
     - View notes, related notes, types(auto generated), tags (auto generated)
     - Task list (parse and toggle checkboxes); URL detection and link cards like bookmarks
     - Reminder picker; edit title
 
-              **AI**
+                    **AI**
 
     - On-device LLM, embeddings model, OCR for scan are downloaded for the first time and stored on the device
     - Automatically classify note types, generate tags, bring up related notes based on the content of the note
 
-              **Organization**
+                    **Organization**
 
     - Archives; trash (recycle bin) with restore; empty trash (permanent delete)
     - iCloud sync: backup/restore, two-way sync; permanently deleted notes stay deleted after sync
 
-              **Settings**
+                    **Settings**
 
     - Theme (system / light / dark); AI controls (model download); appearance; data management; iCloud sync; about
 
-              **Other**
+                    **Other**
 
     - Onboarding slides; haptic feedback; selection mode for notes; share
 
