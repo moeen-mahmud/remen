@@ -43,3 +43,6 @@ export const MAX_TITLE_LENGTH = 60;
 export const AUTOSAVE_DELAY = 100;
 
 export const MAX_PERMANENTLY_DELETED_IDS = 2000;
+
+export const NUM_BARS = 5;
+export const BAR_DELAYS = [0, 100, 200, 100, 0];

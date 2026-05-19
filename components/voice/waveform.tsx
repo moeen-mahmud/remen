@@ -1,5 +1,8 @@
+import { WaveformStyles as styles } from "@/components/voice/voice.styles";
+import { BAR_DELAYS, NUM_BARS } from "@/lib/consts/consts";
 import { useEffect } from "react";
-import { StyleSheet, View } from "react-native";
+import { View } from "react-native";
+
 import Animated, {
     Easing,
     useAnimatedStyle,
@@ -15,10 +18,6 @@ interface WaveformProps {
     color?: string;
     size?: number;
 }
-
-const NUM_BARS = 5;
-const BAR_DELAYS = [0, 100, 200, 100, 0];
-
 export function Waveform({ isActive, color = "#EF4444", size = 80 }: WaveformProps) {
     return (
         <View style={[styles.container, { width: size * 1.5, height: size }]}>
@@ -80,17 +79,3 @@ function WaveformBar({ isActive, color, delay, index }: WaveformBarProps) {
 
     return <Animated.View style={[styles.bar, { backgroundColor: color }, animatedStyle]} />;
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-    },
-    bar: {
-        width: 8,
-        height: "100%",
-        borderRadius: 4,
-    },
-});
