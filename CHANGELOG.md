@@ -75,6 +75,25 @@
 
     - Onboarding slides; haptic feedback; selection mode for notes; share
 
+## [0.7.0] - 2026-05-20
+
+### Added
+
+- improved designs ([#19](https://github.com/moeen-mahmud/remen/pull/19))
+- Development ([#22](https://github.com/moeen-mahmud/remen/pull/22))
+- settings flow improvement ([#23](https://github.com/moeen-mahmud/remen/pull/23))
+- improved and refactor AI classifier, queue and tags with database and functions ([#28](https://github.com/moeen-mahmud/remen/pull/28))
+
+### Fixed
+
+- askNotesSearch query fix, and removed dead duplication ([#30](https://github.com/moeen-mahmud/remen/pull/30))
+- release agent yml ([#34](https://github.com/moeen-mahmud/remen/pull/34))
+- trash home page loader ([#35](https://github.com/moeen-mahmud/remen/pull/35))
+
+### Changed
+
+- removed the changesets deps ([#32](https://github.com/moeen-mahmud/remen/pull/32))
+
 ## [0.6.0] - 2026-05-20
 
 ### Added
