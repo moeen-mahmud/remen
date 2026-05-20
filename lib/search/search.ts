@@ -76,8 +76,8 @@ export async function searchNotesEnhanced(
 
     // Check if temporal remainder is a type-filter query (e.g., "today's tasks" → temporal=today + type=task)
     // Or if remainder is temporal-only filler (e.g., "what I wrote" → just time filter)
-    if (temporalFilter && (isTemporalOnlyRemainder(searchQuery) || detectTypeFromText(searchQuery))) {
-        const typeFromRemainder = detectTypeFromText(searchQuery);
+    const typeFromRemainder = temporalFilter ? detectTypeFromText(searchQuery) : null;
+    if (temporalFilter && (isTemporalOnlyRemainder(searchQuery) || typeFromRemainder)) {
         console.log(
             `🔍 [Search] Temporal${typeFromRemainder ? `+type(${typeFromRemainder})` : "-only"} query: ${temporalFilter.description}`,
         );
@@ -120,12 +120,11 @@ export async function searchNotesEnhanced(
 
     // Run both search methods in parallel.
     // For natural-language queries, prefer the extracted keywords for searching.
-    const keywordQuery = processed.keywordQuery || processed.normalized || searchQuery;
-    const semanticQuery = processed.keywordQuery || processed.normalized || searchQuery;
+    const refinedQuery = processed.keywordQuery || processed.normalized || searchQuery;
 
     const [semanticResults, keywordResults] = await Promise.all([
-        semanticSearch(semanticQuery, embeddingsModel),
-        keywordSearchWithScoring(keywordQuery),
+        semanticSearch(refinedQuery, embeddingsModel),
+        keywordSearchWithScoring(refinedQuery),
     ]);
 
     // Merge and deduplicate results
@@ -193,6 +192,19 @@ async function semanticSearch(query: string, embeddingsModel: EmbeddingsModel | 
     }
 }
 
+function countOccurrences(haystack: string, needle: string): number {
+    if (!needle) return 0;
+    let count = 0;
+    let from = 0;
+    while (true) {
+        const idx = haystack.indexOf(needle, from);
+        if (idx === -1) break;
+        count++;
+        from = idx + needle.length;
+    }
+    return count;
+}
+
 async function keywordSearchWithScoring(query: string): Promise<SearchResult[]> {
     try {
         const results = await keywordSearch(query);
@@ -214,9 +226,9 @@ async function keywordSearchWithScoring(query: string): Promise<SearchResult[]> 
                     score += 0.4;
                 }
 
-                // Count occurrences in content
-                const regex = new RegExp(term, "gi");
-                const contentMatches = (contentLower.match(regex) || []).length;
+                // Count occurrences in content via plain indexOf — avoids RegExp
+                // construction from user input (ReDoS / SyntaxError on "(", "*", etc.)
+                const contentMatches = countOccurrences(contentLower, term);
                 score += Math.min(contentMatches * 0.1, 0.5); // Cap content contribution
             }
 
@@ -328,24 +340,60 @@ export async function askNotesSearch(
             notes = notes.filter((note) => note.type === typeFilter);
         }
 
-        // If there's a content query, rank by semantic similarity
-        if (hasContent && embeddingsModel?.isReady) {
-            const queryEmbedding = await generateEmbedding(contentQuery, embeddingsModel);
-            const scored = notes
+        // If there's a content query, rank by semantic similarity (or fall back to keyword scoring)
+        if (hasContent) {
+            if (embeddingsModel?.isReady) {
+                const queryEmbedding = await generateEmbedding(contentQuery, embeddingsModel);
+                const threshold = 0.25; // Matches semanticSearch — below this is noise
+                const scored = notes
+                    .map((note) => {
+                        let similarity = 0;
+                        if (note.embedding) {
+                            try {
+                                const noteEmbedding: number[] = JSON.parse(note.embedding);
+                                if (noteEmbedding.length === queryEmbedding.length) {
+                                    similarity = cosineSimilarity(queryEmbedding, noteEmbedding);
+                                }
+                            } catch {}
+                        }
+                        return { ...note, relevanceScore: similarity, matchType: "semantic" as const };
+                    })
+                    .filter((r) => r.relevanceScore > threshold)
+                    .sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+                return {
+                    results: scored,
+                    temporalFilter,
+                    interpretedQuery: isNaturalLanguage ? parts : undefined,
+                };
+            }
+
+            // Embeddings not ready — fall back to keyword scoring against the filtered set
+            // so we don't silently drop the user's content query.
+            const keywordTerms = contentQuery
+                .toLowerCase()
+                .split(/\s+/)
+                .filter((t) => t.length >= 2);
+            const keywordScored = notes
                 .map((note) => {
-                    let similarity = 0;
-                    if (note.embedding) {
-                        try {
-                            const noteEmbedding = JSON.parse(note.embedding);
-                            similarity = cosineSimilarity(queryEmbedding, noteEmbedding);
-                        } catch {}
+                    const contentLower = note.content.toLowerCase();
+                    const titleLower = (note.title || "").toLowerCase();
+                    let score = 0;
+                    for (const term of keywordTerms) {
+                        if (titleLower.includes(term)) score += 0.4;
+                        score += Math.min(countOccurrences(contentLower, term) * 0.1, 0.5);
                     }
-                    return { ...note, relevanceScore: similarity, matchType: "semantic" as const };
+                    return {
+                        ...note,
+                        relevanceScore: keywordTerms.length ? score / keywordTerms.length : 0,
+                        matchType: "keyword" as const,
+                    };
                 })
+                .filter((r) => r.relevanceScore > 0)
                 .sort((a, b) => b.relevanceScore - a.relevanceScore);
 
             return {
-                results: scored,
+                results: keywordScored,
                 temporalFilter,
                 interpretedQuery: isNaturalLanguage ? parts : undefined,
             };
