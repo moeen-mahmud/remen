@@ -96,9 +96,7 @@ export const TrashHome: React.FC = () => {
         />
     );
 
-    if (isLoading) {
-        return <PageLoader />;
-    }
+    if (isLoading) return <PageLoader />;
 
     return (
         <Box className="flex-1">
