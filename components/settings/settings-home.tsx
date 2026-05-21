@@ -126,7 +126,6 @@ export const SettingsHome: React.FC = () => {
 
     const handleICloudToggle = useCallback(
         async (enabled: boolean) => {
-            console.log("preference", preferences);
             if (!preferences) return;
             await savePreferences({ iCloudSyncEnabled: enabled });
             setPreferences({ ...preferences, iCloudSyncEnabled: enabled });

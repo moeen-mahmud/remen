@@ -167,7 +167,6 @@ export const VoiceHome: React.FC = () => {
 
     // Close without saving
     const handleClose = () => {
-        console.log("close");
         currentTranscript = "";
         voiceCapture.destroy();
         if (timerRef.current) {
