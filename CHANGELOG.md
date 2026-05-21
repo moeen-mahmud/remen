@@ -75,6 +75,13 @@
 
     - Onboarding slides; haptic feedback; selection mode for notes; share
 
+## [0.7.1] - 2026-05-21
+
+### Fixed
+
+- updated contextual recall tray and removed leaking preference in the log ([#37](https://github.com/moeen-mahmud/remen/pull/37))
+- router improved ([#38](https://github.com/moeen-mahmud/remen/pull/38))
+
 ## [0.7.0] - 2026-05-20
 
 ### Added
