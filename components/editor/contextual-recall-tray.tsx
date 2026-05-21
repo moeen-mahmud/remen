@@ -3,6 +3,8 @@ import { Box } from "@/components/ui/box";
 import { Text } from "@/components/ui/text";
 import type { Note } from "@/lib/database/database.types";
 import { useTheme } from "@/lib/theme/use-theme";
+import * as Haptics from "expo-haptics";
+import { XIcon } from "lucide-react-native";
 import { FlatList, LayoutAnimation, Platform, Pressable, UIManager } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ContextualRecallStyles as styles } from "./editor-styles";
@@ -32,6 +34,17 @@ export function ContextualRecallTray({ notes, onNotePress, onDismiss }: Contextu
         >
             <Box style={styles.header}>
                 <Text className="text-xs font-medium text-typography-500 dark:text-typography-400">Related</Text>
+                <Pressable
+                    onPress={() => {
+                        Haptics.selectionAsync();
+                        onDismiss();
+                    }}
+                    hitSlop={12}
+                    accessibilityRole="button"
+                    accessibilityLabel="Dismiss related notes"
+                >
+                    <XIcon size={16} color={mutedTextColor} />
+                </Pressable>
             </Box>
             <FlatList
                 horizontal
